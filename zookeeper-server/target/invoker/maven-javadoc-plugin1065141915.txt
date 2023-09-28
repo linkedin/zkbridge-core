@@ -1,0 +1,129 @@
+Invoking Maven for the goals: [org.apache.maven.plugins:maven-javadoc-plugin:3.0.1:javadoc] with no properties
+
+M2_HOME=/usr/local/Cellar/maven/3.8.4/libexec
+MAVEN_OPTS=null
+JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk11.0.10-msft.jdk/Contents/Home
+JAVA_OPTS=null
+
+[INFO] Scanning for projects...
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective model for com.linkedin.zookeeper:spiral-api:jar:3.6.5-SNAPSHOT
+[WARNING] 'build.plugins.plugin.version' for com.github.os72:protoc-jar-maven-plugin is missing. @ line 53, column 21
+[WARNING] 
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING] 
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING] 
+[INFO] 
+[INFO] -----------------< com.linkedin.zookeeper:spiral-api >------------------
+[INFO] Building Spiral API 3.6.5-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> maven-javadoc-plugin:3.0.1:javadoc (default-cli) > generate-sources @ spiral-api >>>
+[INFO] 
+[INFO] --- mavanagaiata:0.9.4:commit (find-current-git-revision) @ spiral-api ---
+[INFO] 
+[INFO] --- maven-antrun-plugin:1.8:run (default) @ spiral-api ---
+[INFO] Executing tasks
+
+main:
+[INFO] Executed tasks
+[INFO] 
+[INFO] --- maven-enforcer-plugin:3.0.0-M3:enforce (enforce-maven-version) @ spiral-api ---
+[INFO] 
+[INFO] --- maven-enforcer-plugin:3.0.0-M3:enforce (banned-commons-lang) @ spiral-api ---
+[INFO] 
+[INFO] --- maven-enforcer-plugin:3.0.0-M3:enforce (banned-commons-lang3) @ spiral-api ---
+[INFO] 
+[INFO] --- protoc-jar-maven-plugin:3.11.4:run (default) @ spiral-api ---
+[INFO] Skipping code generation, proto files appear unchanged since last compilation
+[INFO] Additional include types: /var/folders/rd/580tvk5d3ns4zl1j02l3lpp8001rtf/T/protocjar193504692284153921/include
+[INFO]     google/protobuf/any.proto
+[INFO]     google/protobuf/api.proto
+[INFO]     google/protobuf/descriptor.proto
+[INFO]     google/protobuf/duration.proto
+[INFO]     google/protobuf/empty.proto
+[INFO]     google/protobuf/field_mask.proto
+[INFO]     google/protobuf/source_context.proto
+[INFO]     google/protobuf/struct.proto
+[INFO]     google/protobuf/timestamp.proto
+[INFO]     google/protobuf/type.proto
+[INFO]     google/protobuf/wrappers.proto
+[INFO]     google/logging/type/http_request.proto
+[INFO]     google/logging/type/log_severity.proto
+[INFO]     google/cloud/audit/audit_log.proto
+[INFO]     google/cloud/extended_operations.proto
+[INFO]     google/type/money.proto
+[INFO]     google/type/fraction.proto
+[INFO]     google/type/month.proto
+[INFO]     google/type/dayofweek.proto
+[INFO]     google/type/color.proto
+[INFO]     google/type/datetime.proto
+[INFO]     google/type/phone_number.proto
+[INFO]     google/type/timeofday.proto
+[INFO]     google/type/date.proto
+[INFO]     google/type/quaternion.proto
+[INFO]     google/type/calendar_period.proto
+[INFO]     google/type/interval.proto
+[INFO]     google/type/localized_text.proto
+[INFO]     google/type/postal_address.proto
+[INFO]     google/type/decimal.proto
+[INFO]     google/type/latlng.proto
+[INFO]     google/type/expr.proto
+[INFO]     google/rpc/code.proto
+[INFO]     google/rpc/status.proto
+[INFO]     google/rpc/error_details.proto
+[INFO]     google/rpc/context/audit_context.proto
+[INFO]     google/rpc/context/attribute_context.proto
+[INFO]     google/geo/type/viewport.proto
+[INFO]     google/longrunning/operations.proto
+[INFO]     google/api/system_parameter.proto
+[INFO]     google/api/error_reason.proto
+[INFO]     google/api/client.proto
+[INFO]     google/api/distribution.proto
+[INFO]     google/api/documentation.proto
+[INFO]     google/api/logging.proto
+[INFO]     google/api/monitored_resource.proto
+[INFO]     google/api/consumer.proto
+[INFO]     google/api/resource.proto
+[INFO]     google/api/httpbody.proto
+[INFO]     google/api/source_info.proto
+[INFO]     google/api/context.proto
+[INFO]     google/api/control.proto
+[INFO]     google/api/label.proto
+[INFO]     google/api/field_behavior.proto
+[INFO]     google/api/endpoint.proto
+[INFO]     google/api/usage.proto
+[INFO]     google/api/monitoring.proto
+[INFO]     google/api/billing.proto
+[INFO]     google/api/config_change.proto
+[INFO]     google/api/log.proto
+[INFO]     google/api/routing.proto
+[INFO]     google/api/visibility.proto
+[INFO]     google/api/quota.proto
+[INFO]     google/api/launch_stage.proto
+[INFO]     google/api/service.proto
+[INFO]     google/api/auth.proto
+[INFO]     google/api/metric.proto
+[INFO]     google/api/annotations.proto
+[INFO]     google/api/backend.proto
+[INFO]     google/api/http.proto
+[INFO] Input directories:
+[INFO]     /Users/kdesai/Zkbridge-core/spiral-api/src/main/proto
+[INFO] Include directories:
+[INFO]     /var/folders/rd/580tvk5d3ns4zl1j02l3lpp8001rtf/T/protocjar193504692284153921/include
+[INFO] Adding generated sources (grpc-java): /Users/kdesai/Zkbridge-core/spiral-api/target/generated-sources/java
+[INFO] 
+[INFO] --- build-helper-maven-plugin:3.0.0:add-source (default) @ spiral-api ---
+[INFO] Source directory: /Users/kdesai/Zkbridge-core/spiral-api/target/generated-sources/java added.
+[INFO] 
+[INFO] <<< maven-javadoc-plugin:3.0.1:javadoc (default-cli) < generate-sources @ spiral-api <<<
+[INFO] 
+[INFO] 
+[INFO] --- maven-javadoc-plugin:3.0.1:javadoc (default-cli) @ spiral-api ---
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  2.563 s
+[INFO] Finished at: 2023-09-28T11:00:58-07:00
+[INFO] ------------------------------------------------------------------------

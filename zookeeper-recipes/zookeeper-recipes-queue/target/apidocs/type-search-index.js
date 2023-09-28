@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.zookeeper.recipes.queue","l":"DistributedQueue"}]

@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package proto.com.linkedin.spiral;
+import "Common.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+
+
+option java_multiple_files = true;
+
+message Namespace {
+  // Unique identifier for the namespace
+  UUID id = 1;
+  // Name of the namespace
+  string name = 2;
+  // Timestamp denoting when the namespace was created
+  google.protobuf.Timestamp createdAt = 3;
+  // Timestamp denoting when the namespace was updated
+  google.protobuf.Timestamp updatedAt = 4;
+  // Status of the namespace
+  Status status = 5;
+}
+
+message Bucket {
+  // Unique identifier of a bucket
+  UUID id = 1;
+  // Name of a bucket
+  string name = 2;
+  // Name of the parent namespace.
+  string namespace = 3;
+  // Timestamp denoting when the namespace was created
+  google.protobuf.Timestamp createdAt = 4;
+  // Timestamp denoting when the namespace was updated
+  google.protobuf.Timestamp updatedAt = 5;
+  // Current status of the bucket
+  Status status = 6;
+}
+
+message SpiralContext {
+  string namespace = 1;
+  string bucket = 2;
+}
+
+message Value {
+  bytes message = 1;
+}
+
+message Key {
+  bytes message = 1;
+}
+
+message KeyValue {
+  Key key = 1;
+  Value value = 2;
+}
+
+message Ttl {
+  google.protobuf.Duration duration = 1;
+}
+
+message CompareAndSet {
+  Value previousValue = 1;
+}
+
+message Error {
+  uint32 errorCode = 1;
+  Key key = 2;
+  string errorMessage = 3;
+  //For a CAS operation, this will return the value on the server for which CAS failed
+  CompareAndSet cas = 4;
+}
+

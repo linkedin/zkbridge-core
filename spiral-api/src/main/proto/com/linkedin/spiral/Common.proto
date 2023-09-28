@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package proto.com.linkedin.spiral;
+
+option java_multiple_files = true;
+
+/*
+ * Provides globally unique ID generated after creating any entity like namespace, bucket etc.
+ */
+message UUID {
+  string id = 1;
+}
+
+/*
+ * Represents current status of any entity like namespace, bucket etc.
+ */
+enum Status {
+  Status_UNKNOWN = 0;
+  Status_ACTIVE = 1;
+  Status_DELETING = 2;
+}
+
+/*
+ * Pagination context is used to specify the page size for scan/list operations.
+ * Every List/Scan operation accepts the PaginationContext as a parameter.
+ */
+message PaginationContext {
+  // If token is empty then it's the first page
+  string token = 1;
+  int32 limit = 2;
+}

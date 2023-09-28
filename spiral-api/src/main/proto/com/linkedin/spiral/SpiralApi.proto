@@ -1,0 +1,188 @@
+syntax = "proto3";
+
+package proto.com.linkedin.spiral;
+
+import "google/rpc/status.proto";
+import "Spiral.proto";
+import "Common.proto";
+
+
+option java_multiple_files = true;
+
+service SpiralApi {
+
+  // Namespace management APIs
+  rpc createNamespace(CreateNamespaceRequest) returns (CreateNamespaceResponse){}
+  rpc getNamespace(GetNamespaceRequest) returns (GetNamespaceResponse){}
+  rpc listNamespaces(ListNamespaceRequest) returns (ListNamespaceResponse) {}
+  rpc deleteNamespace(DeleteNamespaceRequest) returns (DeleteNamespaceResponse) {}
+
+  // Bucket management APIs
+  rpc createBucket(CreateBucketRequest) returns (CreateBucketResponse);
+  rpc getBucket(GetBucketRequest) returns (GetBucketResponse);
+  rpc deleteBucket(DeleteBucketRequest) returns (DeleteBucketResponse);
+  rpc listBuckets(ListBucketsRequest) returns (ListBucketsResponse);
+
+  // Core APIs
+  rpc get(GetRequest) returns (GetResponse) {}
+  rpc put(PutRequest) returns (PutResponse) {}
+  rpc scan(ScanRequest) returns (ScanResponse) {}
+  rpc delete(DeleteRequest) returns (DeleteResponse) {}
+  rpc batchGet(BatchGetRequest) returns (BatchGetResponse) {}
+  rpc batchPut(BatchPutRequest) returns (BatchPutResponse) {}
+  rpc batchDelete(BatchDeleteRequest) returns (BatchDeleteResponse) {}
+  rpc rangeDelete(RangeDeleteRequest) returns (RangeDeleteResponse) {}
+}
+
+message CreateNamespaceRequest {
+  string name = 1;
+}
+
+message CreateNamespaceResponse {
+  Namespace namespace = 1;
+}
+
+message GetNamespaceRequest {
+  string name = 1;
+}
+message GetNamespaceResponse {
+  Namespace namespace = 1;
+}
+
+message ListNamespaceRequest {
+  PaginationContext paginationContext = 1;
+}
+message ListNamespaceResponse {
+  repeated Namespace namespaces = 1;
+  string nextPaginationToken = 2;
+}
+
+message DeleteNamespaceRequest {
+  string name = 1;
+}
+
+message DeleteNamespaceResponse {}
+
+message CreateBucketRequest {
+  //Namespace the Bucket belongs to
+  string namespace = 1;
+  // Name of the bucket to be created.
+  string name = 2;
+}
+
+message CreateBucketResponse {
+  Bucket bucket = 1;
+}
+
+message GetBucketRequest {
+  //Namespace the Bucket belongs to
+  string namespace = 1;
+  // Name of the bucket to be retrieved.
+  string name = 2;
+}
+message GetBucketResponse {
+  Bucket bucket = 1;
+}
+
+message DeleteBucketRequest {
+  //Namespace the Bucket belongs to
+  string namespace = 1;
+  // Name of the bucket to be created. It's parent namespace will be provided using request's context.
+  string name = 2;
+}
+message DeleteBucketResponse {}
+
+// The namespace name of which all buckets to be listed will be provided using request's context.
+message ListBucketsRequest {
+  // Pagination context which container necessary info to paginate response if needed. For the first call it
+  // can be provided as null.
+  PaginationContext paginationContext = 1;
+}
+
+message ListBucketsResponse {
+  repeated Bucket buckets = 1;
+  string nextPaginationToken = 2;
+}
+
+message GetRequest {
+  SpiralContext spiralContext = 1;
+  Key key = 2;
+}
+
+message GetResponse {
+  Value value = 1;
+}
+
+message PutRequest {
+  SpiralContext spiralContext = 1;
+  Put put = 2;
+}
+
+message Put {
+  Key key = 1;
+  Value value = 2;
+  //Optional TTL value can be set for put
+  Ttl ttl = 3;
+  //Optional CAS attributes can be set for put
+  CompareAndSet cas = 4;
+}
+
+message PutResponse {
+  Error error = 1;
+}
+
+message ScanRequest {
+  SpiralContext spiralContext = 1;
+  Key startKeyPrefix = 2;
+  Key endKeyPrefix = 3;
+  PaginationContext paginationContext = 4;
+}
+
+message ScanResponse {
+  repeated KeyValue keyValues = 1;
+  string nextPaginationToken = 2;
+}
+
+message BatchGetRequest {
+  SpiralContext spiralContext = 1;
+  repeated Key keys = 2;
+}
+
+message BatchGetResponse {
+  repeated KeyValue keyValues = 1;
+  repeated Error errors = 2;
+}
+
+message BatchPutRequest {
+  SpiralContext spiralContext = 1;
+  repeated Put put = 2;
+}
+
+message BatchPutResponse {
+  repeated Error errors = 1;
+}
+
+message BatchDeleteRequest {
+  SpiralContext spiralContext = 1;
+  repeated Key keys = 2;
+}
+
+message BatchDeleteResponse {
+  repeated Error errors = 1;
+}
+
+message DeleteRequest {
+  SpiralContext spiralContext = 1;
+  Key key = 2;
+}
+
+message DeleteResponse {}
+
+message RangeDeleteRequest {
+  SpiralContext spiralContext = 1;
+  Key startKeyPrefix = 2;
+  Key endKeyPrefix = 3;
+}
+
+message RangeDeleteResponse {}
+

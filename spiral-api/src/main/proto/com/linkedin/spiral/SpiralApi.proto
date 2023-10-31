@@ -2,10 +2,8 @@ syntax = "proto3";
 
 package proto.com.linkedin.spiral;
 
-import "google/rpc/status.proto";
 import "Spiral.proto";
 import "Common.proto";
-
 
 option java_multiple_files = true;
 
@@ -92,11 +90,12 @@ message DeleteBucketRequest {
 }
 message DeleteBucketResponse {}
 
-// The namespace name of which all buckets to be listed will be provided using request's context.
 message ListBucketsRequest {
+  // The namespace name of which all buckets to be listed
+  string namespace = 1;
   // Pagination context which container necessary info to paginate response if needed. For the first call it
   // can be provided as null.
-  PaginationContext paginationContext = 1;
+  PaginationContext paginationContext = 2;
 }
 
 message ListBucketsResponse {
@@ -131,11 +130,17 @@ message PutResponse {
   Error error = 1;
 }
 
+enum ScanOrder {
+  ScanOrder_UNKNOWN = 0;
+  ScanOrder_ASC = 1;
+  ScanOrder_DESC = 2;
+}
+
 message ScanRequest {
   SpiralContext spiralContext = 1;
-  Key startKeyPrefix = 2;
-  Key endKeyPrefix = 3;
-  PaginationContext paginationContext = 4;
+  KeyRange range = 2;
+  PaginationContext paginationContext = 3;
+  ScanOrder order = 4;
 }
 
 message ScanResponse {
@@ -180,8 +185,7 @@ message DeleteResponse {}
 
 message RangeDeleteRequest {
   SpiralContext spiralContext = 1;
-  Key startKeyPrefix = 2;
-  Key endKeyPrefix = 3;
+  KeyRange range = 2;
 }
 
 message RangeDeleteResponse {}

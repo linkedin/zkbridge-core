@@ -27,5 +27,6 @@ enum Status {
 message PaginationContext {
   // If token is empty then it's the first page
   string token = 1;
-  int32 limit = 2;
+  // Size of the page for the scan/list operations
+  int32 pageSize = 2;
 }

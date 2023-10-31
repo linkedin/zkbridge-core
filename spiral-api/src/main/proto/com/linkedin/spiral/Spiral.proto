@@ -70,3 +70,7 @@ message Error {
   CompareAndSet cas = 4;
 }
 
+message KeyRange {
+  Key start = 1;
+  Key end = 2;
+}

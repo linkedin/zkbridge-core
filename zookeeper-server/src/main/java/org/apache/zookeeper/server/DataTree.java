@@ -1622,6 +1622,11 @@ public class DataTree {
             DataNode node = new DataNode();
             ia.readRecord(node, "node");
             nodes.put(path, node);
+            // Convert Node to SpiralNode
+            if (path.length() > 0) {
+                SpiralNode spiralNode = SpiralNode.convertDataNode2SpiralNode(node);
+                ZooKeeperServer.createSpiralRecord(path, spiralNode);
+            }
             synchronized (node) {
                 aclCache.addUsage(node.acl);
             }

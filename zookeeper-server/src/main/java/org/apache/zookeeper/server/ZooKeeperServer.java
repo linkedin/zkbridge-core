@@ -149,7 +149,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
 
     }
 
-    public SpiralNode getSpiralRecord(String key) {
+    public static SpiralNode getSpiralRecord(String key) {
         SpiralNode node = null;
 
         try {
@@ -167,7 +167,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         return node;
     }
 
-    public void createSpiralRecord(String key, SpiralNode node) throws IOException {
+    public static void createSpiralRecord(String key, SpiralNode node) throws IOException {
         spiralClient.put(key, node.toByteBuffer());
     }
 
@@ -442,10 +442,10 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         this(txnLogFactory, tickTime, -1, -1, -1, new ZKDatabase(txnLogFactory), initialConfig, QuorumPeerConfig.isReconfigEnabled());
     }
 
-    public void setSpiralEndpoint(String spiralEndpoint) {
+    public static void setSpiralEndpoint(String spiralEndpoint) {
         // TODO: add to property/env config file.
         spiralClient = new SpiralClient(spiralEndpoint);
-        this.spiralEndpoint = spiralEndpoint;
+        spiralEndpoint = spiralEndpoint;
     }
 
     public ServerStats serverStats() {

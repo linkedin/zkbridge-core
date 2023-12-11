@@ -813,6 +813,7 @@ public class FileTxnLog implements TxnLog, Closeable {
                 TxnLogEntry logEntry = SerializeUtils.deserializeTxn(bytes);
                 hdr = logEntry.getHeader();
                 record = logEntry.getTxn();
+                // TODO - this is from txnlog - KOMAL
                 digest = logEntry.getDigest();
             } catch (EOFException e) {
                 LOG.debug("EOF exception", e);

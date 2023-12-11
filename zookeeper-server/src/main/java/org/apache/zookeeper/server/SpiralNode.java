@@ -165,4 +165,10 @@ public class SpiralNode implements Record {
         node.lastSeq = record.lastSeq;
         return node;
     }
+
+    public static SpiralNode convertDataNode2SpiralNode(DataNode dataNode) {
+        SpiralNode node = new SpiralNode(dataNode.data, dataNode.acl, dataNode.stat);
+        node.childrenCount = dataNode.getChildren() == null ? 0 : dataNode.getChildren().size();
+        return node;
+    }
 }

@@ -1,5 +1,7 @@
 package org.apache.zookeeper.spiral;
 
+import java.nio.charset.StandardCharsets;
+
 import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -34,6 +36,7 @@ public class SpiralClient {
   private static final Logger logger = LoggerFactory.getLogger(SpiralClient.class);
 
   private final SpiralApiGrpc.SpiralApiBlockingStub _blockingStub;
+  private final SpiralApiGrpc.SpiralApiStub _asyncStub;
   private final SpiralContext _spiralContext;
 
 
@@ -41,6 +44,8 @@ public class SpiralClient {
     try {
       ManagedChannel channel = ManagedChannelBuilder.forTarget(spiralEndpoint).usePlaintext().build();
       _blockingStub = SpiralApiGrpc.newBlockingStub(channel);
+      _asyncStub = SpiralApiGrpc.newStub(channel);
+
       _spiralContext = SpiralContext.newBuilder()
                          .setNamespace("test")
                          .setBucket("zk")
@@ -65,10 +70,39 @@ public class SpiralClient {
     }
   }
 
-  public void put(String key, byte[] value) {
+  public byte[] asyncGet(String key) {
+    final byte[][] value = new byte[1][];
     try {
       ByteString keyBytes = ByteString.copyFromUtf8(key);
       Key apiKey = Key.newBuilder().setMessage(keyBytes).build();
+      GetRequest request = GetRequest.newBuilder()
+          .setSpiralContext(_spiralContext).setKey(apiKey).build();
+      // async call
+      _asyncStub.get(request, new StreamObserver<GetResponse>() {
+        @Override
+        public void onNext(GetResponse response) {
+          value[0] = response.getValue().getMessage().toByteArray();
+        }
+        @Override
+        public void onError(Throwable t) {
+          value[0] = null;
+        }
+        @Override
+        public void onCompleted() {
+        }
+      });
+    } catch (Exception e) {
+      logger.error("Get: RPC failed: {}", e.getMessage());
+      throw e;
+    }
+    return value[0];
+  }
+
+  public void put(String key, byte[] value) {
+    try {
+      byte[] keyBytes = key.getBytes();
+      //ByteString keyBytes = ByteString.copyFromUtf8(key);
+      Key apiKey = Key.newBuilder().setMessage(ByteString.copyFrom(keyBytes)).build();
       Value apiValue = Value.newBuilder().setMessage(ByteString.copyFrom(value)).build();
       Put putValue = Put.newBuilder().setKey(apiKey).setValue(apiValue).build();
       PutRequest request = PutRequest.newBuilder()

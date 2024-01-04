@@ -27,12 +27,11 @@
     <relativePath />
     <!-- no parent resolution -->
   </parent>
-  <groupId>com.linkedin.zookeeper</groupId>
+  <groupId>com.linkedin.zkbridge</groupId>
   <artifactId>parent</artifactId>
   <packaging>pom</packaging>
-  <!-- to change version: mvn -\-batch-mode release:update-versions -DdevelopmentVersion=3.6.0-SNAPSHOT -->
-  <version>3.6.5-SNAPSHOT</version>
-  <name>Apache ZooKeeper</name>
+  <version>1.0.0-SNAPSHOT</version>
+  <name>LinkedIn ZKBridge</name>
   <description>
     Disclaimer: this version of ZooKeeper artifact has been modified for use at LinkedIn.
 

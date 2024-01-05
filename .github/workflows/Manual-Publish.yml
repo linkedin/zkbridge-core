@@ -6,6 +6,9 @@ on:
         description: Ref to build (commit, branch, or refs/pull/1234/head or refs/pull/1234/merge)
         required: true
         default: refs/pull/1234/merge
+      version:
+        description: 'The version to publish to jfrog'
+        required: false
 
 jobs:
   deploy:
@@ -23,7 +26,7 @@ jobs:
       id: extract_branch
     - name: Update the version
       run: |
-        sh .github/workflows/version-upgrade.sh ${{ steps.extract_branch.outputs.branch }}
+        sh .github/scripts/version-upgrade.sh ${{ steps.extract_branch.outputs.branch }} ${{ inputs.version }}
     - name: Build with Maven
       run: |
         mvn clean deploy -DskipTests -s .github/workflows/settings.xml -DretryFailedDeploymentCount=3

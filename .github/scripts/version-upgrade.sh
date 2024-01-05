@@ -19,21 +19,24 @@
 # under the License.
 #
 
-# Enable below when using locally/manually
-# cd ../../
-
 echo There are $# arguments to $0: $*
+if [[ $# -eq 0 ]] ; then
+    echo 'Error: Invalid number of parameters provided.'
+    echo 'Please provide arg1 (req): branch_name, version_override (opt): new_version'
+    exit 0
+fi
+
+branch_name=$1
+version=`grep -A 4 "<groupId>com.linkedin.zkbridge-server</groupId>" pom.xml | grep "<version>" | awk 'BEGIN {FS="[<,>]"};{print $3}'`
+
 if [ "$#" -eq 2 ]; then
-  version=$1
   new_version=$2
 else
-  version=`grep -A 4 "<groupId>com.linkedin.zookeeper</groupId>" pom.xml | grep "<version>" | awk 'BEGIN {FS="[<,>]"};{print $3}'`  
-
-# just use the given version as the new version
-  new_version=$1
+  timestamp=`date -u +'%Y%m%d%H%M'`
+  version=`grep -A 4 "<groupId>com.linkedin.zkbridge-server</groupId>" pom.xml | grep "<version>" | awk 'BEGIN {FS="[<,>]"};{print $3}'`
+  new_version=`echo $version | cut -d'-' -f1`-$branch_name-$timestamp
 
 # Below version upgrade logic is left here just in case
-
 #  minor_version=`echo $version | cut -d'.' -f3`
 #  major_version=`echo $version | cut -d'.' -f1` # should be 0
 #  submajor_version=`echo $version | cut -d'.' -f2`
@@ -42,11 +45,11 @@ else
 #  new_version=`echo $version | sed -e "s/${minor_version}/${new_minor_version}/g"`
 #  new_version="$major_version.$submajor_version.$new_minor_version"
 fi
-echo "bump up: $version -> $new_version"
+echo "bump up version: $version -> $new_version"
 
 for MODULE in $(find . -name 'pom.xml')
-do 
-  echo "bump up $MODULE"
+do
+  echo "bump up: $MODULE"
   sed -i "s/${version}/${new_version}/g" $MODULE
   grep -C 1 "$new_version" $MODULE
 done

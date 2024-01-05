@@ -21,7 +21,7 @@
   -->
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>com.linkedin.zkbridge</groupId>
+    <groupId>com.linkedin.zkbridge-server</groupId>
     <artifactId>parent</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <relativePath>..</relativePath>

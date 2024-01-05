@@ -37,6 +37,9 @@ jobs:
       shell: bash
       run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF##*/})"
       id: extract_branch
+    - name: Update the version
+      run: |
+        sh .github/workflows/version-upgrade.sh ${{ steps.extract_branch.outputs.branch }}
     - name: Build with Maven
       run: |
         mvn clean deploy -DskipTests -s .github/workflows/settings.xml -DretryFailedDeploymentCount=3

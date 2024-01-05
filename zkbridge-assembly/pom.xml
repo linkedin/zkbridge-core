@@ -21,7 +21,7 @@
   -->
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>com.linkedin.zkbridge</groupId>
+    <groupId>com.linkedin.zkbridge-server</groupId>
     <artifactId>parent</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <relativePath>..</relativePath>
@@ -50,17 +50,17 @@
 
   <dependencies>
     <dependency>
-      <groupId>com.linkedin.zkbridge</groupId>
+      <groupId>com.linkedin.zkbridge-server</groupId>
       <artifactId>zookeeper-jute</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.linkedin.zkbridge</groupId>
+      <groupId>com.linkedin.zkbridge-server</groupId>
       <artifactId>zookeeper</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.linkedin.zkbridge</groupId>
+      <groupId>com.linkedin.zkbridge-server</groupId>
       <artifactId>zookeeper-prometheus-metrics</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -116,7 +116,7 @@
               <descriptors>
                 <descriptor>${project.basedir}/src/main/assembly/bin-package.xml</descriptor>
               </descriptors>
-              <finalName>zkbridge-${project.version}-bin</finalName>
+              <finalName>zkbridge-server-${project.version}-bin</finalName>
               <appendAssemblyId>false</appendAssemblyId>
               <tarLongFileMode>posix</tarLongFileMode>
             </configuration>
@@ -145,7 +145,7 @@
     <repository>
       <id>jfrog-linkedin</id>
       <name>linkedin-releases</name>
-      <url>https://linkedin.jfrog.io/artifactory/zkbridge</url>
+      <url>https://linkedin.jfrog.io/artifactory/zkbridge-server</url>
     </repository>
   </distributionManagement>
 </project>

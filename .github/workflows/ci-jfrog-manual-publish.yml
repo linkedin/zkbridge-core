@@ -33,4 +33,3 @@ jobs:
       env:
         MVN_DEPLOY_JFROG_KEY: ${{ secrets.MVN_DEPLOY_JFROG_KEY }}
         MVN_DEPLOY_JFROG_USER: ${{ secrets.MVN_DEPLOY_JFROG_USER }}
-

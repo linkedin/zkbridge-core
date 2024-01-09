@@ -20,12 +20,6 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 1.8
-    - name: Extract branch name TBD
-      shell: bash
-      run: echo $MVN_DEPLOY_JFROG_KEY $MVN_DEPLOY_JFROG_USER
-      env:
-        MVN_DEPLOY_JFROG_KEY: ${{ secrets.MVN_DEPLOY_JFROG_KEY }}
-        MVN_DEPLOY_JFROG_USER: ${{ secrets.MVN_DEPLOY_JFROG_USER }}
     - name: Extract branch name
       shell: bash
       run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF##*/})"

@@ -68,8 +68,8 @@
       </pluginRepositories>
       <id>artifactory</id>
       <properties>
-        <altSnapshotDeploymentRepository>jfrog-linkedin-snapshots::https://linkedin.jfrog.io/artifactory/zkbridge-server</altSnapshotDeploymentRepository>
-        <altReleaseDeploymentRepository>jfrog-linkedin-release::https://linkedin.jfrog.io/artifactory/zkbridge-server</altReleaseDeploymentRepository>
+        <altSnapshotDeploymentRepository>jfrog-linkedin-snapshots::https://linkedin.jfrog.io/artifactory/zkbridge</altSnapshotDeploymentRepository>
+        <altReleaseDeploymentRepository>jfrog-linkedin-release::https://linkedin.jfrog.io/artifactory/zkbridge</altReleaseDeploymentRepository>
       </properties>
     </profile>
   </profiles>

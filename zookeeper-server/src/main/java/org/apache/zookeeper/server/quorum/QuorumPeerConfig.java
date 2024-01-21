@@ -121,6 +121,11 @@ public class QuorumPeerConfig {
     protected String spiralServer;
     protected long spiralServerPort;
 
+    protected String identityCert = null;
+    protected String identityKey = null;
+    protected String caBundle = null;
+    protected String overrideAuthority = null;
+
     /**
      * Configurations for the quorumpeer-to-quorumpeer sasl authentication
      */
@@ -293,6 +298,9 @@ public class QuorumPeerConfig {
         int observerMasterPort = 0;
         String clientPortAddress = null;
         String secureClientPortAddress = null;
+        // Default value for ca-bundle is "/etc/riddler/ca-bundle.crt"
+        caBundle = "/etc/riddler/ca-bundle.crt";
+
         VerifyingFileFactory vff = new VerifyingFileFactory.Builder(LOG).warnForRelativePath().build();
         for (Entry<Object, Object> entry : zkProp.entrySet()) {
             String key = entry.getKey().toString().trim();
@@ -399,8 +407,16 @@ public class QuorumPeerConfig {
             } else if (key.equals("spiral-server")) {
                 spiralServer = value;
             } else if (key.equals("spiral-port")) {
-                spiralServerPort= Long.parseLong(value);
-            } else {
+                spiralServerPort = Long.parseLong(value);
+            } else if (key.equals("identity-cert")) {
+                identityCert = value;
+            } else if (key.equals("identity-key")) {
+                identityKey = value;
+            } else if (key.equals("ca-bundle")) {
+                caBundle = value;
+            } else if (key.equals("override-authority")) {
+                overrideAuthority = value;
+           } else {
                 System.setProperty("zookeeper." + key, value);
             }
         }
@@ -958,4 +974,12 @@ public class QuorumPeerConfig {
     public long getSpiralServerPort() {
         return spiralServerPort;
     }
+
+    public String getIdentityCert() {return identityCert;}
+
+    public String getIdentityKey() {return identityKey;}
+
+    public String getCaBundle() {return caBundle;}
+
+    public String getOverrideAuthority() {return overrideAuthority;}
 }

@@ -1,35 +1,32 @@
 package org.apache.zookeeper.spiral;
 
-import java.nio.charset.StandardCharsets;
+import java.io.File;
+import javax.net.ssl.SSLException;
 
 import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
 
+import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts;
+import io.grpc.netty.shaded.io.grpc.netty.NegotiationType;
+import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
+import io.grpc.netty.shaded.io.netty.handler.ssl.SslContext;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import proto.com.linkedin.spiral.BatchDeleteRequest;
-import proto.com.linkedin.spiral.BatchDeleteResponse;
-import proto.com.linkedin.spiral.BatchGetRequest;
-import proto.com.linkedin.spiral.BatchGetResponse;
-import proto.com.linkedin.spiral.BatchPutRequest;
-import proto.com.linkedin.spiral.BatchPutResponse;
-import proto.com.linkedin.spiral.DeleteRequest;
-import proto.com.linkedin.spiral.DeleteResponse;
+import proto.com.linkedin.spiral.CreateBucketRequest;
+import proto.com.linkedin.spiral.CreateNamespaceRequest;
+import proto.com.linkedin.spiral.GetBucketRequest;
+import proto.com.linkedin.spiral.GetNamespaceRequest;
+
+import proto.com.linkedin.spiral.GetNamespaceResponse;
 import proto.com.linkedin.spiral.GetRequest;
 import proto.com.linkedin.spiral.GetResponse;
 import proto.com.linkedin.spiral.Key;
-import proto.com.linkedin.spiral.PaginationContext;
 import proto.com.linkedin.spiral.Put;
 import proto.com.linkedin.spiral.PutRequest;
 import proto.com.linkedin.spiral.PutResponse;
-import proto.com.linkedin.spiral.ScanRequest;
-import proto.com.linkedin.spiral.ScanResponse;
 import proto.com.linkedin.spiral.SpiralApiGrpc;
 import proto.com.linkedin.spiral.SpiralContext;
-import proto.com.linkedin.spiral.Value;
-import proto.com.linkedin.spiral.GetRequestOrBuilder;
 import proto.com.linkedin.spiral.Value;
 
 public class SpiralClient {
@@ -39,20 +36,87 @@ public class SpiralClient {
   private final SpiralApiGrpc.SpiralApiStub _asyncStub;
   private final SpiralContext _spiralContext;
 
+  private final static String _namespace = "test";
+  private final static String _bucket = "zk";
 
-  public SpiralClient(String spiralEndpoint) {
+  public SpiralClient(String spiralEndpoint, String identityCert, String identityKey,
+      String caBundle, String overrideAuthority) throws SSLException {
     try {
-      ManagedChannel channel = ManagedChannelBuilder.forTarget(spiralEndpoint).usePlaintext().build();
+
+      SslContext sslContext = GrpcSslContexts.forClient()
+          .trustManager(new File(caBundle))
+          .keyManager(new File(identityCert),
+              new File(identityKey))
+          .build();
+
+      // Create a channel using the SSL context.
+      NettyChannelBuilder channelBuilder = NettyChannelBuilder.forTarget(spiralEndpoint)
+          .overrideAuthority(overrideAuthority).sslContext(sslContext);
+      channelBuilder.negotiationType(NegotiationType.TLS);
+      ManagedChannel channel = channelBuilder.build();
+
+      //ManagedChannel channel = ManagedChannelBuilder.forTarget(spiralEndpoint).usePlaintext().build();
       _blockingStub = SpiralApiGrpc.newBlockingStub(channel);
       _asyncStub = SpiralApiGrpc.newStub(channel);
-
+      // verify namespace and bucket exists
+      verifySpiralContextExists();
       _spiralContext = SpiralContext.newBuilder()
-                         .setNamespace("test")
-                         .setBucket("zk")
+                         .setNamespace(_namespace)
+                         .setBucket(_bucket)
                          .build();
       logger.info("Connected to spiral-service : {}", spiralEndpoint);
     } catch (Exception e) {
       logger.error("Failed to connect to spiral service at endpoint : {} {}", spiralEndpoint, e.getMessage());
+      throw e;
+    }
+  }
+
+  // TODO - We are not suppose to create the zookeeper namespace in the real world.
+  // But we are not there yet, so we will verify that namespace / bucket exists.
+  public void verifySpiralContextExists() {
+    try {
+      GetNamespaceRequest request = GetNamespaceRequest.newBuilder().setName(_namespace).build();
+      try {
+        GetNamespaceResponse response = _blockingStub.getNamespace(request);
+      } catch (Exception e) {
+        logger.error("ZKBridge Namespace: test is not yet created");
+        createNamespace();
+      }
+
+      GetBucketRequest bucketRequest =
+          GetBucketRequest.newBuilder().setNamespace(_namespace).setName(_bucket).build();
+      try {
+        _blockingStub.getBucket(bucketRequest);
+      } catch (Exception e) {
+        logger.error("ZKBridge Bucket is not yet created");
+        createBucket();
+      }
+
+    } catch (Exception e) {
+      logger.error("Failed to create namespace : {} bucket : {}", _namespace, _bucket);
+      throw e;
+    }
+  }
+
+  // create namespace
+  private void createNamespace() {
+    try {
+      CreateNamespaceRequest request = CreateNamespaceRequest.newBuilder().setName(_namespace).build();
+      _blockingStub.createNamespace(request);
+    } catch (Exception e) {
+      logger.error("Failed to create namespace : {}", _namespace);
+      throw e;
+    }
+  }
+
+  // create bucket
+  private void createBucket() {
+    try {
+      CreateBucketRequest
+          request = CreateBucketRequest.newBuilder().setNamespace(_namespace).setName(_bucket).build();
+      _blockingStub.createBucket(request);
+    } catch (Exception e) {
+      logger.error("Failed to create bucket : {}", _bucket);
       throw e;
     }
   }

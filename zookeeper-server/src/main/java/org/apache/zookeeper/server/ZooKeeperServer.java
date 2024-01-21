@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
+import javax.net.ssl.SSLException;
 import javax.security.sasl.SaslException;
 
 import org.apache.jute.BinaryInputArchive;
@@ -442,9 +443,11 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         this(txnLogFactory, tickTime, -1, -1, -1, new ZKDatabase(txnLogFactory), initialConfig, QuorumPeerConfig.isReconfigEnabled());
     }
 
-    public static void setSpiralEndpoint(String spiralEndpoint) {
+    public static void setupSpiral(String spiralEndpoint, String identityCert,
+        String identityKey, String caBundle, String overrideAuthority) throws SSLException {
         // TODO: add to property/env config file.
-        spiralClient = new SpiralClient(spiralEndpoint);
+        spiralClient = new SpiralClient(spiralEndpoint, identityCert, identityKey, caBundle,
+            overrideAuthority);
         spiralEndpoint = spiralEndpoint;
     }
 

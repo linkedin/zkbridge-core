@@ -213,7 +213,7 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
                     }
                     continue;
                 }
-                //Here we flush - KOMAL
+                //Here we flush
                 toFlush.add(si);
                 if (shouldFlush()) {
                     flush();

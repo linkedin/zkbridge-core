@@ -331,7 +331,7 @@ public class ZooKeeperMain {
 
     public static void main(String[] args) throws IOException, InterruptedException {
         ZooKeeperMain main = new ZooKeeperMain(args);
-        System.out.println("KOMAL: Starting");
+        System.out.println("ZKBridge: Starting");
         main.run();
     }
 
@@ -342,7 +342,7 @@ public class ZooKeeperMain {
     }
 
     public ZooKeeperMain(ZooKeeper zk) {
-        System.out.println("KOMAL CLIENT: another Starting");
+        System.out.println("ZKBridge CLIENT: another Starting");
         this.zk = zk;
     }
 

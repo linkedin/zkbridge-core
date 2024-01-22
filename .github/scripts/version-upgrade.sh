@@ -27,13 +27,13 @@ if [[ $# -eq 0 ]] ; then
 fi
 
 branch_name=$1
-version=`grep -A 4 "<groupId>com.linkedin.zkbridge-server</groupId>" pom.xml | grep "<version>" | awk 'BEGIN {FS="[<,>]"};{print $3}'`
+version=`grep -A 4 "<groupId>com.linkedin.zkbridge</groupId>" pom.xml | grep "<version>" | awk 'BEGIN {FS="[<,>]"};{print $3}'`
 
 if [ "$#" -eq 2 ]; then
   new_version=$2
 else
   timestamp=`date -u +'%Y%m%d%H%M'`
-  version=`grep -A 4 "<groupId>com.linkedin.zkbridge-server</groupId>" pom.xml | grep "<version>" | awk 'BEGIN {FS="[<,>]"};{print $3}'`
+  version=`grep -A 4 "<groupId>com.linkedin.zkbridge</groupId>" pom.xml | grep "<version>" | awk 'BEGIN {FS="[<,>]"};{print $3}'`
   new_version=`echo $version | cut -d'-' -f1`-$branch_name-$timestamp
 
 # Below version upgrade logic is left here just in case

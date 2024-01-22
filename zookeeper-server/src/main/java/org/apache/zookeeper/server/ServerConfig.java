@@ -60,6 +60,11 @@ public class ServerConfig {
     protected String spiralServer = null;
     protected long spiralServerPort = -1L;
 
+    protected String identityCert = null;
+    protected String identityKey = null;
+    protected String caBundle = null;
+    protected String overrideAuthority = null;
+
 
     /** JVM Pause Monitor feature switch */
     protected boolean jvmPauseMonitorToRun = false;
@@ -128,6 +133,10 @@ public class ServerConfig {
         initialConfig = config.getInitialConfig();
         spiralServer = config.getSpiralServer();
         spiralServerPort = config.getSpiralServerPort();
+        identityCert = config.getIdentityCert();
+        identityKey = config.getIdentityKey();
+        caBundle = config.getCaBundle();
+        overrideAuthority = config.getOverrideAuthority();
     }
 
     public InetSocketAddress getClientPortAddress() {
@@ -184,4 +193,17 @@ public class ServerConfig {
         return spiralServer + ":" + spiralServerPort;
     }
 
+    public String getIdentityCert() {
+        return identityCert;
+    }
+    public String getIdentityKey() {
+        return identityKey;
+    }
+    public String getCaBundle() {
+        return caBundle;
+    }
+
+    public String getOverrideAuthority() {
+        return overrideAuthority;
+    }
 }

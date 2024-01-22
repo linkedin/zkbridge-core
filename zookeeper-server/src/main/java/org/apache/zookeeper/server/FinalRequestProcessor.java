@@ -227,7 +227,7 @@ public class FinalRequestProcessor implements RequestProcessor {
                 zks.serverStats().updateLatency(request.type, request, Time.currentElapsedTime());
                 lastOp = "PING";
                 updateStats(request.type, request, lastOp, lastZxid);
-                // this just updates server stats. nothing to persist: KOMAL
+                // todo-this just updates server stats. nothing to persist:
                 cnxn.sendResponse(new ReplyHeader(ClientCnxn.PING_XID, lastZxid, 0), null, "response");
                 return;
             }
@@ -312,7 +312,7 @@ public class FinalRequestProcessor implements RequestProcessor {
             }
             case OpCode.create: {
                 lastOp = "CREA";
-                // persist to Spiral - KOMAL
+                // persist to Spiral
                 rsp = new CreateResponse(rc.path);
                 err = Code.get(rc.err);
                 requestPathMetricsCollector.registerRequest(request.type, rc.path);
@@ -324,7 +324,7 @@ public class FinalRequestProcessor implements RequestProcessor {
                 lastOp = "CREA";
                 rsp = new Create2Response(rc.path, rc.stat);
                 err = Code.get(rc.err);
-                // persist to Spiral - KOMAL
+                // persist to Spiral
                 requestPathMetricsCollector.registerRequest(request.type, rc.path);
                 break;
             }
@@ -332,7 +332,7 @@ public class FinalRequestProcessor implements RequestProcessor {
             case OpCode.deleteContainer: {
                 lastOp = "DELE";
                 err = Code.get(rc.err);
-                // persist to Spiral - KOMAL
+                // persist to Spiral
                 requestPathMetricsCollector.registerRequest(request.type, rc.path);
                 break;
             }
@@ -340,7 +340,7 @@ public class FinalRequestProcessor implements RequestProcessor {
                 lastOp = "SETD";
                 rsp = new SetDataResponse(rc.stat);
                 err = Code.get(rc.err);
-                // persist to Spiral - KOMAL
+                // persist to Spiral
                 requestPathMetricsCollector.registerRequest(request.type, rc.path);
                 break;
             }
@@ -350,14 +350,14 @@ public class FinalRequestProcessor implements RequestProcessor {
                     ((QuorumZooKeeperServer) zks).self.getQuorumVerifier().toString().getBytes(),
                     rc.stat);
                 err = Code.get(rc.err);
-                // no need as this is about quorum KOMAL
+                // no need as this is about quorum 
                 break;
             }
             case OpCode.setACL: {
                 lastOp = "SETA";
                 rsp = new SetACLResponse(rc.stat);
                 err = Code.get(rc.err);
-                // update ACL in Spiral - KOMAL
+                // update ACL in Spiral
                 requestPathMetricsCollector.registerRequest(request.type, rc.path);
                 break;
             }
@@ -390,7 +390,7 @@ public class FinalRequestProcessor implements RequestProcessor {
                     throw new KeeperException.BadArgumentsException();
                 }
                 Stat stat = zks.getZKDatabase().statNode(path, existsRequest.getWatch() ? cnxn : null);
-                // Get request to Spiral - KOMAL
+                // Get request to Spiral
                 rsp = new ExistsResponse(stat);
                 requestPathMetricsCollector.registerRequest(request.type, path);
                 break;
@@ -407,7 +407,7 @@ public class FinalRequestProcessor implements RequestProcessor {
                 Stat stat = SpiralNode.convert2Stat(node.stat);
                 rsp = new GetDataResponse(node.data, stat);
                 //rsp = handleGetDataRequest(getDataRequest, cnxn, request.authInfo);
-                // Get request to Spiral - KOMAL
+                // Get request to Spiral
                 requestPathMetricsCollector.registerRequest(request.type, path);
                 break;
             }
@@ -503,7 +503,7 @@ public class FinalRequestProcessor implements RequestProcessor {
                 GetChildrenRequest getChildrenRequest = new GetChildrenRequest();
                 ByteBufferInputStream.byteBuffer2Record(request.request, getChildrenRequest);
                 path = getChildrenRequest.getPath();
-                // scan ? KOMAL
+                // scan ? 
                 rsp = handleGetChildrenRequest(getChildrenRequest, cnxn, request.authInfo);
                 requestPathMetricsCollector.registerRequest(request.type, path);
                 break;

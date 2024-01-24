@@ -32,6 +32,14 @@
   <name>LinkedIn ZKBridge - Assembly</name>
   <description>ZKBridge Assembly</description>
 
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
   <profiles>
     <profile>
       <id>full-build</id>
@@ -40,7 +48,6 @@
       </properties>
     </profile>
   </profiles>
-
 
   <properties>
     <rw.file.permission>0644</rw.file.permission>

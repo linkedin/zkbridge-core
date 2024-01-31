@@ -400,15 +400,18 @@ public class FinalRequestProcessor implements RequestProcessor {
                 GetDataRequest getDataRequest = new GetDataRequest();
                 ByteBufferInputStream.byteBuffer2Record(request.request, getDataRequest);
                 path = getDataRequest.getPath();
-                SpiralNode node = zks.getSpiralRecord(path);
-                if (node == null) {
-                    throw new KeeperException.NoNodeException();
-                }
-                Stat stat = SpiralNode.convert2Stat(node.stat);
-                rsp = new GetDataResponse(node.data, stat);
-                //rsp = handleGetDataRequest(getDataRequest, cnxn, request.authInfo);
-                // Get request to Spiral
-                requestPathMetricsCollector.registerRequest(request.type, path);
+                if (zks.isSpiralEnabled()) {
+                  SpiralNode node = zks.getSpiralRecord(path);
+                  if (node == null) {
+                      throw new KeeperException.NoNodeException();
+                  }
+                  Stat stat = SpiralNode.convert2Stat(node.stat);
+                  rsp = new GetDataResponse(node.data, stat);
+               } else {
+                rsp = handleGetDataRequest(getDataRequest, cnxn, request.authInfo);
+               }
+               // Get request to Spiral
+               requestPathMetricsCollector.registerRequest(request.type, path);
                 break;
             }
             case OpCode.setWatches: {

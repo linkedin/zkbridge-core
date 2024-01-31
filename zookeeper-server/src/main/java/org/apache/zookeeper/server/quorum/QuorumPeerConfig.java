@@ -118,6 +118,7 @@ public class QuorumPeerConfig {
     protected LearnerType peerType = LearnerType.PARTICIPANT;
 
     // Spiral Related
+    protected boolean spiralEnabled = false;
     protected String spiralServer;
     protected long spiralServerPort;
 
@@ -404,6 +405,8 @@ public class QuorumPeerConfig {
                 multiAddressReachabilityCheckTimeoutMs = Integer.parseInt(value);
             } else if (key.equals("multiAddress.reachabilityCheckEnabled")) {
                 multiAddressReachabilityCheckEnabled = Boolean.parseBoolean(value);
+            } else if (key.equals("spiral-enabled")) {
+                spiralEnabled = Boolean.parseBoolean(value);
             } else if (key.equals("spiral-server")) {
                 spiralServer = value;
             } else if (key.equals("spiral-port")) {
@@ -982,4 +985,6 @@ public class QuorumPeerConfig {
     public String getCaBundle() {return caBundle;}
 
     public String getOverrideAuthority() {return overrideAuthority;}
+
+    public boolean isSpiralEnabled() {return spiralEnabled;}
 }

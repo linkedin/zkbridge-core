@@ -147,11 +147,13 @@ public class ZooKeeperServerMain {
             txnLog.setServerStats(zkServer.serverStats());
 
             // Set Spiral Specific configuration.
-            zkServer.setupSpiral(config.getSpiralEndpoint(),
-                config.getIdentityCert(),
-                config.getIdentityKey(),
-                config.getCaBundle(),
-                config.getOverrideAuthority());
+            if (config.isSpiralEnabled()) {
+                zkServer.setupSpiral(config.getSpiralEndpoint(), config.getIdentityCert(), config.getIdentityKey(),
+                    config.getCaBundle(), config.getOverrideAuthority());
+            } else {
+                LOG.info("Spiral is not enabled");
+                zkServer.setSpiralDisabled();
+            }
 
             // Registers shutdown handler which will be used to know the
             // server error or shutdown state changes.

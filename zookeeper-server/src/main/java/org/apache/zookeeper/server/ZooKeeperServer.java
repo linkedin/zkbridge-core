@@ -127,6 +127,15 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     // Connection to spiralClient.
     private static SpiralClient spiralClient;
     private static String spiralEndpoint;
+    private static boolean spiralEnabled = false;
+
+    public void setSpiralDisabled() {
+        spiralEnabled = false;
+    }
+
+    public boolean isSpiralEnabled() {
+        return spiralEnabled;
+    }
 
     static {
         LOG = LoggerFactory.getLogger(ZooKeeperServer.class);
@@ -151,8 +160,11 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     }
 
     public static SpiralNode getSpiralRecord(String key) {
-        SpiralNode node = null;
+        if (spiralEnabled == false) {
+            return null;
+        }
 
+        SpiralNode node = null;
         try {
             byte[] response = spiralClient.get(key);
             node = new SpiralNode();
@@ -169,10 +181,15 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     }
 
     public static void createSpiralRecord(String key, SpiralNode node) throws IOException {
-        spiralClient.put(key, node.toByteBuffer());
+        if (spiralEnabled) {
+            spiralClient.put(key, node.toByteBuffer());
+        }
     }
 
     public void initializeSpiralServer() {
+        if (spiralEnabled == false) {
+            return;
+        }
         try {
             // check if spiral node with /zookeeper exists, if not, create, else read it.
             SpiralNode node = getSpiralRecord("/zookeeper");
@@ -449,6 +466,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         spiralClient = new SpiralClient(spiralEndpoint, identityCert, identityKey, caBundle,
             overrideAuthority);
         spiralEndpoint = spiralEndpoint;
+        spiralEnabled = true;
     }
 
     public ServerStats serverStats() {

@@ -57,6 +57,7 @@ public class ServerConfig {
     protected String initialConfig;
 
     // Spiral Specific - ZKBridge
+    protected boolean spiralEnabled = false;
     protected String spiralServer = null;
     protected long spiralServerPort = -1L;
 
@@ -131,6 +132,7 @@ public class ServerConfig {
         metricsProviderConfiguration = config.getMetricsProviderConfiguration();
         listenBacklog = config.getClientPortListenBacklog();
         initialConfig = config.getInitialConfig();
+        spiralEnabled = config.isSpiralEnabled();
         spiralServer = config.getSpiralServer();
         spiralServerPort = config.getSpiralServerPort();
         identityCert = config.getIdentityCert();
@@ -205,5 +207,9 @@ public class ServerConfig {
 
     public String getOverrideAuthority() {
         return overrideAuthority;
+    }
+
+    public boolean isSpiralEnabled() {
+        return spiralEnabled;
     }
 }

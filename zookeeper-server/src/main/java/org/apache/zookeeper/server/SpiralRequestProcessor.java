@@ -163,9 +163,11 @@ public class SpiralRequestProcessor extends ZooKeeperCriticalThread implements R
         LOG.info("SpiralRequestProcessor exited loop!");
     }
 
-    /*
     private ChangeRecord getRecordForPath(String path) throws KeeperException.NoNodeException {
-        ChangeRecord lastChange = null;
+    if (zks.isSpiralEnabled()) {
+       return getSpiralRecordForPath(path);
+    }
+    ChangeRecord lastChange = null;
     synchronized (zks.outstandingChanges) {
         lastChange = zks.outstandingChangesForPath.get(path);
         if (lastChange == null) {
@@ -189,11 +191,11 @@ public class SpiralRequestProcessor extends ZooKeeperCriticalThread implements R
         throw new KeeperException.NoNodeException(path);
     }
         return lastChange;
-} */
+}
 
     // Use Spiral to get the Record for the path.
 
-    private ChangeRecord getRecordForPath(String path) throws KeeperException.NoNodeException {
+    private ChangeRecord getSpiralRecordForPath(String path) throws KeeperException.NoNodeException {
         if (path == null || path.isEmpty()) {
             // create base /zookeeper node
             StatPersisted s = DataTree.createStat(0L, Time.currentWallTime(), 0);

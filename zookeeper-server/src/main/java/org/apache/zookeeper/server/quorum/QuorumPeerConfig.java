@@ -126,6 +126,8 @@ public class QuorumPeerConfig {
     protected String identityKey = null;
     protected String caBundle = null;
     protected String overrideAuthority = null;
+    protected String spiralNamespace = null;
+    protected String spiralBucket = null;
 
     /**
      * Configurations for the quorumpeer-to-quorumpeer sasl authentication
@@ -419,6 +421,10 @@ public class QuorumPeerConfig {
                 caBundle = value;
             } else if (key.equals("override-authority")) {
                 overrideAuthority = value;
+            } else if (key.equals("spiral-namespace")) {
+                spiralNamespace = value;
+            } else if (key.equals("spiral-bucket")) {
+                spiralBucket = value;
            } else {
                 System.setProperty("zookeeper." + key, value);
             }
@@ -987,4 +993,12 @@ public class QuorumPeerConfig {
     public String getOverrideAuthority() {return overrideAuthority;}
 
     public boolean isSpiralEnabled() {return spiralEnabled;}
+
+    public String getSpiralNamespace() {
+        return spiralNamespace;
+    }
+
+    public String getSpiralBucket() {
+        return spiralBucket;
+    }
 }

@@ -60,6 +60,8 @@ public class ServerConfig {
     protected boolean spiralEnabled = false;
     protected String spiralServer = null;
     protected long spiralServerPort = -1L;
+    protected String spiralNamespace = "test";
+    protected String spiralBucket = "helix";
 
     protected String identityCert = null;
     protected String identityKey = null;
@@ -139,6 +141,8 @@ public class ServerConfig {
         identityKey = config.getIdentityKey();
         caBundle = config.getCaBundle();
         overrideAuthority = config.getOverrideAuthority();
+        spiralNamespace = config.getSpiralNamespace();
+        spiralBucket = config.getSpiralBucket();
     }
 
     public InetSocketAddress getClientPortAddress() {
@@ -211,5 +215,13 @@ public class ServerConfig {
 
     public boolean isSpiralEnabled() {
         return spiralEnabled;
+    }
+
+    public String getSpiralNamespace() {
+        return spiralNamespace;
+    }
+   
+    public String getSpiralBucket() {
+        return spiralBucket;
     }
 }

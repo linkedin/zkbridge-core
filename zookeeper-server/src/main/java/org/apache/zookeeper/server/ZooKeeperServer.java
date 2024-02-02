@@ -461,10 +461,10 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     }
 
     public static void setupSpiral(String spiralEndpoint, String identityCert,
-        String identityKey, String caBundle, String overrideAuthority) throws SSLException {
+        String identityKey, String caBundle, String overrideAuthority, String namespace, String bucket) throws SSLException {
         // TODO: add to property/env config file.
         spiralClient = new SpiralClient(spiralEndpoint, identityCert, identityKey, caBundle,
-            overrideAuthority);
+            overrideAuthority, namespace, bucket);
         spiralEndpoint = spiralEndpoint;
         spiralEnabled = true;
     }

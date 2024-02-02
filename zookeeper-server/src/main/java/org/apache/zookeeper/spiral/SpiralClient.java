@@ -36,11 +36,11 @@ public class SpiralClient {
   private final SpiralApiGrpc.SpiralApiStub _asyncStub;
   private final SpiralContext _spiralContext;
 
-  private final static String _namespace = "test";
-  private final static String _bucket = "zk";
+  private static String _namespace = "zoookeeper";
+  private static String _bucket = "helix";
 
   public SpiralClient(String spiralEndpoint, String identityCert, String identityKey,
-      String caBundle, String overrideAuthority) throws SSLException {
+      String caBundle, String overrideAuthority, String namespace, String bucket) throws SSLException {
     try {
 
       SslContext sslContext = GrpcSslContexts.forClient()
@@ -58,6 +58,9 @@ public class SpiralClient {
       //ManagedChannel channel = ManagedChannelBuilder.forTarget(spiralEndpoint).usePlaintext().build();
       _blockingStub = SpiralApiGrpc.newBlockingStub(channel);
       _asyncStub = SpiralApiGrpc.newStub(channel);
+
+      _namespace = namespace;
+      _bucket = bucket;
       // verify namespace and bucket exists
       verifySpiralContextExists();
       _spiralContext = SpiralContext.newBuilder()
@@ -75,11 +78,12 @@ public class SpiralClient {
   // But we are not there yet, so we will verify that namespace / bucket exists.
   public void verifySpiralContextExists() {
     try {
+      logger.error("namespace : {} bucket : {}", _namespace, _bucket);
       GetNamespaceRequest request = GetNamespaceRequest.newBuilder().setName(_namespace).build();
       try {
         GetNamespaceResponse response = _blockingStub.getNamespace(request);
       } catch (Exception e) {
-        logger.error("ZKBridge Namespace: test is not yet created");
+        logger.error("ZKBridge Namespace: {} is not yet created", _namespace);
         createNamespace();
       }
 
@@ -104,7 +108,7 @@ public class SpiralClient {
       CreateNamespaceRequest request = CreateNamespaceRequest.newBuilder().setName(_namespace).build();
       _blockingStub.createNamespace(request);
     } catch (Exception e) {
-      logger.error("Failed to create namespace : {}", _namespace);
+      logger.error("Failed to create namespace : {}, {}", _namespace, e.getMessage());
       throw e;
     }
   }

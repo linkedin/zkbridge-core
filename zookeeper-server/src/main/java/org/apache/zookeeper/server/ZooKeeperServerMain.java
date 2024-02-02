@@ -68,7 +68,7 @@ public class ZooKeeperServerMain {
         LOG.info("---ZKBridge: Starting");
         ZooKeeperServerMain main = new ZooKeeperServerMain();
         try {
-            Thread.currentThread().sleep(10000);
+            Thread.currentThread().sleep(60000);
             main.initializeAndRun(args);
         } catch (IllegalArgumentException e) {
             LOG.error("Invalid arguments, exiting abnormally", e);
@@ -149,7 +149,7 @@ public class ZooKeeperServerMain {
             // Set Spiral Specific configuration.
             if (config.isSpiralEnabled()) {
                 zkServer.setupSpiral(config.getSpiralEndpoint(), config.getIdentityCert(), config.getIdentityKey(),
-                    config.getCaBundle(), config.getOverrideAuthority());
+                    config.getCaBundle(), config.getOverrideAuthority(), config.getSpiralNamespace(), config.getSpiralBucket());
             } else {
                 LOG.info("Spiral is not enabled");
                 zkServer.setSpiralDisabled();

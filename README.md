@@ -18,7 +18,9 @@ found in zookeeper-assembly/target directory after building the project with mav
     apache-zookeeper-[version].tar.gz
 
         Contains all the source files which can be built by running:
-        mvn clean install
+        mvn clean install -Dmaven.test.skip.exec=true -Dos.arch=x86_64
+        or,
+        mvn clean install -Dos.arch=x86_64
 
         To generate an aggregated apidocs for zookeeper-server and zookeeper-jute:
         mvn javadoc:aggregate

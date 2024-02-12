@@ -37,16 +37,14 @@ public class SpiralClient {
   private final SpiralContext _spiralContext;
 
   private static String _namespace = "zoookeeper";
-  private static String _bucket = "helix";
+  private static String _bucket = "sharedTxnLog";
 
   public SpiralClient(String spiralEndpoint, String identityCert, String identityKey,
       String caBundle, String overrideAuthority, String namespace, String bucket) throws SSLException {
     try {
-
       SslContext sslContext = GrpcSslContexts.forClient()
           .trustManager(new File(caBundle))
-          .keyManager(new File(identityCert),
-              new File(identityKey))
+          .keyManager(new File(identityCert),  new File(identityKey))
           .build();
 
       // Create a channel using the SSL context.

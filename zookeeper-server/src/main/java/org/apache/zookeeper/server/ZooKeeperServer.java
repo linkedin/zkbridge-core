@@ -160,7 +160,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     }
 
     public static SpiralNode getSpiralRecord(String key) {
-        if (spiralEnabled == false) {
+        if (!spiralEnabled) {
             return null;
         }
 
@@ -180,35 +180,13 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         return node;
     }
 
-    public static void createSpiralRecord(String key, SpiralNode node) throws IOException {
+    public static void createSpiralRecord(String key, byte[] buf) throws IOException {
         if (spiralEnabled) {
-            spiralClient.put(key, node.toByteBuffer());
+            spiralClient.put(key, buf);
         }
     }
 
     public void initializeSpiralServer() {
-        if (spiralEnabled == false) {
-            return;
-        }
-        try {
-            // check if spiral node with /zookeeper exists, if not, create, else read it.
-            SpiralNode node = getSpiralRecord("/zookeeper");
-            if (node == null) {
-                SpiralNode emptySpiral = SpiralNode.createEmptySpiralNode();
-                try {
-                    emptySpiral.childrenCount = 2;
-                    createSpiralRecord("/zookeeper", emptySpiral);
-                    emptySpiral.childrenCount = 0;
-                    createSpiralRecord("/zookeeper/quota", emptySpiral);
-                    createSpiralRecord("/zookeeper/config", emptySpiral);
-                } catch (IOException e) {
-                    // handle exception
-                }
-            }
-        } catch (Exception e) {
-            // handle exception
-        }
-        // todo - remember to handle lastProcessedZxid
     }
 
     // @VisibleForTesting
@@ -817,8 +795,8 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         firstProcessor = new PrepRequestProcessor(this, syncProcessor);
         ((PrepRequestProcessor) firstProcessor).start();
          */
-        firstProcessor = new SpiralRequestProcessor(this, syncProcessor);
-        ((SpiralRequestProcessor) firstProcessor).start();
+        firstProcessor = new PrepRequestProcessor(this, syncProcessor);
+        ((PrepRequestProcessor) firstProcessor).start();
     }
 
     public ZooKeeperServerListener getZooKeeperServerListener() {

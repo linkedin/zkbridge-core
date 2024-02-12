@@ -160,9 +160,6 @@ public class ZooKeeperServerMain {
             final CountDownLatch shutdownLatch = new CountDownLatch(1);
             zkServer.registerServerShutdownHandler(new ZooKeeperServerShutdownHandler(shutdownLatch));
 
-            // initialize Spiral Server
-            zkServer.initializeSpiralServer();
-
             // Start Admin server
             adminServer = AdminServerFactory.createAdminServer();
             adminServer.setZooKeeperServer(zkServer);

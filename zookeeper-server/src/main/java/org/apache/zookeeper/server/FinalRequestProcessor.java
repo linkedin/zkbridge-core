@@ -84,6 +84,7 @@ import org.apache.zookeeper.proto.SetWatches2;
 import org.apache.zookeeper.proto.SyncRequest;
 import org.apache.zookeeper.proto.SyncResponse;
 import org.apache.zookeeper.server.DataTree.ProcessTxnResult;
+import org.apache.zookeeper.server.persistence.Util;
 import org.apache.zookeeper.server.quorum.QuorumZooKeeperServer;
 import org.apache.zookeeper.server.util.RequestPathMetricsCollector;
 import org.apache.zookeeper.txn.ErrorTxn;
@@ -144,7 +145,13 @@ public class FinalRequestProcessor implements RequestProcessor {
         }
 
         ProcessTxnResult rc = zks.processTxn(request);
-
+        if (request.getHdr() != null && rc.err.getHdr().getType() != OpCode.error)
+        try {
+            byte[] buf = Util.marshallTxnEntry(request.getHdr(), request.getTxn(), request.getTxnDigest());
+            zks.createSpiralRecord(String.valueOf(request.zxid), buf);
+        } catch (IOException e) {
+            LOG.error("error while writing to Spiral for the Transaction: {}", request.zxid, e);
+        }
 
         // ZOOKEEPER-558:
         // In some cases the server does not close the connection (e.g., closeconn buffer
@@ -350,7 +357,7 @@ public class FinalRequestProcessor implements RequestProcessor {
                     ((QuorumZooKeeperServer) zks).self.getQuorumVerifier().toString().getBytes(),
                     rc.stat);
                 err = Code.get(rc.err);
-                // no need as this is about quorum 
+                // no need as this is about quorum
                 break;
             }
             case OpCode.setACL: {
@@ -506,7 +513,7 @@ public class FinalRequestProcessor implements RequestProcessor {
                 GetChildrenRequest getChildrenRequest = new GetChildrenRequest();
                 ByteBufferInputStream.byteBuffer2Record(request.request, getChildrenRequest);
                 path = getChildrenRequest.getPath();
-                // scan ? 
+                // scan ?
                 rsp = handleGetChildrenRequest(getChildrenRequest, cnxn, request.authInfo);
                 requestPathMetricsCollector.registerRequest(request.type, path);
                 break;

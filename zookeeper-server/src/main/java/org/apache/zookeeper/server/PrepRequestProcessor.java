@@ -733,15 +733,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
         nodeRecord.precalculatedDigest = precalculateDigest(DigestOpCode.ADD, path, nodeRecord.data, s);
         setTxnDigest(request, nodeRecord.precalculatedDigest);
         addChangeRecord(nodeRecord);
-        SpiralNode spiral = new SpiralNode(data, 0L, s);
-        try {
-            zks.createSpiralRecord(path, spiral);
-        } catch (IOException e) {
-            // handle exception
-        }
     }
-
-
 
     private void validatePath(String path, long sessionId) throws BadArgumentsException {
         try {

@@ -19,7 +19,7 @@
 package org.apache.zookeeper.test;
 
 import static org.apache.zookeeper.test.ClientBase.CONNECTION_TIMEOUT;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.File;
 import java.net.Inet6Address;
 import java.net.InetAddress;
@@ -32,7 +32,8 @@ import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.server.ServerCnxnFactory;
 import org.apache.zookeeper.server.ZooKeeperServer;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +45,7 @@ public class ClientPortBindTest extends ZKTestCase {
      * Verify that the server binds to the specified address
      */
     @Test
-    public void testBindByAddress() throws Exception {
+    public void testBindByAddress(@TempDir File tmpDir) throws Exception {
         String bindAddress = null;
         Enumeration<NetworkInterface> intfs = NetworkInterface.getNetworkInterfaces();
         // if we have a loopback and it has an address use it
@@ -78,8 +79,6 @@ public class ClientPortBindTest extends ZKTestCase {
         final String HOSTPORT = bindAddress + ":" + PORT;
         LOG.info("Using {} as the host/port", HOSTPORT);
 
-        File tmpDir = ClientBase.createTmpDir();
-
         ClientBase.setupTestEnv();
         ZooKeeperServer zks = new ZooKeeperServer(tmpDir, tmpDir, 3000);
 
@@ -87,7 +86,7 @@ public class ClientPortBindTest extends ZKTestCase {
         f.startup(zks);
         LOG.info("starting up the the server, waiting");
 
-        assertTrue("waiting for server up", ClientBase.waitForServerUp(HOSTPORT, CONNECTION_TIMEOUT));
+        assertTrue(ClientBase.waitForServerUp(HOSTPORT, CONNECTION_TIMEOUT), "waiting for server up");
         ZooKeeper zk = ClientBase.createZKClient(HOSTPORT);
         try {
             zk.close();
@@ -95,7 +94,7 @@ public class ClientPortBindTest extends ZKTestCase {
             f.shutdown();
             zks.shutdown();
 
-            assertTrue("waiting for server down", ClientBase.waitForServerDown(HOSTPORT, CONNECTION_TIMEOUT));
+            assertTrue(ClientBase.waitForServerDown(HOSTPORT, CONNECTION_TIMEOUT), "waiting for server down");
         }
     }
 

@@ -18,9 +18,12 @@
 
 package org.apache.zookeeper;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -33,16 +36,17 @@ import org.apache.zookeeper.ClientCnxn.EventThread;
 import org.apache.zookeeper.ClientCnxn.SendThread;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZooDefs.Ids;
+import org.apache.zookeeper.client.ZooKeeperSaslClient;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Id;
 import org.apache.zookeeper.test.ClientBase;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 public class SaslAuthTest extends ClientBase {
 
-    @BeforeClass
+    @BeforeAll
     public static void init() {
         System.setProperty("zookeeper.authProvider.1", "org.apache.zookeeper.server.auth.SASLAuthenticationProvider");
         try {
@@ -83,7 +87,7 @@ public class SaslAuthTest extends ClientBase {
         return jaasContent.toString();
     }
 
-    @AfterClass
+    @AfterAll
     public static void clean() {
         System.clearProperty("zookeeper.authProvider.1");
         System.clearProperty("java.security.auth.login.config");
@@ -125,7 +129,7 @@ public class SaslAuthTest extends ClientBase {
     public void testValidSaslIds() throws Exception {
         ZooKeeper zk = createClient();
 
-        List<String> validIds = new ArrayList<String>();
+        List<String> validIds = new ArrayList<>();
         validIds.add("user");
         validIds.add("service/host.name.com");
         validIds.add("user@KERB.REALM");
@@ -133,7 +137,7 @@ public class SaslAuthTest extends ClientBase {
 
         int i = 0;
         for (String validId : validIds) {
-            List<ACL> aclList = new ArrayList<ACL>();
+            List<ACL> aclList = new ArrayList<>();
             ACL acl = new ACL(0, new Id("sasl", validId));
             aclList.add(acl);
             zk.create("/valid" + i, null, aclList, CreateMode.PERSISTENT);
@@ -145,13 +149,13 @@ public class SaslAuthTest extends ClientBase {
     public void testInvalidSaslIds() throws Exception {
         ZooKeeper zk = createClient();
 
-        List<String> invalidIds = new ArrayList<String>();
+        List<String> invalidIds = new ArrayList<>();
         invalidIds.add("user@KERB.REALM/server.com");
         invalidIds.add("user@KERB.REALM1@KERB.REALM2");
 
         int i = 0;
         for (String invalidId : invalidIds) {
-            List<ACL> aclList = new ArrayList<ACL>();
+            List<ACL> aclList = new ArrayList<>();
             try {
                 ACL acl = new ACL(0, new Id("sasl", invalidId));
                 aclList.add(acl);
@@ -187,7 +191,7 @@ public class SaslAuthTest extends ClientBase {
                     // do nothing
                 }
             }
-            assertTrue("ZNode creation is failing continuously after Sasl auth failure.", success);
+            assertTrue(success, "ZNode creation is failing continuously after Sasl auth failure.");
 
         } finally {
             zk.close();
@@ -232,10 +236,15 @@ public class SaslAuthTest extends ClientBase {
             Field eventThreadField = clientCnxn.getClass().getDeclaredField("eventThread");
             eventThreadField.setAccessible(true);
             EventThread eventThread = (EventThread) eventThreadField.get(clientCnxn);
+            ZooKeeperSaslClient zooKeeperSaslClient = clientCnxn.getZooKeeperSaslClient();
+            assertNotNull(zooKeeperSaslClient);
             sendThread.join(CONNECTION_TIMEOUT);
             eventThread.join(CONNECTION_TIMEOUT);
-            assertFalse("SendThread did not shutdown after authFail", sendThread.isAlive());
-            assertFalse("EventThread did not shutdown after authFail", eventThread.isAlive());
+            // If login is null, this means ZooKeeperSaslClient#shutdown method has been called which in turns
+            // means that Login#shutdown has been called.
+            assertNull(sendThread.getLogin());
+            assertFalse(sendThread.isAlive(), "SendThread did not shutdown after authFail");
+            assertFalse(eventThread.isAlive(), "EventThread did not shutdown after authFail");
         } finally {
             if (zk != null) {
                 zk.close();
@@ -243,4 +252,36 @@ public class SaslAuthTest extends ClientBase {
         }
     }
 
+    @Test
+    public void testDisconnectNotCreatingLoginThread() throws Exception {
+        MyWatcher watcher = new MyWatcher();
+        ZooKeeper zk = null;
+        try {
+            zk = new ZooKeeper(hostPort, CONNECTION_TIMEOUT, watcher);
+            watcher.waitForConnected(CONNECTION_TIMEOUT);
+            zk.getData("/", false, null);
+
+            Field cnxnField = zk.getClass().getDeclaredField("cnxn");
+            cnxnField.setAccessible(true);
+            ClientCnxn clientCnxn = (ClientCnxn) cnxnField.get(zk);
+            Field sendThreadField = clientCnxn.getClass().getDeclaredField("sendThread");
+            sendThreadField.setAccessible(true);
+            SendThread sendThread = (SendThread) sendThreadField.get(clientCnxn);
+
+            Login l1 = sendThread.getLogin();
+            assertNotNull(l1);
+
+            stopServer();
+            watcher.waitForDisconnected(CONNECTION_TIMEOUT);
+            startServer();
+            watcher.waitForConnected(CONNECTION_TIMEOUT);
+            zk.getData("/", false, null);
+
+            assertSame("Login thread should not been recreated on disconnect", l1, sendThread.getLogin());
+        } finally {
+            if (zk != null) {
+                zk.close();
+            }
+        }
+    }
 }

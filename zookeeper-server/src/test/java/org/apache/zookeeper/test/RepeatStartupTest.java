@@ -18,14 +18,14 @@
 
 package org.apache.zookeeper.test;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.server.ServerCnxnFactory;
 import org.apache.zookeeper.server.ZooKeeperServer;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class RepeatStartupTest extends ZKTestCase {
 
@@ -49,20 +49,20 @@ public class RepeatStartupTest extends ZKTestCase {
         QuorumBase.shutdown(qb.s4);
         QuorumBase.shutdown(qb.s5);
         String hp = qb.hostPort.split(",")[0];
-        ZooKeeperServer zks = new ZooKeeperServer(qb.s1.getTxnFactory().getSnapDir(), qb.s1.getTxnFactory().getDataDir(), 3000);
+        ZooKeeperServer zks = new ZooKeeperServer(qb.s1.getTxnFactory().getSnapDir(), qb.s1.getTxnFactory().getDataLogDir(), 3000);
         final int PORT = Integer.parseInt(hp.split(":")[1]);
         ServerCnxnFactory factory = ServerCnxnFactory.createFactory(PORT, -1);
 
         factory.startup(zks);
         System.out.println("Comment: starting factory");
         assertTrue(
-                "waiting for server up",
-                ClientBase.waitForServerUp("127.0.0.1:" + PORT, QuorumTest.CONNECTION_TIMEOUT));
+                ClientBase.waitForServerUp("127.0.0.1:" + PORT, QuorumTest.CONNECTION_TIMEOUT),
+                "waiting for server up");
         factory.shutdown();
         zks.shutdown();
         assertTrue(
-                "waiting for server down",
-                ClientBase.waitForServerDown("127.0.0.1:" + PORT, QuorumTest.CONNECTION_TIMEOUT));
+                ClientBase.waitForServerDown("127.0.0.1:" + PORT, QuorumTest.CONNECTION_TIMEOUT),
+                "waiting for server down");
         System.out.println("Comment: shutting down standalone");
     }
 

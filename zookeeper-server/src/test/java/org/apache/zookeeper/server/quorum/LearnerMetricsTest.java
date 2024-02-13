@@ -20,62 +20,41 @@ package org.apache.zookeeper.server.quorum;
 
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.number.OrderingComparison.greaterThanOrEqualTo;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.PortAssignment;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.metrics.MetricsUtils;
 import org.apache.zookeeper.server.ServerMetrics;
 import org.apache.zookeeper.test.ClientBase;
-import org.hamcrest.Matcher;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
-@RunWith(Parameterized.class)
 public class LearnerMetricsTest extends QuorumPeerTestBase {
 
-    private static final int TIMEOUT_SECONDS = 30;
     private static final int SERVER_COUNT = 4; // 1 observer, 3 participants
-    private final QuorumPeerTestBase.MainThread[] mt = new QuorumPeerTestBase.MainThread[SERVER_COUNT];
+    private final MainThread[] mt = new MainThread[SERVER_COUNT];
     private ZooKeeper zk_client;
-    private boolean asyncSending;
     private static boolean bakAsyncSending;
 
-    public LearnerMetricsTest(boolean asyncSending) {
-        this.asyncSending = asyncSending;
-    }
-
-    @Parameterized.Parameters
-    public static Collection sendingModes() {
-        return Arrays.asList(new Object[][]{{true}, {false}});
-    }
-
-    @Before
-    public void setAsyncSendingFlag() {
-        Learner.setAsyncSending(asyncSending);
-    }
-
-    @BeforeClass
+    @BeforeAll
     public static void saveAsyncSendingFlag() {
         bakAsyncSending = Learner.getAsyncSending();
     }
 
-    @AfterClass
+    @AfterAll
     public static void resetAsyncSendingFlag() {
         Learner.setAsyncSending(bakAsyncSending);
     }
 
-    @Test
-    public void testLearnerMetricsTest() throws Exception {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    public void testLearnerMetricsTest(boolean asyncSending) throws Exception {
+        Learner.setAsyncSending(asyncSending);
         ServerMetrics.getMetrics().resetAll();
         ClientBase.setupTestEnv();
 
@@ -94,14 +73,14 @@ public class LearnerMetricsTest extends QuorumPeerTestBase {
         // start the three participants
         String quorumCfgSection = sb.toString();
         for (int i = 1; i < SERVER_COUNT; i++) {
-            mt[i] = new QuorumPeerTestBase.MainThread(i, clientPorts[i], quorumCfgSection);
+            mt[i] = new MainThread(i, clientPorts[i], quorumCfgSection);
             mt[i].start();
         }
 
         // start the observer
         Map<String, String> observerConfig = new HashMap<>();
         observerConfig.put("peerType", "observer");
-        mt[observer] = new QuorumPeerTestBase.MainThread(observer, clientPorts[observer], quorumCfgSection, observerConfig);
+        mt[observer] = new MainThread(observer, clientPorts[observer], quorumCfgSection, observerConfig);
         mt[observer].start();
 
         // connect to the observer node and wait for CONNECTED state
@@ -131,19 +110,7 @@ public class LearnerMetricsTest extends QuorumPeerTestBase {
         waitForMetric("min_commit_propagation_latency", greaterThanOrEqualTo(0L));
     }
 
-    private void waitForMetric(final String metricKey, final Matcher<Long> matcher) throws InterruptedException {
-        final String errorMessage = String.format("unable to match on metric: %s", metricKey);
-        waitFor(errorMessage, () -> {
-            long actual = (long) MetricsUtils.currentServerMetrics().get(metricKey);
-            if (!matcher.matches(actual)) {
-                LOG.info("match failed on {}, actual value: {}", metricKey, actual);
-                return false;
-            }
-            return true;
-        }, TIMEOUT_SECONDS);
-    }
-
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         zk_client.close();
         for (int i = 0; i < SERVER_COUNT; i++) {

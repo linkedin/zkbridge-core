@@ -18,10 +18,11 @@
 
 package org.apache.zookeeper.common;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.apache.zookeeper.ZKTestCase;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class KeyStoreFileTypeTest extends ZKTestCase {
 
@@ -53,9 +54,11 @@ public class KeyStoreFileTypeTest extends ZKTestCase {
         assertNull(KeyStoreFileType.fromPropertyValue(null));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testFromPropertyValueThrowsOnBadPropertyValue() {
-        KeyStoreFileType.fromPropertyValue("foobar");
+        assertThrows(IllegalArgumentException.class, () -> {
+            KeyStoreFileType.fromPropertyValue("foobar");
+        });
     }
 
     @Test
@@ -70,9 +73,11 @@ public class KeyStoreFileTypeTest extends ZKTestCase {
         assertEquals(KeyStoreFileType.BCFKS, KeyStoreFileType.fromFilename("/path/to/key/dir/mykey.bcfks"));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testFromFilenameThrowsOnBadFileExtension() {
-        KeyStoreFileType.fromFilename("prod.key");
+        assertThrows(IllegalArgumentException.class, () -> {
+            KeyStoreFileType.fromFilename("prod.key");
+        });
     }
 
     @Test
@@ -86,14 +91,18 @@ public class KeyStoreFileTypeTest extends ZKTestCase {
         assertEquals(KeyStoreFileType.JKS, KeyStoreFileType.fromPropertyValueOrFileName("", "prod.jks"));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testFromPropertyValueOrFileNameThrowsOnBadPropertyValue() {
-        KeyStoreFileType.fromPropertyValueOrFileName("foobar", "prod.jks");
+        assertThrows(IllegalArgumentException.class, () -> {
+            KeyStoreFileType.fromPropertyValueOrFileName("foobar", "prod.jks");
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testFromPropertyValueOrFileNameThrowsOnBadFileExtension() {
-        KeyStoreFileType.fromPropertyValueOrFileName("", "prod.key");
+        assertThrows(IllegalArgumentException.class, () -> {
+            KeyStoreFileType.fromPropertyValueOrFileName("", "prod.key");
+        });
     }
 
 }

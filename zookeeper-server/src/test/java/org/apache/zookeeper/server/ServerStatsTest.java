@@ -21,17 +21,17 @@ package org.apache.zookeeper.server;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import org.apache.zookeeper.ZKTestCase;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class ServerStatsTest extends ZKTestCase {
 
     private ServerStats.Provider providerMock;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         providerMock = mock(ServerStats.Provider.class);
     }
@@ -68,8 +68,8 @@ public class ServerStatsTest extends ZKTestCase {
 
         // When incremented...
         Request fakeRequest = new Request(0, 0, 0, null, null, 0);
-        serverStats.updateLatency(0, fakeRequest, fakeRequest.createTime + 1000);
-        serverStats.updateLatency(0, fakeRequest, fakeRequest.createTime + 2000);
+        serverStats.updateLatency(fakeRequest, fakeRequest.createTime + 1000);
+        serverStats.updateLatency(fakeRequest, fakeRequest.createTime + 2000);
 
         // Then ...
         assertThat("Max latency check", 2000L, lessThanOrEqualTo(serverStats.getMaxLatency()));
@@ -117,7 +117,7 @@ public class ServerStatsTest extends ZKTestCase {
         Request fakeRequest = new Request(0, 0, 0, null, null, 0);
         serverStats.incrementPacketsSent();
         serverStats.incrementPacketsReceived();
-        serverStats.updateLatency(0, fakeRequest, fakeRequest.createTime + 1000);
+        serverStats.updateLatency(fakeRequest, fakeRequest.createTime + 1000);
 
         serverStats.reset();
 

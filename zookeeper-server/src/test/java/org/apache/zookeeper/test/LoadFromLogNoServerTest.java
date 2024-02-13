@@ -18,8 +18,8 @@
 
 package org.apache.zookeeper.test;
 
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -34,6 +34,7 @@ import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.common.Time;
 import org.apache.zookeeper.server.DataNode;
 import org.apache.zookeeper.server.DataTree;
+import org.apache.zookeeper.server.Request;
 import org.apache.zookeeper.server.ZooKeeperServer;
 import org.apache.zookeeper.server.persistence.FileHeader;
 import org.apache.zookeeper.server.persistence.FileTxnLog;
@@ -43,7 +44,7 @@ import org.apache.zookeeper.txn.DeleteTxn;
 import org.apache.zookeeper.txn.MultiTxn;
 import org.apache.zookeeper.txn.Txn;
 import org.apache.zookeeper.txn.TxnHeader;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -130,7 +131,7 @@ public class LoadFromLogNoServerTest extends ZKTestCase {
         } else if (type == ZooDefs.OpCode.multi) {
             txnHeader = new TxnHeader(0xabcd, 0x123, prevPzxid + 1, Time.currentElapsedTime(), ZooDefs.OpCode.create);
             txn = new CreateTxn(path, new byte[0], null, false, cversion);
-            List<Txn> txnList = new ArrayList<Txn>();
+            List<Txn> txnList = new ArrayList<>();
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             BinaryOutputArchive boa = BinaryOutputArchive.getArchive(baos);
             txn.serialize(boa, "request");
@@ -151,17 +152,9 @@ public class LoadFromLogNoServerTest extends ZKTestCase {
         }
         LOG.info("Children: {} for {}", childStr, parentName);
         LOG.info("(cverions, pzxid): {}, {}", newCversion, newPzxid);
-        assertTrue(type
-                                  + " <cversion, pzxid> verification failed. Expected: <"
-                                  + (prevCversion + 1)
-                                  + ", "
-                                  + (prevPzxid
-                                             + 1)
-                                  + ">, found: <"
-                                  + newCversion
-                                  + ", "
-                                  + newPzxid
-                                  + ">", (newCversion == prevCversion + 1 && newPzxid == prevPzxid + 1));
+        assertTrue((newCversion == prevCversion + 1 && newPzxid == prevPzxid + 1),
+                type + " <cversion, pzxid> verification failed. Expected: <" + (prevCversion + 1) + ", "
+                        + (prevPzxid + 1) + ">, found: <" + newCversion + ", " + newPzxid + ">");
     }
 
     /**
@@ -174,13 +167,13 @@ public class LoadFromLogNoServerTest extends ZKTestCase {
         FileTxnLog txnLog = new FileTxnLog(tmpDir);
         TxnHeader txnHeader = new TxnHeader(0xabcd, 0x123, 0x123, Time.currentElapsedTime(), ZooDefs.OpCode.create);
         Record txn = new CreateTxn("/Test", new byte[0], null, false, 1);
-        txnLog.append(txnHeader, txn);
+        txnLog.append(new Request(0, 0, 0, txnHeader, txn, 0));
         FileInputStream in = new FileInputStream(tmpDir.getPath() + "/log." + Long.toHexString(txnHeader.getZxid()));
         BinaryInputArchive ia = BinaryInputArchive.getArchive(in);
         FileHeader header = new FileHeader();
         header.deserialize(ia, "fileheader");
         LOG.info("Received magic : {} Expected : {}", header.getMagic(), FileTxnLog.TXNLOG_MAGIC);
-        assertTrue("Missing magic number ", header.getMagic() == FileTxnLog.TXNLOG_MAGIC);
+        assertTrue(header.getMagic() == FileTxnLog.TXNLOG_MAGIC, "Missing magic number ");
     }
 
 }

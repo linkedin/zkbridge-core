@@ -41,6 +41,7 @@ import org.apache.zookeeper.Quotas;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooDefs.OpCode;
+import org.apache.zookeeper.compat.ProtocolManager;
 import org.apache.zookeeper.data.Id;
 import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.metrics.Counter;
@@ -60,18 +61,9 @@ public abstract class ServerCnxn implements Stats, Watcher {
     public static final Object me = new Object();
     private static final Logger LOG = LoggerFactory.getLogger(ServerCnxn.class);
 
-    private Set<Id> authInfo = Collections.newSetFromMap(new ConcurrentHashMap<Id, Boolean>());
-
-    private static final byte[] fourBytes = new byte[4];
-
-    /**
-     * If the client is of old version, we don't send r-o mode info to it.
-     * The reason is that if we would, old C client doesn't read it, which
-     * results in TCP RST packet, i.e. "connection reset by peer".
-     */
-    boolean isOldClient = true;
-
-    AtomicLong outstandingCount = new AtomicLong();
+    public final ProtocolManager protocolManager = new ProtocolManager();
+    private final Set<Id> authInfo = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final AtomicLong outstandingCount = new AtomicLong();
 
     /** The ZooKeeperServer for this connection. May be null if the server
      * is not currently serving requests (for example if the server is not
@@ -101,14 +93,14 @@ public abstract class ServerCnxn implements Stats, Watcher {
         CLOSE_CONNECTION_COMMAND("close_connection_command"),
         CLEAN_UP("clean_up"),
         CONNECTION_MODE_CHANGED("connection_mode_changed"),
+        RENEW_GLOBAL_SESSION_IN_RO_MODE("renew a global session in readonly mode"),
         // Below reasons are NettyServerCnxnFactory only
         CHANNEL_DISCONNECTED("channel disconnected"),
         CHANNEL_CLOSED_EXCEPTION("channel_closed_exception"),
         AUTH_PROVIDER_NOT_FOUND("auth provider not found"),
         FAILED_HANDSHAKE("Unsuccessful handshake"),
         CLIENT_RATE_LIMIT("Client hits rate limiting threshold"),
-        CLIENT_CNX_LIMIT("Client hits connection limiting threshold"),
-        SSL_AUTH_FAILURE("ssl_auth_failure");
+        CLIENT_CNX_LIMIT("Client hits connection limiting threshold");
 
         String disconnectReason;
 
@@ -187,11 +179,11 @@ public abstract class ServerCnxn implements Stats, Watcher {
      *               used to decide which cache (e.g. read response cache,
      *               list of children response cache, ...) object to look up to when applicable.
      */
-    public abstract void sendResponse(ReplyHeader h, Record r, String tag,
+    public abstract int sendResponse(ReplyHeader h, Record r, String tag,
                                       String cacheKey, Stat stat, int opCode) throws IOException;
 
-    public void sendResponse(ReplyHeader h, Record r, String tag) throws IOException {
-        sendResponse(h, r, tag, null, null, -1);
+    public int sendResponse(ReplyHeader h, Record r, String tag) throws IOException {
+        return sendResponse(h, r, tag, null, null, -1);
     }
 
     protected byte[] serializeRecord(Record record) throws IOException {
@@ -299,7 +291,7 @@ public abstract class ServerCnxn implements Stats, Watcher {
 
     protected ZooKeeperSaslServer zooKeeperSaslServer = null;
 
-    protected static class CloseRequestException extends IOException {
+    public static class CloseRequestException extends IOException {
 
         private static final long serialVersionUID = -7854505709816442681L;
         private DisconnectReason reason;
@@ -388,7 +380,6 @@ public abstract class ServerCnxn implements Stats, Watcher {
 
     protected long count;
     protected long totalLatency;
-    protected long requestsProcessedCount;
     protected DisconnectReason disconnectReason = DisconnectReason.UNKNOWN;
 
     public synchronized void resetStats() {
@@ -556,13 +547,12 @@ public abstract class ServerCnxn implements Stats, Watcher {
     }
 
     public synchronized Map<String, Object> getConnectionInfo(boolean brief) {
-        Map<String, Object> info = new LinkedHashMap<String, Object>();
+        Map<String, Object> info = new LinkedHashMap<>();
         info.put("remote_socket_address", getRemoteSocketAddress());
         info.put("interest_ops", getInterestOps());
         info.put("outstanding_requests", getOutstandingRequests());
         info.put("packets_received", getPacketsReceived());
         info.put("packets_sent", getPacketsSent());
-        info.put("auth_info", getAuthInfo());
         if (!brief) {
             info.put("session_id", getSessionId());
             info.put("last_operation", getLastOperation());
@@ -601,6 +591,13 @@ public abstract class ServerCnxn implements Stats, Watcher {
                 LOG.error("Error closing a command socket ", e);
             }
         }
+    }
+
+    /**
+     * @return true if the server is running, false otherwise.
+     */
+    public boolean isZKServerRunning() {
+        return zkServer != null && zkServer.isRunning();
     }
 
     /**

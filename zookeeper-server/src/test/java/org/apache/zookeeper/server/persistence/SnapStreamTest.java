@@ -18,10 +18,9 @@
 
 package org.apache.zookeeper.server.persistence;
 
-import static org.apache.zookeeper.test.ClientBase.createTmpDir;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -32,12 +31,13 @@ import org.apache.jute.BinaryOutputArchive;
 import org.apache.jute.InputArchive;
 import org.apache.jute.OutputArchive;
 import org.apache.zookeeper.server.persistence.SnapStream.StreamMode;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class SnapStreamTest {
 
-    @After
+    @AfterEach
     public void tearDown() {
         System.clearProperty(SnapStream.ZOOKEEPER_SHAPSHOT_STREAM_MODE);
         SnapStream.setStreamMode(StreamMode.DEFAULT_MODE);
@@ -58,36 +58,35 @@ public class SnapStreamTest {
 
     @Test
     public void testGetStreamMode() {
-        assertEquals("expected to return un-compressed stream", StreamMode.CHECKED, SnapStream.getStreamMode("snapshot.180000e3a2"));
-        assertEquals("expected to return snappy stream", StreamMode.SNAPPY, SnapStream.getStreamMode("snapshot.180000e3a2.snappy"));
-        assertEquals("expected to return gzip stream", StreamMode.GZIP, SnapStream.getStreamMode("snapshot.180000e3a2.gz"));
+        assertEquals(StreamMode.CHECKED, SnapStream.getStreamMode("snapshot.180000e3a2"), "expected to return un-compressed stream");
+        assertEquals(StreamMode.SNAPPY, SnapStream.getStreamMode("snapshot.180000e3a2.snappy"), "expected to return snappy stream");
+        assertEquals(StreamMode.GZIP, SnapStream.getStreamMode("snapshot.180000e3a2.gz"), "expected to return gzip stream");
     }
 
     @Test
-    public void testSerializeDeserializeWithChecked() throws IOException {
-        testSerializeDeserialize(StreamMode.CHECKED, "");
+    public void testSerializeDeserializeWithChecked(@TempDir File tmpDir) throws IOException {
+        testSerializeDeserialize(StreamMode.CHECKED, "", tmpDir);
     }
 
     @Test
-    public void testSerializeDeserializeWithSNAPPY() throws IOException {
-        testSerializeDeserialize(StreamMode.SNAPPY, ".snappy");
+    public void testSerializeDeserializeWithSNAPPY(@TempDir File tmpDir) throws IOException {
+        testSerializeDeserialize(StreamMode.SNAPPY, ".snappy", tmpDir);
     }
 
     @Test
-    public void testSerializeDeserializeWithGZIP() throws IOException {
-        testSerializeDeserialize(StreamMode.GZIP, ".gz");
+    public void testSerializeDeserializeWithGZIP(@TempDir File tmpDir) throws IOException {
+        testSerializeDeserialize(StreamMode.GZIP, ".gz", tmpDir);
     }
 
-    private void testSerializeDeserialize(StreamMode mode, String fileSuffix) throws IOException {
-        testSerializeDeserialize(mode, fileSuffix, false);
-        testSerializeDeserialize(mode, fileSuffix, true);
+    private void testSerializeDeserialize(StreamMode mode, String fileSuffix, File tmpDir) throws IOException {
+        testSerializeDeserialize(mode, fileSuffix, false, tmpDir);
+        testSerializeDeserialize(mode, fileSuffix, true, tmpDir);
     }
 
-    private void testSerializeDeserialize(StreamMode mode, String fileSuffix, boolean fsync) throws IOException {
+    private void testSerializeDeserialize(StreamMode mode, String fileSuffix, boolean fsync, File tmpDir) throws IOException {
         SnapStream.setStreamMode(mode);
 
         // serialize with gzip stream
-        File tmpDir = createTmpDir();
         File file = new File(tmpDir, "snapshot.180000e3a2" + fileSuffix);
         CheckedOutputStream os = SnapStream.getOutputStream(file, fsync);
         OutputArchive oa = BinaryOutputArchive.getArchive(os);
@@ -104,16 +103,15 @@ public class SnapStreamTest {
         InputArchive ia = BinaryInputArchive.getArchive(is);
         FileHeader restoredHeader = new FileHeader();
         restoredHeader.deserialize(ia, "fileheader");
-        assertEquals("magic not the same", restoredHeader, header);
+        assertEquals(restoredHeader, header, "magic not the same");
         SnapStream.checkSealIntegrity(is, ia);
     }
 
-    private void checkInvalidSnapshot(String filename, boolean fsync) throws IOException {
+    private void checkInvalidSnapshot(String filename, boolean fsync, File tmpDir) throws IOException {
         // set the output stream mode to CHECKED
         SnapStream.setStreamMode(StreamMode.CHECKED);
 
         // serialize to CHECKED file without magic header
-        File tmpDir = createTmpDir();
         File file = new File(tmpDir, filename);
         OutputStream os = SnapStream.getOutputStream(file, fsync);
         os.write(1);
@@ -122,18 +120,22 @@ public class SnapStreamTest {
         assertFalse(SnapStream.isValidSnapshot(file));
     }
 
-    private void checkInvalidSnapshot(String filename) throws IOException {
-        checkInvalidSnapshot(filename, false);
-        checkInvalidSnapshot(filename, true);
+    private void checkInvalidSnapshot(String filename, File tmpDir) throws IOException {
+        checkInvalidSnapshot(filename, false, tmpDir);
+        checkInvalidSnapshot(filename, true, tmpDir);
     }
 
+    /*
+        For this test a single tempDirectory will be created but the checkInvalidsnapshot will create
+        multiple files within the directory for the tests.
+     */
     @Test
-    public void testInvalidSnapshot() throws IOException {
+    public void testInvalidSnapshot(@TempDir File tmpDir) throws IOException {
         assertFalse(SnapStream.isValidSnapshot(null));
 
-        checkInvalidSnapshot("snapshot.180000e3a2");
-        checkInvalidSnapshot("snapshot.180000e3a2.gz");
-        checkInvalidSnapshot("snapshot.180000e3a2.snappy");
+        checkInvalidSnapshot("snapshot.180000e3a2", tmpDir);
+        checkInvalidSnapshot("snapshot.180000e3a2.gz", tmpDir);
+        checkInvalidSnapshot("snapshot.180000e3a2.snappy", tmpDir);
     }
 
 }

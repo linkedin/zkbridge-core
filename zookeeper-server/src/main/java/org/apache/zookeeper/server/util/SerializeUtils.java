@@ -19,24 +19,20 @@
 package org.apache.zookeeper.server.util;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.jute.BinaryInputArchive;
-import org.apache.jute.BinaryOutputArchive;
 import org.apache.jute.InputArchive;
 import org.apache.jute.OutputArchive;
 import org.apache.jute.Record;
 import org.apache.zookeeper.ZooDefs.OpCode;
 import org.apache.zookeeper.server.DataTree;
-import org.apache.zookeeper.server.Request;
 import org.apache.zookeeper.server.TxnLogEntry;
 import org.apache.zookeeper.server.ZooKeeperServer;
 import org.apache.zookeeper.server.ZooTrace;
-import org.apache.zookeeper.server.persistence.Util;
 import org.apache.zookeeper.txn.CloseSessionTxn;
 import org.apache.zookeeper.txn.CreateContainerTxn;
 import org.apache.zookeeper.txn.CreateSessionTxn;
@@ -103,7 +99,7 @@ public class SerializeUtils {
             txn = new MultiTxn();
             break;
         default:
-            throw new IOException("Unsupported Txn with type=%d" + hdr.getType());
+            throw new IOException("Unsupported Txn with type=" + hdr.getType());
         }
         if (txn != null) {
             try {
@@ -164,39 +160,12 @@ public class SerializeUtils {
     }
 
     public static void serializeSnapshot(DataTree dt, OutputArchive oa, Map<Long, Integer> sessions) throws IOException {
-        HashMap<Long, Integer> sessSnap = new HashMap<Long, Integer>(sessions);
+        HashMap<Long, Integer> sessSnap = new HashMap<>(sessions);
         oa.writeInt(sessSnap.size(), "count");
         for (Entry<Long, Integer> entry : sessSnap.entrySet()) {
             oa.writeLong(entry.getKey().longValue(), "id");
             oa.writeInt(entry.getValue().intValue(), "timeout");
         }
         dt.serialize(oa, "tree");
-    }
-
-    public static byte[] serializeRequest(Request request) {
-        if (request == null || request.getHdr() == null) {
-            return null;
-        }
-        byte[] data = new byte[32];
-        try {
-            data = Util.marshallTxnEntry(request.getHdr(), request.getTxn(), request.getTxnDigest());
-        } catch (IOException e) {
-            LOG.error("This really should be impossible", e);
-        }
-        return data;
-    }
-
-    /**
-     * Serializes a {@link Record} into a byte array.
-     *
-     * @param record the {@link Record} to be serialized
-     * @return a new byte array
-     * @throws IOException if there is an error during serialization
-     */
-    public static byte[] serializeRecord(Record record) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream(ZooKeeperServer.intBufferStartingSizeBytes);
-        BinaryOutputArchive bos = BinaryOutputArchive.getArchive(baos);
-        bos.writeRecord(record, null);
-        return baos.toByteArray();
     }
 }

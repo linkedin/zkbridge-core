@@ -19,10 +19,10 @@
 package org.apache.zookeeper.server.quorum;
 
 import static org.apache.zookeeper.test.ClientBase.CONNECTION_TIMEOUT;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.util.Map;
@@ -39,15 +39,17 @@ import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
 import org.apache.zookeeper.server.quorum.Leader.Proposal;
 import org.apache.zookeeper.test.ClientBase;
 import org.apache.zookeeper.test.ClientBase.CountdownWatcher;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 public class DIFFSyncConsistencyTest extends QuorumPeerTestBase {
 
     private static int SERVER_COUNT = 3;
     private MainThread[] mt = new MainThread[SERVER_COUNT];
 
-    @Test(timeout = 120 * 1000)
+    @Test
+    @Timeout(value = 120)
     public void testInconsistentDueToUncommittedLog() throws Exception {
         final int LEADER_TIMEOUT_MS = 10_000;
         final int[] clientPorts = new int[SERVER_COUNT];
@@ -73,8 +75,8 @@ public class DIFFSyncConsistencyTest extends QuorumPeerTestBase {
         }
 
         for (int i = 0; i < SERVER_COUNT; i++) {
-            assertTrue("waiting for server " + i + " being up",
-                    ClientBase.waitForServerUp("127.0.0.1:" + clientPorts[i], CONNECTION_TIMEOUT));
+            assertTrue(ClientBase.waitForServerUp("127.0.0.1:" + clientPorts[i], CONNECTION_TIMEOUT),
+                    "waiting for server " + i + " being up");
         }
 
         int leader = findLeader(mt);
@@ -111,7 +113,7 @@ public class DIFFSyncConsistencyTest extends QuorumPeerTestBase {
         assertTrue(outstanding.size() > 0);
         Proposal p = findProposalOfType(outstanding, OpCode.create);
         LOG.info("Old leader id: {}. All proposals: {}", leader, outstanding);
-        assertNotNull("Old leader doesn't have 'create' proposal", p);
+        assertNotNull(p, "Old leader doesn't have 'create' proposal");
 
         // Make sure leader sync the proposal to disk.
         int sleepTime = 0;
@@ -159,7 +161,7 @@ public class DIFFSyncConsistencyTest extends QuorumPeerTestBase {
             ++c;
             try {
                 Stat stat = zk.exists("/zk" + leader, false);
-                assertNotNull("server " + leader + " should have /zk", stat);
+                assertNotNull(stat, "server " + leader + " should have /zk");
                 break;
             } catch (KeeperException.ConnectionLossException e) {
 
@@ -195,7 +197,7 @@ public class DIFFSyncConsistencyTest extends QuorumPeerTestBase {
         }
 
         int newLeader = findLeader(mt);
-        assertNotEquals("new leader is still the old leader " + leader + " !!", newLeader, leader);
+        assertNotEquals(newLeader, leader, "new leader is still the old leader " + leader + " !!");
 
         // This simulates the case where clients connected to the old leader had a view of the data
         // "/zkX", but clients connect to the new leader does not have the same view of data (missing "/zkX").
@@ -208,14 +210,14 @@ public class DIFFSyncConsistencyTest extends QuorumPeerTestBase {
             zk = new ZooKeeper("127.0.0.1:" + clientPorts[i], ClientBase.CONNECTION_TIMEOUT, watch);
             watch.waitForConnected(ClientBase.CONNECTION_TIMEOUT);
             Stat val = zk.exists("/zk" + leader, false);
-            assertNotNull("Data inconsistency detected! Server " + i + " should have a view of /zk" + leader + "!",
-                    val);
+            assertNotNull(val, "Data inconsistency detected! "
+                    + "Server " + i + " should have a view of /zk" + leader + "!");
         }
 
         zk.close();
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         for (int i = 0; i < mt.length; i++) {
             try {

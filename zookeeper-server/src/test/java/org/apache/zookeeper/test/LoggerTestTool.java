@@ -49,7 +49,7 @@ public class LoggerTestTool implements AutoCloseable {
   private ByteArrayOutputStream createLoggingStream(Class<?> cls) {
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     appender = getConsoleAppender(os);
-    qlogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(cls);
+    qlogger = (Logger) LoggerFactory.getLogger(cls);
     qlogger.addAppender(appender);
     qlogger.setLevel(Level.INFO);
     appender.start();
@@ -59,7 +59,7 @@ public class LoggerTestTool implements AutoCloseable {
   private ByteArrayOutputStream createLoggingStream(String cls) {
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     appender = getConsoleAppender(os);
-    qlogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(cls);
+    qlogger = (Logger) LoggerFactory.getLogger(cls);
     qlogger.addAppender(appender);
     qlogger.setLevel(Level.INFO);
     appender.start();
@@ -68,7 +68,7 @@ public class LoggerTestTool implements AutoCloseable {
 
   private OutputStreamAppender<ILoggingEvent> getConsoleAppender(ByteArrayOutputStream os) {
     Logger rootLogger =
-        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        (Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
     Layout<ILoggingEvent> layout = ((LayoutWrappingEncoder<ILoggingEvent>)
         ((OutputStreamAppender<ILoggingEvent>) rootLogger.getAppender("CONSOLE")).getEncoder()).getLayout();
 

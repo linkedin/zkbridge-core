@@ -18,12 +18,12 @@
 
 package org.apache.zookeeper.server;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -32,8 +32,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Semaphore;
@@ -45,10 +43,7 @@ import org.apache.jute.InputArchive;
 import org.apache.jute.Record;
 import org.apache.zookeeper.KeeperException.NoNodeException;
 import org.apache.zookeeper.KeeperException.NodeExistsException;
-import org.apache.zookeeper.PaginationNextPage;
 import org.apache.zookeeper.Quotas;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.common.PathTrie;
@@ -56,7 +51,8 @@ import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.metrics.MetricsUtils;
 import org.apache.zookeeper.txn.CreateTxn;
 import org.apache.zookeeper.txn.TxnHeader;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +64,8 @@ public class DataTreeTest extends ZKTestCase {
      * For ZOOKEEPER-1755 - Test race condition when taking dumpEphemerals and
      * removing the session related ephemerals from DataTree structure
      */
-    @Test(timeout = 60000)
+    @Test
+    @Timeout(value = 60)
     public void testDumpEphemerals() throws Exception {
         int count = 1000;
         long session = 1000;
@@ -96,7 +93,7 @@ public class DataTreeTest extends ZKTestCase {
         killZkClientSession(session, zxid, dataTree, count);
         running.set(false);
         thread.join();
-        assertFalse("Should have got exception while dumpEphemerals!", exceptionDuringDumpEphemerals.get());
+        assertFalse(exceptionDuringDumpEphemerals.get(), "Should have got exception while dumpEphemerals!");
     }
 
     private void killZkClientSession(long session, long zxid, final DataTree dataTree, int count) {
@@ -112,7 +109,8 @@ public class DataTreeTest extends ZKTestCase {
         }
     }
 
-    @Test(timeout = 60000)
+    @Test
+    @Timeout(value = 60)
     public void testRootWatchTriggered() throws Exception {
         DataTree dt = new DataTree();
 
@@ -127,13 +125,14 @@ public class DataTreeTest extends ZKTestCase {
         // add a new node, should trigger a watch
         dt.createNode("/xyz", new byte[0], null, 0, dt.getNode("/").stat.getCversion() + 1, 1, 1);
 
-        assertTrue("Root node watch not triggered", fire.isDone());
+        assertTrue(fire.isDone(), "Root node watch not triggered");
     }
 
     /**
      * For ZOOKEEPER-1046 test if cversion is getting incremented correctly.
      */
-    @Test(timeout = 60000)
+    @Test
+    @Timeout(value = 60)
     public void testIncrementCversion() throws Exception {
         try {
             // digestCalculator gets initialized for the new DataTree constructor based on the system property
@@ -147,15 +146,9 @@ public class DataTreeTest extends ZKTestCase {
             dt.setCversionPzxid("/test/", prevCversion + 1, prevPzxid + 1);
             int newCversion = zk.stat.getCversion();
             long newPzxid = zk.stat.getPzxid();
-            assertTrue("<cversion, pzxid> verification failed. Expected: <"
-                                      + (prevCversion + 1)
-                                      + ", "
-                                      + (prevPzxid + 1)
-                                      + ">, found: <"
-                                      + newCversion
-                                      + ", "
-                                      + newPzxid
-                                      + ">", (newCversion == prevCversion + 1 && newPzxid == prevPzxid + 1));
+            assertTrue((newCversion == prevCversion + 1 && newPzxid == prevPzxid + 1),
+                "<cversion, pzxid> verification failed. Expected: <" + (prevCversion + 1) + ", "
+                    + (prevPzxid + 1) + ">, found: <" + newCversion + ", " + newPzxid + ">");
             assertNotEquals(digestBefore, dt.getTreeDigest());
         } finally {
             ZooKeeperServer.setDigestEnabled(false);
@@ -173,7 +166,8 @@ public class DataTreeTest extends ZKTestCase {
         parent = dt.getNode("/");
         int newCversion = parent.stat.getCversion();
         long newPzxid = parent.stat.getPzxid();
-        assertTrue("<cversion, pzxid> verification failed. Expected: <"
+        assertTrue((newCversion >= currentCversion && newPzxid >= currentPzxid),
+            "<cversion, pzxid> verification failed. Expected: <"
                                   + currentCversion
                                   + ", "
                                   + currentPzxid
@@ -181,7 +175,7 @@ public class DataTreeTest extends ZKTestCase {
                                   + newCversion
                                   + ", "
                                   + newPzxid
-                                  + ">", (newCversion >= currentCversion && newPzxid >= currentPzxid));
+                                  + ">");
     }
 
     @Test
@@ -231,15 +225,16 @@ public class DataTreeTest extends ZKTestCase {
         }
     }
 
-    @Test(timeout = 60000)
+    @Test
+    @Timeout(value = 60)
     public void testPathTrieClearOnDeserialize() throws Exception {
 
         //Create a DataTree with quota nodes so PathTrie get updated
         DataTree dserTree = new DataTree();
 
         dserTree.createNode("/bug", new byte[20], null, -1, 1, 1, 1);
-        dserTree.createNode(Quotas.quotaZookeeper + "/bug", null, null, -1, 1, 1, 1);
-        dserTree.createNode(Quotas.quotaPath("/bug"), new byte[20], null, -1, 1, 1, 1);
+        dserTree.createNode(Quotas.quotaPath("/bug"), null, null, -1, 1, 1, 1);
+        dserTree.createNode(Quotas.limitPath("/bug"), new byte[20], null, -1, 1, 1, 1);
         dserTree.createNode(Quotas.statPath("/bug"), new byte[20], null, -1, 1, 1, 1);
 
         //deserialize a DataTree; this should clear the old /bug nodes and pathTrie
@@ -259,7 +254,7 @@ public class DataTreeTest extends ZKTestCase {
         PathTrie pTrie = (PathTrie) pfield.get(dserTree);
 
         //Check that the node path is removed from pTrie
-        assertEquals("/bug is still in pTrie", "/", pTrie.findMaxPrefix("/bug"));
+        assertEquals("/", pTrie.findMaxPrefix("/bug"), "/bug is still in pTrie");
     }
 
 
@@ -269,10 +264,11 @@ public class DataTreeTest extends ZKTestCase {
      * This can cause the system experiences hanging issues similar to ZooKeeper-2201.
      * This test verifies the fix that we should not hold ACL cache during dumping aclcache to snapshots
     */
-    @Test(timeout = 60000)
+    @Test
+    @Timeout(value = 60)
     public void testSerializeDoesntLockACLCacheWhileWriting() throws Exception {
         DataTree tree = new DataTree();
-        tree.createNode("/marker", new byte[]{42}, null, -1, 1, 1, 1);
+        tree.createNode("/marker", new byte[] { 42 }, null, -1, 1, 1, 1);
         final AtomicBoolean ranTestCase = new AtomicBoolean();
         DataOutputStream out = new DataOutputStream(new ByteArrayOutputStream());
         BinaryOutputArchive oa = new BinaryOutputArchive(out) {
@@ -295,7 +291,7 @@ public class DataTreeTest extends ZKTestCase {
                     boolean acquired = semaphore.tryAcquire(30, TimeUnit.SECONDS);
                     //This is the real assertion - could another thread lock
                     //the ACLCache
-                    assertTrue("Couldn't acquire a lock on the ACLCache while we were calling tree.serialize", acquired);
+                    assertTrue(acquired, "Couldn't acquire a lock on the ACLCache while we were calling tree.serialize");
                 } catch (InterruptedException e1) {
                     throw new RuntimeException(e1);
                 }
@@ -308,259 +304,16 @@ public class DataTreeTest extends ZKTestCase {
         tree.serialize(oa, "test");
 
         //Let's make sure that we hit the code that ran the real assertion above
-        assertTrue("Didn't find the expected node", ranTestCase.get());
-    }
-
-    @Test(timeout = 60000)
-    public void testGetChildrenPaginated() throws NodeExistsException, NoNodeException {
-        final String rootPath = "/children";
-        final int firstCzxId = 1000;
-        final int countNodes = 10;
-
-        //  Create the parent node
-        DataTree dt = new DataTree();
-        dt.createNode(rootPath, new byte[0], null, 0, dt.getNode("/").stat.getCversion() + 1, 1, 1);
-
-        //  Create 10 child nodes
-        List<String> childrenCreated = new ArrayList<>(countNodes);
-        for (int i = 0; i < countNodes; ++i) {
-            dt.createNode(rootPath + "/test-" + i, new byte[0], null, 0, dt.getNode(rootPath).stat.getCversion() + i + 1, firstCzxId + i, 1);
-            childrenCreated.add("test-" + i);
-        }
-
-        //  Asking from a negative for 5 nodes should return the 5, and not set the watch
-        int curWatchCount = dt.getWatchCount();
-        PaginationNextPage nextPage = new PaginationNextPage();
-        List<String> result = dt.getPaginatedChildren(rootPath, null, new DummyWatcher(), 5, -1, 0, nextPage);
-        assertEquals(5, result.size());
-        assertEquals(firstCzxId + 5, nextPage.getMinCzxid());
-        assertEquals(0, nextPage.getMinCzxidOffset());
-        assertEquals("The watch not should have been set", curWatchCount, dt.getWatchCount());
-        //  Verify that the list is sorted
-        String before = "";
-        for (final String path : result) {
-            assertTrue(String.format("The next path (%s) should be > previous (%s)", path, before),
-                    path.compareTo(before) > 0);
-            before = path;
-        }
-
-        //  Asking from a negative would give me all children, and set the watch
-        curWatchCount = dt.getWatchCount();
-        result = dt.getPaginatedChildren(rootPath, null, new DummyWatcher(), countNodes, -1, 0, nextPage);
-        assertEquals(countNodes, result.size());
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageMinCzxid, nextPage.getMinCzxid());
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageCzxidOffset, nextPage.getMinCzxidOffset());
-        assertEquals("The watch should have been set", curWatchCount + 1, dt.getWatchCount());
-        //  Verify that the list is sorted
-        before = "";
-        for (final String path : result) {
-            assertTrue(String.format("The next path (%s) should be > previous (%s)", path, before),
-                    path.compareTo(before) > 0);
-            before = path;
-        }
-
-        //  Asking with maxReturned = MAX_INT would give me all children with no sorting, and set the watch
-        curWatchCount = dt.getWatchCount();
-        result = dt.getPaginatedChildren(rootPath, null, new DummyWatcher(), Integer.MAX_VALUE, 0, 0, nextPage);
-        assertEquals(countNodes, result.size());
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageMinCzxid, nextPage.getMinCzxid());
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageCzxidOffset, nextPage.getMinCzxidOffset());
-        assertEquals("The watch should have been set", curWatchCount + 1, dt.getWatchCount());
-        //  Verify that the list is not sorted
-        assertNotEquals("The returned list of children should not be sorted", childrenCreated, result);
-
-        // Passing a null watch when fetching all children should not set the watch
-        curWatchCount = dt.getWatchCount();
-        result = dt.getPaginatedChildren(rootPath, null, null, Integer.MAX_VALUE, 0, 0, nextPage);
-        assertEquals(countNodes, result.size());
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageMinCzxid, nextPage.getMinCzxid());
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageCzxidOffset, nextPage.getMinCzxidOffset());
-        assertEquals("The watch should have been set", curWatchCount, dt.getWatchCount());
-
-        // Passing a null watch when fetching all children should not set the watch
-        curWatchCount = dt.getWatchCount();
-        result = dt.getPaginatedChildren(rootPath, null, null, countNodes, 0, 0, nextPage);
-        // Returned result is ordered
-        assertEquals(childrenCreated, result);
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageMinCzxid, nextPage.getMinCzxid());
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageCzxidOffset, nextPage.getMinCzxidOffset());
-        assertEquals("The watch should have been set", curWatchCount, dt.getWatchCount());
-
-        //  Asking from the last one should return only one node
-        curWatchCount = dt.getWatchCount();
-        result = dt.getPaginatedChildren(rootPath, null, new DummyWatcher(), 2, 1000 + countNodes - 1, 0, nextPage);
-        assertEquals(1, result.size());
-        assertEquals("test-" + (countNodes - 1), result.get(0));
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageMinCzxid, nextPage.getMinCzxid());
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageCzxidOffset, nextPage.getMinCzxidOffset());
-        assertEquals("The watch should have been set", curWatchCount + 1, dt.getWatchCount());
-
-        //  Asking from the last created node+1 should return an empty list and set the watch
-        curWatchCount = dt.getWatchCount();
-        result = dt.getPaginatedChildren(rootPath, null, new DummyWatcher(), 2, 1000 + countNodes, 0, nextPage);
-        assertTrue("The result should be an empty list", result.isEmpty());
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageMinCzxid, nextPage.getMinCzxid());
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageCzxidOffset, nextPage.getMinCzxidOffset());
-        assertEquals("The watch should have been set", curWatchCount + 1, dt.getWatchCount());
-
-        //  Asking from -1 for one node should return two, and NOT set the watch
-        curWatchCount = dt.getWatchCount();
-        result = dt.getPaginatedChildren(rootPath, null, new DummyWatcher(), 1, -1, 0, nextPage);
-        assertEquals("No watch should be set", curWatchCount, dt.getWatchCount());
-        assertEquals("We only return up to ", 1, result.size());
-        //  Check that we ordered correctly
-        assertEquals("test-0", result.get(0));
-        // Check next page info is returned correctly
-        assertEquals(firstCzxId + 1, nextPage.getMinCzxid());
-        assertEquals(0, nextPage.getMinCzxidOffset());
-    }
-
-    @Test(timeout = 60000)
-    public void testGetChildrenPaginatedWithOffset() throws NodeExistsException, NoNodeException {
-        final String rootPath = "/children";
-        final int childrenCzxId = 1000;
-        final int countNodes = 9;
-        final int allNodes = countNodes + 2;
-
-        //  Create the parent node
-        DataTree dt = new DataTree();
-        dt.createNode(rootPath, new byte[0], null, 0, dt.getNode("/").stat.getCversion() + 1, 1, 1);
-
-        int parentVersion = dt.getNode(rootPath).stat.getCversion();
-
-        //  Create a children sometimes "before"
-        dt.createNode(rootPath + "/test-0", new byte[0], null, 0, parentVersion + 1, childrenCzxId - 100, 1);
-
-        //  Create 10 child nodes, all with the same
-        for (int i = 1; i <= countNodes; ++i) {
-            dt.createNode(rootPath + "/test-" + i, new byte[0], null, 0, parentVersion + 2, childrenCzxId, 1);
-        }
-
-        //  Create a children sometimes "after"
-        dt.createNode(rootPath + "/test-999", new byte[0], null, 0, parentVersion + 3, childrenCzxId + 100, 1);
-
-        //  Asking from a negative would give me all children, and set the watch
-        int curWatchCount = dt.getWatchCount();
-        PaginationNextPage nextPage = new PaginationNextPage();
-        List<String> result = dt.getPaginatedChildren(rootPath, null, new DummyWatcher(), 1000, -1, 0, nextPage);
-        assertEquals(allNodes, result.size());
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageMinCzxid, nextPage.getMinCzxid());
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageCzxidOffset, nextPage.getMinCzxidOffset());
-        assertEquals("The watch should have been set", curWatchCount + 1, dt.getWatchCount());
-        //  Verify that the list is sorted
-        String before = "";
-        for (final String path : result) {
-            assertTrue(String.format("The next path (%s) should be > previous (%s)", path, before),
-                    path.compareTo(before) > 0);
-            before = path;
-        }
-
-        // Asking with minCzxid = 0, offset = 0 should not skip anything.
-        // maxReturned = 1, the returned nextPage should be: minCzxid = next czxid, offset = 0.
-        curWatchCount = dt.getWatchCount();
-        result = dt.getPaginatedChildren(rootPath, null, new DummyWatcher(), 1, 0, 0, nextPage);
-        assertEquals(1, result.size());
-        assertEquals("test-0", result.get(0));
-        assertEquals(childrenCzxId, nextPage.getMinCzxid());
-        assertEquals(0, nextPage.getMinCzxidOffset());
-        assertEquals("The watch should not have been set", curWatchCount, dt.getWatchCount());
-
-        //  Asking with offset minCzxId below childrenCzxId should not skip anything, regardless of offset
-        curWatchCount = dt.getWatchCount();
-        result = dt.getPaginatedChildren(rootPath, null, new DummyWatcher(), 2, childrenCzxId - 1, 3, nextPage);
-        assertEquals(2, result.size());
-        assertEquals("test-1", result.get(0));
-        assertEquals("test-2", result.get(1));
-        assertEquals(childrenCzxId, nextPage.getMinCzxid());
-        assertEquals(2, nextPage.getMinCzxidOffset());
-        assertEquals("The watch should not have been set", curWatchCount, dt.getWatchCount());
-
-        //  Asking with offset 5 should skip nodes 1, 2, 3, 4, 5
-        curWatchCount = dt.getWatchCount();
-        result = dt.getPaginatedChildren(rootPath, null, new DummyWatcher(), 2, childrenCzxId, 5, nextPage);
-        assertEquals(2, result.size());
-        assertEquals("test-6", result.get(0));
-        assertEquals("test-7", result.get(1));
-        assertEquals(childrenCzxId, nextPage.getMinCzxid());
-        assertEquals(7, nextPage.getMinCzxidOffset());
-        assertEquals("The watch should not have been set", curWatchCount, dt.getWatchCount());
-
-        //  Asking with offset 5 for more nodes than are there should skip nodes 1, 2, 3, 4, 5 (plus 0 due to zxid)
-        curWatchCount = dt.getWatchCount();
-        result = dt.getPaginatedChildren(rootPath, null, new DummyWatcher(), 10, childrenCzxId, 5, nextPage);
-
-        assertEquals(5, result.size());
-        assertEquals("test-6", result.get(0));
-        assertEquals("test-7", result.get(1));
-        assertEquals("test-8", result.get(2));
-        assertEquals("test-9", result.get(3));
-        assertEquals("test-999", result.get(4));
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageMinCzxid, nextPage.getMinCzxid());
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageCzxidOffset, nextPage.getMinCzxidOffset());
-        assertEquals("The watch should have been set", curWatchCount + 1, dt.getWatchCount());
-
-        //  Asking with offset 5 for fewer nodes than are there should skip nodes 1, 2, 3, 4, 5 (plus 0 due to zxid)
-        // Returned next page should be: minCzxid = next czxid, offset = 0
-        curWatchCount = dt.getWatchCount();
-        result = dt.getPaginatedChildren(rootPath, null, new DummyWatcher(), 4, childrenCzxId, 5, nextPage);
-
-        assertEquals(4, result.size());
-        assertEquals("test-6", result.get(0));
-        assertEquals("test-7", result.get(1));
-        assertEquals("test-8", result.get(2));
-        assertEquals("test-9", result.get(3));
-        assertEquals(childrenCzxId + 100, nextPage.getMinCzxid());
-        assertEquals(0, nextPage.getMinCzxidOffset());
-        assertEquals("The watch should not have been set", curWatchCount, dt.getWatchCount());
-
-        //  Asking from the last created node+1 should return an empty list and set the watch
-        curWatchCount = dt.getWatchCount();
-        result = dt.getPaginatedChildren(rootPath, null, new DummyWatcher(), 2, 1000 + childrenCzxId, 0, nextPage);
-        assertTrue("The result should be an empty list", result.isEmpty());
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageMinCzxid, nextPage.getMinCzxid());
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageCzxidOffset, nextPage.getMinCzxidOffset());
-        assertEquals("The watch should have been set", curWatchCount + 1, dt.getWatchCount());
-    }
-
-    @Test(timeout = 60000)
-    public void testGetChildrenPaginatedEmpty() throws NodeExistsException, NoNodeException {
-        final String rootPath = "/children";
-
-        //  Create the parent node
-        DataTree dt = new DataTree();
-        dt.createNode(rootPath, new byte[0], null, 0, dt.getNode("/").stat.getCversion() + 1, 1, 1);
-
-        // Asking from a negative would give me all children, and set the watch
-        // This goes to the pagination branch.
-        int curWatchCount = dt.getWatchCount();
-        PaginationNextPage nextPage = new PaginationNextPage();
-        List<String> result = dt.getPaginatedChildren(rootPath, null, new DummyWatcher(), 100, -1, 0, nextPage);
-        assertTrue("The result should be empty", result.isEmpty());
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageMinCzxid, nextPage.getMinCzxid());
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageCzxidOffset, nextPage.getMinCzxidOffset());
-        assertEquals("The watch should have been set", curWatchCount + 1, dt.getWatchCount());
-
-        // Specify max int to fetch all children - trying to return all without sorting, and set the watch
-        curWatchCount = dt.getWatchCount();
-        result = dt.getPaginatedChildren(rootPath, null, new DummyWatcher(), Integer.MAX_VALUE, 0, 0, nextPage);
-        assertTrue("The result should be empty", result.isEmpty());
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageMinCzxid, nextPage.getMinCzxid());
-        assertEquals(ZooDefs.GetChildrenPaginated.lastPageCzxidOffset, nextPage.getMinCzxidOffset());
-        assertEquals("The watch should have been set", curWatchCount + 1, dt.getWatchCount());
-    }
-
-    private class DummyWatcher implements Watcher {
-        @Override
-        public void process(WatchedEvent ignored) {
-        }
+        assertTrue(ranTestCase.get(), "Didn't find the expected node");
     }
 
     /* ZOOKEEPER-3531 - similarly for aclCache.deserialize, we should not hold lock either
     */
-    @Test(timeout = 60000)
+    @Test
+    @Timeout(value = 60)
     public void testDeserializeDoesntLockACLCacheWhileReading() throws Exception {
         DataTree tree = new DataTree();
-        tree.createNode("/marker", new byte[]{42}, null, -1, 1, 1, 1);
+        tree.createNode("/marker", new byte[] { 42 }, null, -1, 1, 1, 1);
         final AtomicBoolean ranTestCase = new AtomicBoolean();
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         DataOutputStream out = new DataOutputStream(baos);
@@ -590,7 +343,7 @@ public class DataTreeTest extends ZKTestCase {
                     boolean acquired = semaphore.tryAcquire(30, TimeUnit.SECONDS);
                     //This is the real assertion - could another thread lock
                     //the ACLCache
-                    assertTrue("Couldn't acquire a lock on the ACLCache while we were calling tree.deserialize", acquired);
+                    assertTrue(acquired, "Couldn't acquire a lock on the ACLCache while we were calling tree.deserialize");
                 } catch (InterruptedException e1) {
                     throw new RuntimeException(e1);
                 }
@@ -603,7 +356,7 @@ public class DataTreeTest extends ZKTestCase {
         tree2.deserialize(ia, "test");
 
         //Let's make sure that we hit the code that ran the real assertion above
-        assertTrue("Didn't find the expected node", ranTestCase.get());
+        assertTrue(ranTestCase.get(), "Didn't find the expected node");
     }
 
     /*
@@ -614,10 +367,11 @@ public class DataTreeTest extends ZKTestCase {
      * currently being written, i.e. that DataTree.serializeNode does not hold
      * the DataNode lock while calling OutputArchive.writeRecord.
      */
-    @Test(timeout = 60000)
+    @Test
+    @Timeout(value = 60)
     public void testSerializeDoesntLockDataNodeWhileWriting() throws Exception {
         DataTree tree = new DataTree();
-        tree.createNode("/marker", new byte[]{42}, null, -1, 1, 1, 1);
+        tree.createNode("/marker", new byte[] { 42 }, null, -1, 1, 1, 1);
         final DataNode markerNode = tree.getNode("/marker");
         final AtomicBoolean ranTestCase = new AtomicBoolean();
         DataOutputStream out = new DataOutputStream(new ByteArrayOutputStream());
@@ -644,7 +398,7 @@ public class DataTreeTest extends ZKTestCase {
                             boolean acquired = semaphore.tryAcquire(30, TimeUnit.SECONDS);
                             //This is the real assertion - could another thread lock
                             //the DataNode we're currently writing
-                            assertTrue("Couldn't acquire a lock on the DataNode while we were calling tree.serialize", acquired);
+                            assertTrue(acquired, "Couldn't acquire a lock on the DataNode while we were calling tree.serialize");
                         } catch (InterruptedException e1) {
                             throw new RuntimeException(e1);
                         }
@@ -659,19 +413,19 @@ public class DataTreeTest extends ZKTestCase {
         tree.serialize(oa, "test");
 
         //Let's make sure that we hit the code that ran the real assertion above
-        assertTrue("Didn't find the expected node", ranTestCase.get());
+        assertTrue(ranTestCase.get(), "Didn't find the expected node");
     }
 
-    @Test(timeout = 60000)
+    @Test
+    @Timeout(value = 60)
     public void testReconfigACLClearOnDeserialize() throws Exception {
-
         DataTree tree = new DataTree();
         // simulate the upgrading scenario, where the reconfig znode
         // doesn't exist and the acl cache is empty
         tree.deleteNode(ZooDefs.CONFIG_NODE, 1);
         tree.getReferenceCountedAclCache().aclIndex = 0;
 
-        assertEquals("expected to have 1 acl in acl cache map", 0, tree.aclCacheSize());
+        assertEquals(0, tree.aclCacheSize(), "expected to have 1 acl in acl cache map");
 
         // serialize the data with one znode with acl
         tree.createNode("/bug", new byte[20], ZooDefs.Ids.OPEN_ACL_UNSAFE, -1, 1, 1, 1);
@@ -685,15 +439,15 @@ public class DataTreeTest extends ZKTestCase {
         BinaryInputArchive ia = BinaryInputArchive.getArchive(bais);
         tree.deserialize(ia, "test");
 
-        assertEquals("expected to have 1 acl in acl cache map", 1, tree.aclCacheSize());
-        assertEquals("expected to have the same acl", ZooDefs.Ids.OPEN_ACL_UNSAFE, tree.getACL("/bug", new Stat()));
+        assertEquals(1, tree.aclCacheSize(), "expected to have 1 acl in acl cache map");
+        assertEquals(ZooDefs.Ids.OPEN_ACL_UNSAFE, tree.getACL("/bug", new Stat()), "expected to have the same acl");
 
         // simulate the upgrading case where the config node will be created
         // again after leader election
         tree.addConfigNode();
 
-        assertEquals("expected to have 2 acl in acl cache map", 2, tree.aclCacheSize());
-        assertEquals("expected to have the same acl", ZooDefs.Ids.OPEN_ACL_UNSAFE, tree.getACL("/bug", new Stat()));
+        assertEquals(2, tree.aclCacheSize(), "expected to have 2 acl in acl cache map");
+        assertEquals(ZooDefs.Ids.OPEN_ACL_UNSAFE, tree.getACL("/bug", new Stat()), "expected to have the same acl");
     }
 
     @Test
@@ -760,6 +514,21 @@ public class DataTreeTest extends ZKTestCase {
         } finally {
             ZooKeeperServer.setDigestEnabled(false);
         }
+    }
+
+    @Test
+    public void testSerializeLastProcessedZxid_Enabled() throws Exception {
+        testSerializeLastProcessedZxid(true, true);
+    }
+
+    @Test
+    public void testSerializeLastProcessedZxid_Disabled() throws Exception {
+        testSerializeLastProcessedZxid(false, false);
+    }
+
+    @Test
+    public void testSerializeLastProcessedZxid_BackwardCompatibility() throws Exception {
+        testSerializeLastProcessedZxid(true, false);
     }
 
     @Test
@@ -859,6 +628,46 @@ public class DataTreeTest extends ZKTestCase {
             assertNotEquals(dt.getTreeDigest(), previousDigest);
         } finally {
             ZooKeeperServer.setDigestEnabled(false);
+        }
+    }
+
+    private DataTree buildDataTreeForTest() {
+        final DataTree dt = new DataTree();
+        assertEquals(dt.lastProcessedZxid, 0);
+
+        dt.processTxn(
+                new TxnHeader(100, 1000, 1, 30, ZooDefs.OpCode.create),
+                new CreateTxn("/foo", "".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, false, 1),
+                null);
+        assertEquals(dt.lastProcessedZxid, 1);
+        return dt;
+    }
+
+    private void testSerializeLastProcessedZxid(boolean enableForSerialize, boolean enableForDeserialize) throws Exception{
+        final DataTree dt = buildDataTreeForTest();
+
+        try (final ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            ZooKeeperServer.setSerializeLastProcessedZxidEnabled(enableForSerialize);
+            final BinaryOutputArchive oa = BinaryOutputArchive.getArchive(baos);
+            if (enableForSerialize) {
+                assertTrue(dt.serializeLastProcessedZxid(oa));
+            } else {
+                assertFalse(dt.serializeLastProcessedZxid(oa));
+            }
+            baos.flush();
+
+            ZooKeeperServer.setSerializeLastProcessedZxidEnabled(enableForDeserialize);
+            try (final ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray())) {
+                final InputArchive ia = BinaryInputArchive.getArchive(bais);
+                if (enableForDeserialize) {
+                    assertTrue(dt.deserializeLastProcessedZxid(ia));
+                } else {
+                    assertFalse(dt.deserializeLastProcessedZxid(ia));
+                }
+                assertEquals(dt.lastProcessedZxid, 1);
+            }
+        } finally {
+            ZooKeeperServer.setSerializeLastProcessedZxidEnabled(true);
         }
     }
 

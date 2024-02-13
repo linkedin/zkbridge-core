@@ -18,9 +18,9 @@
 
 package org.apache.zookeeper.test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -65,9 +65,9 @@ public class QuorumUtil {
 
     }
 
-    private final Map<Long, QuorumServer> peersView = new HashMap<Long, QuorumServer>();
+    private final Map<Long, QuorumServer> peersView = new HashMap<>();
 
-    private final Map<Integer, PeerStruct> peers = new HashMap<Integer, PeerStruct>();
+    private final Map<Integer, PeerStruct> peers = new HashMap<>();
 
     public final int N;
 
@@ -152,7 +152,7 @@ public class QuorumUtil {
 
         LOG.info("Checking ports {}", hostPort);
         for (String hp : hostPort.split(",")) {
-            assertTrue("waiting for server " + hp + " up", ClientBase.waitForServerUp(hp, ClientBase.CONNECTION_TIMEOUT));
+            assertTrue(ClientBase.waitForServerUp(hp, ClientBase.CONNECTION_TIMEOUT), "waiting for server " + hp + " up");
             LOG.info("{} is accepting client connections", hp);
         }
 
@@ -165,7 +165,7 @@ public class QuorumUtil {
         try {
             JMXEnv.dump();
             // make sure we have all servers listed
-            Set<String> ensureNames = new LinkedHashSet<String>();
+            Set<String> ensureNames = new LinkedHashSet<>();
             for (int i = 1; i <= ALL; ++i) {
                 ensureNames.add("InMemoryDataTree");
             }
@@ -198,8 +198,8 @@ public class QuorumUtil {
         }
         for (int i = 1; i <= N + 1; ++i) {
             assertTrue(
-                    "Waiting for server up",
-                    ClientBase.waitForServerUp("127.0.0.1:" + getPeer(i).clientPort, ClientBase.CONNECTION_TIMEOUT));
+                    ClientBase.waitForServerUp("127.0.0.1:" + getPeer(i).clientPort, ClientBase.CONNECTION_TIMEOUT),
+                    "Waiting for server up");
         }
     }
 
@@ -218,8 +218,8 @@ public class QuorumUtil {
     public void restart(int id) throws IOException {
         start(id);
         assertTrue(
-                "Waiting for server up",
-                ClientBase.waitForServerUp("127.0.0.1:" + getPeer(id).clientPort, ClientBase.CONNECTION_TIMEOUT));
+                ClientBase.waitForServerUp("127.0.0.1:" + getPeer(id).clientPort, ClientBase.CONNECTION_TIMEOUT),
+                "Waiting for server up");
     }
 
     public void startThenShutdown(int id) throws IOException {
@@ -233,8 +233,8 @@ public class QuorumUtil {
 
         ps.peer.start();
         assertTrue(
-                "Waiting for server up",
-                ClientBase.waitForServerUp("127.0.0.1:" + getPeer(id).clientPort, ClientBase.CONNECTION_TIMEOUT));
+                ClientBase.waitForServerUp("127.0.0.1:" + getPeer(id).clientPort, ClientBase.CONNECTION_TIMEOUT),
+                "Waiting for server up");
         shutdown(id);
     }
 
@@ -243,7 +243,7 @@ public class QuorumUtil {
             shutdown(i);
         }
         for (String hp : hostPort.split(",")) {
-            assertTrue("Waiting for server down", ClientBase.waitForServerDown(hp, ClientBase.CONNECTION_TIMEOUT));
+            assertTrue(ClientBase.waitForServerDown(hp, ClientBase.CONNECTION_TIMEOUT), "Waiting for server down");
             LOG.info("{} is no longer accepting client connections", hp);
         }
     }
@@ -294,7 +294,7 @@ public class QuorumUtil {
     }
 
     public List<QuorumPeer> getFollowerQuorumPeers() {
-        List<QuorumPeer> peerList = new ArrayList<QuorumPeer>(ALL - 1);
+        List<QuorumPeer> peerList = new ArrayList<>(ALL - 1);
 
         for (PeerStruct ps : peers.values()) {
             if (ps.peer.leader == null) {
@@ -326,7 +326,7 @@ public class QuorumUtil {
             }
         }
 
-        assertTrue("Leader server not found.", index > 0);
+        assertTrue(index > 0, "Leader server not found.");
         return index;
     }
 

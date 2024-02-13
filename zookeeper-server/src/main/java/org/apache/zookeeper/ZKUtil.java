@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
 public class ZKUtil {
 
     private static final Logger LOG = LoggerFactory.getLogger(ZKUtil.class);
-    private static final Map<Integer, String> permCache = new ConcurrentHashMap<Integer, String>();
+    private static final Map<Integer, String> permCache = new ConcurrentHashMap<>();
     /**
      * Recursively delete the node with the given path.
      * <p>
@@ -80,7 +80,7 @@ public class ZKUtil {
     }
 
     /**
-     * Same as {@link #deleteRecursive(org.apache.zookeeper.ZooKeeper, java.lang.String, int)
+     * Same as {@link #deleteRecursive(ZooKeeper, String, int)}
      * kept here for compatibility with 3.5 clients.
      *
      * @since 3.6.1
@@ -109,10 +109,10 @@ public class ZKUtil {
         List<Op> ops = new ArrayList<>();
         BatchedDeleteCbContext context = new BatchedDeleteCbContext(rateLimit);
         MultiCallback cb = (rc, path, ctx, opResults) -> {
-            ((BatchedDeleteCbContext) ctx).sem.release();
             if (rc != Code.OK.intValue()) {
                 ((BatchedDeleteCbContext) ctx).success.set(false);
             }
+            ((BatchedDeleteCbContext) ctx).sem.release();
         };
 
         // Delete the leaves first and eventually get rid of the root
@@ -179,7 +179,7 @@ public class ZKUtil {
             return "Read permission is denied on the file '" + file.getAbsolutePath() + "'";
         }
         if (file.isDirectory()) {
-            return "'" + file.getAbsolutePath() + "' is a direcory. it must be a file.";
+            return "'" + file.getAbsolutePath() + "' is a directory. it must be a file.";
         }
         return null;
     }
@@ -202,14 +202,15 @@ public class ZKUtil {
         ZooKeeper zk,
         final String pathRoot) throws KeeperException, InterruptedException {
         Queue<String> queue = new ArrayDeque<>();
-        List<String> tree = new ArrayList<String>();
+        List<String> tree = new ArrayList<>();
         queue.add(pathRoot);
         tree.add(pathRoot);
         while (!queue.isEmpty()) {
             String node = queue.poll();
             List<String> children = zk.getChildren(node, false);
             for (final String child : children) {
-                final String childPath = node + "/" + child;
+                // Fix IllegalArgumentException when list "/".
+                final String childPath = (node.equals("/") ? "" : node) + "/" + child;
                 queue.add(childPath);
                 tree.add(childPath);
             }

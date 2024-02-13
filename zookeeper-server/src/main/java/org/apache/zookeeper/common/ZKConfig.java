@@ -51,7 +51,7 @@ public class ZKConfig {
     public static final String KINIT_COMMAND = "zookeeper.kinit";
     public static final String JGSS_NATIVE = "sun.security.jgss.native";
 
-    private final Map<String, String> properties = new HashMap<String, String>();
+    private final Map<String, String> properties = new HashMap<>();
 
     /**
      * properties, which are common to both client and server, are initialized
@@ -82,6 +82,7 @@ public class ZKConfig {
     public ZKConfig(File configFile) throws ConfigException {
         this();
         addConfiguration(configFile);
+        LOG.info("ZK Config {}", this.properties);
     }
 
     private void init() {
@@ -105,6 +106,7 @@ public class ZKConfig {
         try (ClientX509Util clientX509Util = new ClientX509Util()) {
             putSSLProperties(clientX509Util);
             properties.put(clientX509Util.getSslAuthProviderProperty(), System.getProperty(clientX509Util.getSslAuthProviderProperty()));
+            properties.put(clientX509Util.getSslProviderProperty(), System.getProperty(clientX509Util.getSslProviderProperty()));
         }
 
         try (X509Util x509Util = new QuorumX509Util()) {
@@ -118,9 +120,11 @@ public class ZKConfig {
         properties.put(x509Util.getSslCipherSuitesProperty(), System.getProperty(x509Util.getSslCipherSuitesProperty()));
         properties.put(x509Util.getSslKeystoreLocationProperty(), System.getProperty(x509Util.getSslKeystoreLocationProperty()));
         properties.put(x509Util.getSslKeystorePasswdProperty(), System.getProperty(x509Util.getSslKeystorePasswdProperty()));
+        properties.put(x509Util.getSslKeystorePasswdPathProperty(), System.getProperty(x509Util.getSslKeystorePasswdPathProperty()));
         properties.put(x509Util.getSslKeystoreTypeProperty(), System.getProperty(x509Util.getSslKeystoreTypeProperty()));
         properties.put(x509Util.getSslTruststoreLocationProperty(), System.getProperty(x509Util.getSslTruststoreLocationProperty()));
         properties.put(x509Util.getSslTruststorePasswdProperty(), System.getProperty(x509Util.getSslTruststorePasswdProperty()));
+        properties.put(x509Util.getSslTruststorePasswdPathProperty(), System.getProperty(x509Util.getSslTruststorePasswdPathProperty()));
         properties.put(x509Util.getSslTruststoreTypeProperty(), System.getProperty(x509Util.getSslTruststoreTypeProperty()));
         properties.put(x509Util.getSslContextSupplierClassProperty(), System.getProperty(x509Util.getSslContextSupplierClassProperty()));
         properties.put(x509Util.getSslHostnameVerificationEnabledProperty(), System.getProperty(x509Util.getSslHostnameVerificationEnabledProperty()));
@@ -128,6 +132,7 @@ public class ZKConfig {
         properties.put(x509Util.getSslOcspEnabledProperty(), System.getProperty(x509Util.getSslOcspEnabledProperty()));
         properties.put(x509Util.getSslClientAuthProperty(), System.getProperty(x509Util.getSslClientAuthProperty()));
         properties.put(x509Util.getSslHandshakeDetectionTimeoutMillisProperty(), System.getProperty(x509Util.getSslHandshakeDetectionTimeoutMillisProperty()));
+        properties.put(x509Util.getFipsModeProperty(), System.getProperty(x509Util.getFipsModeProperty()));
     }
 
     /**

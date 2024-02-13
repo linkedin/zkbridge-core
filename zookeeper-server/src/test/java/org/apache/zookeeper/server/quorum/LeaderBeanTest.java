@@ -18,13 +18,14 @@
 
 package org.apache.zookeeper.server.quorum;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 import java.io.File;
 import java.io.IOException;
@@ -42,12 +43,12 @@ import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
 import org.apache.zookeeper.server.quorum.QuorumPeer.LearnerType;
 import org.apache.zookeeper.server.quorum.QuorumPeer.QuorumServer;
 import org.apache.zookeeper.server.quorum.flexible.QuorumVerifier;
-import org.apache.zookeeper.server.util.SerializeUtils;
-import org.apache.zookeeper.test.ClientBase;
 import org.apache.zookeeper.txn.TxnHeader;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -59,10 +60,12 @@ public class LeaderBeanTest {
     private LeaderZooKeeperServer zks;
     private QuorumPeer qp;
     private QuorumVerifier quorumVerifierMock;
+    @TempDir
+    File tmpDir;
 
     public static Map<Long, QuorumServer> getMockedPeerViews(long myId) {
         int clientPort = PortAssignment.unique();
-        Map<Long, QuorumServer> peersView = new HashMap<Long, QuorumServer>();
+        Map<Long, QuorumServer> peersView = new HashMap<>();
         InetAddress clientIP = InetAddress.getLoopbackAddress();
 
         peersView.put(Long.valueOf(myId),
@@ -72,14 +75,13 @@ public class LeaderBeanTest {
         return peersView;
     }
 
-    @Before
+    @BeforeEach
     public void setUp() throws IOException, X509Exception {
         qp = new QuorumPeer();
         quorumVerifierMock = mock(QuorumVerifier.class);
-        when(quorumVerifierMock.getAllMembers()).thenReturn(getMockedPeerViews(qp.getId()));
+        when(quorumVerifierMock.getAllMembers()).thenReturn(getMockedPeerViews(qp.getMyId()));
 
         qp.setQuorumVerifier(quorumVerifierMock, false);
-        File tmpDir = ClientBase.createEmptyTestDir();
         fileTxnSnapLog = new FileTxnSnapLog(new File(tmpDir, "data"), new File(tmpDir, "data_txnlog"));
         ZKDatabase zkDb = new ZKDatabase(fileTxnSnapLog);
 
@@ -88,9 +90,18 @@ public class LeaderBeanTest {
         leaderBean = new LeaderBean(leader, zks);
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws IOException {
         fileTxnSnapLog.close();
+    }
+
+    @Test
+    public void testCreateServerSocketWillRecreateInetSocketAddr() {
+        Leader spyLeader = Mockito.spy(leader);
+        InetSocketAddress addr = new InetSocketAddress("localhost", PortAssignment.unique());
+        spyLeader.createServerSocket(addr, false, false);
+        // make sure the address to be bound will be recreated with expected hostString and port
+        Mockito.verify(spyLeader, times(1)).recreateInetSocketAddr(addr.getHostString(), addr.getPort());
     }
 
     @Test
@@ -125,7 +136,7 @@ public class LeaderBeanTest {
         leader.propose(req);
 
         // Assert
-        byte[] data = SerializeUtils.serializeRequest(req);
+        byte[] data = req.getSerializeData();
         assertEquals(data.length, leaderBean.getLastProposalSize());
         assertEquals(data.length, leaderBean.getMinProposalSize());
         assertEquals(data.length, leaderBean.getMaxProposalSize());
@@ -174,7 +185,7 @@ public class LeaderBeanTest {
 
     @Test
     public void testFollowerInfo() throws IOException {
-        Map<Long, QuorumServer> votingMembers = new HashMap<Long, QuorumServer>();
+        Map<Long, QuorumServer> votingMembers = new HashMap<>();
         votingMembers.put(1L, null);
         votingMembers.put(2L, null);
         votingMembers.put(3L, null);

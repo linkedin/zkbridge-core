@@ -45,24 +45,34 @@ public class ProviderRegistry {
     public static void initialize() {
         synchronized (ProviderRegistry.class) {
             IPAuthenticationProvider ipp = new IPAuthenticationProvider();
-            DigestAuthenticationProvider digp = new DigestAuthenticationProvider();
             authenticationProviders.put(ipp.getScheme(), ipp);
-            authenticationProviders.put(digp.getScheme(), digp);
+
+            if (DigestAuthenticationProvider.isEnabled()) {
+                DigestAuthenticationProvider digp = new DigestAuthenticationProvider();
+                authenticationProviders.put(digp.getScheme(), digp);
+            }
+
             Enumeration<Object> en = System.getProperties().keys();
             while (en.hasMoreElements()) {
                 String k = (String) en.nextElement();
-                if (k.startsWith(AUTHPROVIDER_PROPERTY_PREFIX)) {
-                    String className = System.getProperty(k);
-                    try {
-                        Class<?> c = ZooKeeperServer.class.getClassLoader().loadClass(className);
-                        AuthenticationProvider ap = (AuthenticationProvider) c.getDeclaredConstructor().newInstance();
-                        authenticationProviders.put(ap.getScheme(), ap);
-                    } catch (Exception e) {
-                        LOG.warn("Problems loading {}", className, e);
-                    }
-                }
+                addOrUpdateProvider(k);
             }
             initialized = true;
+        }
+    }
+
+    public static void addOrUpdateProvider(String authKey) {
+        synchronized (ProviderRegistry.class) {
+            if (authKey.startsWith(AUTHPROVIDER_PROPERTY_PREFIX)) {
+                String className = System.getProperty(authKey);
+                try {
+                    Class<?> c = ZooKeeperServer.class.getClassLoader().loadClass(className);
+                    AuthenticationProvider ap = (AuthenticationProvider) c.getDeclaredConstructor().newInstance();
+                    authenticationProviders.put(ap.getScheme(), ap);
+                } catch (Exception e) {
+                    LOG.warn("Problems loading {}", className, e);
+                }
+            }
         }
     }
 

@@ -18,8 +18,8 @@
 package org.apache.zookeeper.server.quorum;
 
 import static org.apache.zookeeper.test.ClientBase.CONNECTION_TIMEOUT;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import org.apache.commons.io.FileUtils;
@@ -28,8 +28,8 @@ import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.common.AtomicFileOutputStream;
 import org.apache.zookeeper.test.ClientBase;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +38,7 @@ public class CurrentEpochWriteFailureTest extends QuorumPeerTestBase {
     private Servers servers;
     private int clientPort;
 
-    @After
+    @AfterEach
     public void tearDown() throws InterruptedException {
         if (servers != null) {
             servers.shutDownAllServers();
@@ -87,10 +87,11 @@ public class CurrentEpochWriteFailureTest extends QuorumPeerTestBase {
         servers.restartAllServersAndClients(this);
 
         // Check the first server where problem was injected.
-        assertTrue("server " + firstServer.getMyid()
-            + " is not up as file currentEpoch.tmp rename to currentEpoch file was failed"
-            + " which lead current epoch inconsistent state.", ClientBase
-            .waitForServerUp("127.0.0.1:" + firstServer.getClientPort(), CONNECTION_TIMEOUT));
+        assertTrue(ClientBase
+                .waitForServerUp("127.0.0.1:" + firstServer.getClientPort(), CONNECTION_TIMEOUT),
+            "server " + firstServer.getMyid()
+                + " is not up as file currentEpoch.tmp rename to currentEpoch file was failed"
+                + " which lead current epoch inconsistent state.");
     }
 
     private void restartServers() throws InterruptedException, IOException {

@@ -59,7 +59,7 @@ public class Environment {
     }
 
     public static List<Entry> list() {
-        List<Entry> l = new ArrayList<Entry>();
+        List<Entry> l = new ArrayList<>();
         put(l, "zookeeper.version", Version.getFullVersion());
 
         try {
@@ -85,9 +85,9 @@ public class Environment {
         // Get memory information.
         Runtime runtime = Runtime.getRuntime();
         int mb = 1024 * 1024;
-        put(l, "os.memory.free", runtime.freeMemory() / mb + "MB");
-        put(l, "os.memory.max", runtime.maxMemory() / mb + "MB");
-        put(l, "os.memory.total", runtime.totalMemory() / mb + "MB");
+        put(l, "jvm.memory.free", runtime.freeMemory() / mb + "MB");
+        put(l, "jvm.memory.max", runtime.maxMemory() / mb + "MB");
+        put(l, "jvm.memory.total", runtime.totalMemory() / mb + "MB");
 
         return l;
     }

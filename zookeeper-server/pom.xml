@@ -21,16 +21,15 @@
   -->
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>com.linkedin.zkbridge</groupId>
+    <groupId>org.apache.zookeeper</groupId>
     <artifactId>parent</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
-    <relativePath>..</relativePath>
+    <version>3.10.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>zookeeper</artifactId>
   <packaging>jar</packaging>
-  <name>ZKBridge - Server</name>
-  <description>ZKBridge server</description>
+  <name>Apache ZooKeeper - Server</name>
+  <description>ZooKeeper server</description>
 
   <dependencies>
     <dependency>
@@ -41,22 +40,17 @@
     </dependency>
     <dependency>
       <groupId>org.hamcrest</groupId>
-      <artifactId>hamcrest-all</artifactId>
+      <artifactId>hamcrest-library</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>commons-collections</groupId>
-      <artifactId>commons-collections</artifactId>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-collections4</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.linkedin.zkbridge</groupId>
+      <groupId>org.apache.zookeeper</groupId>
       <artifactId>zookeeper-jute</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.linkedin.zkbridge</groupId>
-      <artifactId>spiral-api</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
@@ -75,6 +69,11 @@
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-transport-native-epoll</artifactId>
+      <classifier>linux-x86_64</classifier>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-tcnative-boringssl-static</artifactId>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
@@ -99,23 +98,23 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-client</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>com.googlecode.json-simple</groupId>
-      <artifactId>json-simple</artifactId>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
       <groupId>org.bouncycastle</groupId>
-      <artifactId>bcprov-jdk15on</artifactId>
+      <artifactId>bcprov-jdk18on</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.bouncycastle</groupId>
-      <artifactId>bcpkix-jdk15on</artifactId>
+      <artifactId>bcpkix-jdk18on</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -154,8 +153,28 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-params</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-runner</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.burningwave</groupId>
+      <artifactId>tools</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -164,54 +183,36 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-      <version>27.0.1-jre</version>
-    </dependency>
-    <dependency>
-      <groupId>io.grpc</groupId>
-      <artifactId>grpc-api</artifactId>
-      <version>1.49.2</version>
-    </dependency>
-    <dependency>
-        <groupId>io.grpc</groupId>
-        <artifactId>grpc-netty-shaded</artifactId>
-        <version>1.49.2</version>
-    </dependency>
-    <dependency>
-        <groupId>io.grpc</groupId>
-        <artifactId>grpc-protobuf</artifactId>
-        <version>1.49.2</version>
-    </dependency>
-    <dependency>
-        <groupId>io.grpc</groupId>
-        <artifactId>grpc-stub</artifactId>
-        <version>1.49.2</version>
-    </dependency>
-    <dependency>
-        <groupId>io.grpc</groupId>
-        <artifactId>grpc-testing</artifactId>
-        <version>1.49.2</version>
+      <groupId>commons-io</groupId>
+      <artifactId>commons-io</artifactId>
+      <scope>compile</scope>
     </dependency>
   </dependencies>
 
   <build>
     <plugins>
-      <plugin> <!-- ${maven.build.timestamp} does not support timezone :( -->
+      <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
         <executions>
           <execution>
-            <id>tbuild-time</id>
+            <!-- ${maven.build.timestamp} does not support timezone :( -->
+            <id>build-time</id>
             <goals>
               <goal>timestamp-property</goal>
             </goals>
             <configuration>
               <name>build.time</name>
-              <pattern>MM/dd/yyyy HH:mm zz</pattern>
+              <pattern>yyyy-MM-dd HH:mm zz</pattern>
               <locale>en_US</locale>
-              <timeZone>GMT</timeZone>
+              <timeZone>UTC</timeZone>
             </configuration>
+          </execution>
+          <execution>
+            <id>parse-version</id>
+            <goals>
+              <goal>parse-version</goal>
+            </goals>
           </execution>
           <execution>
             <phase>generate-sources</phase>
@@ -228,44 +229,22 @@
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
+        <artifactId>maven-resources-plugin</artifactId>
         <executions>
           <execution>
-            <id>pre-compile-vergen</id>
+            <id>prepare-filtered-java-source</id>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
             <phase>generate-sources</phase>
             <configuration>
-              <includes>
-                <include>org/apache/zookeeper/version/**/*.java</include>
-              </includes>
-            </configuration>
-            <goals>
-              <goal>compile</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>generate-version-info</id>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>exec</goal>
-            </goals>
-            <configuration>
-              <workingDirectory>${project.basedir}/src/main/java/</workingDirectory>
-              <executable>java</executable>
-              <arguments>
-                <argument>-classpath</argument>
-                <classpath />
-                <argument>org.apache.zookeeper.version.util.VerGen</argument>
-                <argument>${project.version}</argument>
-                <argument>${mvngit.commit.id}</argument>
-                <argument>${build.time}</argument>
-                <argument>${project.basedir}/target/generated-sources/java</argument>
-              </arguments>
+              <outputDirectory>${project.build.directory}/generated-sources/java</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>src/main/java-filtered</directory>
+                  <filtering>true</filtering>
+                </resource>
+              </resources>
             </configuration>
           </execution>
         </executions>
@@ -301,7 +280,6 @@
           <reuseForks>false</reuseForks>
           <argLine>-Xmx512m -Dtest.junit.threads=${surefire-forkcount} -Dzookeeper.junit.threadid=${surefire.forkNumber} -javaagent:${org.jmockit:jmockit:jar}</argLine>
           <basedir>${project.basedir}</basedir>
-          <redirectTestOutputToFile>true</redirectTestOutputToFile>
           <systemPropertyVariables>
             <build.test.dir>${project.build.directory}/surefire</build.test.dir>
             <zookeeper.DigestAuthenticationProvider.superDigest>super:D/InIHSb7yEEbrWz8b9l71RjZJU=</zookeeper.DigestAuthenticationProvider.superDigest>
@@ -358,7 +336,7 @@
         <artifactId>maven-jar-plugin</artifactId>
         <executions>
           <execution>
-            <id>Jar Tests Package</id>
+            <id>publish-test-jar</id>
             <goals>
               <goal>test-jar</goal>
             </goals>

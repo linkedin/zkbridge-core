@@ -18,11 +18,10 @@
 
 package org.apache.zookeeper.server.quorum;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
-import java.nio.ByteBuffer;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -31,11 +30,12 @@ import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.metrics.MetricsUtils;
 import org.apache.zookeeper.server.Request;
 import org.apache.zookeeper.server.RequestProcessor;
+import org.apache.zookeeper.server.RequestRecord;
 import org.apache.zookeeper.server.ServerMetrics;
 import org.apache.zookeeper.server.WorkerService;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,9 +48,9 @@ public class CommitProcessorMetricsTest extends ZKTestCase {
     CountDownLatch requestScheduled = null;
     CountDownLatch requestProcessed = null;
     CountDownLatch commitSeen = null;
-    CountDownLatch poolEmpytied = null;
+    CountDownLatch poolEmptied = null;
 
-    @Before
+    @BeforeEach
     public void setup() {
         LOG.info("setup");
         ServerMetrics.getMetrics().resetAll();
@@ -66,7 +66,7 @@ public class CommitProcessorMetricsTest extends ZKTestCase {
         commitProcessor.start();
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         LOG.info("tearDown starting");
 
@@ -101,7 +101,7 @@ public class CommitProcessorMetricsTest extends ZKTestCase {
             // So it is important for the processor thread to get into WAITING before any request is put into the queue.
             // Otherwise, it would miss the wakeup signal and wouldn't process the request or open the latch and the
             // test thread waiting on the latch would be stuck
-            Thread.State state = super.getState();
+            State state = super.getState();
             while (state != State.WAITING) {
                 try {
                     Thread.sleep(50);
@@ -126,8 +126,8 @@ public class CommitProcessorMetricsTest extends ZKTestCase {
                 commitSeen.countDown();
             }
             super.waitForEmptyPool();
-            if (poolEmpytied != null) {
-                poolEmpytied.countDown();
+            if (poolEmptied != null) {
+                poolEmptied.countDown();
             }
         }
 
@@ -179,11 +179,11 @@ public class CommitProcessorMetricsTest extends ZKTestCase {
     private void checkMetrics(String metricName, long min, long max, double avg, long cnt, long sum) {
         Map<String, Object> values = MetricsUtils.currentServerMetrics();
 
-        assertEquals("expected min is " + min, min, values.get("min_" + metricName));
-        assertEquals("expected max is: " + max, max, values.get("max_" + metricName));
-        assertEquals("expected avg is: " + avg, avg, (Double) values.get("avg_" + metricName), 0.001);
-        assertEquals("expected cnt is: " + cnt, cnt, values.get("cnt_" + metricName));
-        assertEquals("expected sum is: " + sum, sum, values.get("sum_" + metricName));
+        assertEquals(min, values.get("min_" + metricName), "expected min is " + min);
+        assertEquals(max, values.get("max_" + metricName), "expected max is: " + max);
+        assertEquals(avg, (Double) values.get("avg_" + metricName), 0.001, "expected avg is: " + avg);
+        assertEquals(cnt, values.get("cnt_" + metricName), "expected cnt is: " + cnt);
+        assertEquals(sum, values.get("sum_" + metricName), "expected sum is: " + sum);
     }
 
     private void checkTimeMetric(long actual, long lBoundrary, long hBoundrary) {
@@ -192,11 +192,11 @@ public class CommitProcessorMetricsTest extends ZKTestCase {
     }
 
     private Request createReadRequest(long sessionId, int xid) {
-        return new Request(null, sessionId, xid, ZooDefs.OpCode.getData, ByteBuffer.wrap(new byte[10]), null);
+        return new Request(null, sessionId, xid, ZooDefs.OpCode.getData, RequestRecord.fromBytes(new byte[10]), null);
     }
 
     private Request createWriteRequest(long sessionId, int xid) {
-        return new Request(null, sessionId, xid, ZooDefs.OpCode.setData, ByteBuffer.wrap(new byte[10]), null);
+        return new Request(null, sessionId, xid, ZooDefs.OpCode.setData, RequestRecord.fromBytes(new byte[10]), null);
     }
 
     private void processRequestWithWait(Request request) throws Exception {
@@ -365,9 +365,9 @@ public class CommitProcessorMetricsTest extends ZKTestCase {
         requestScheduled.await(5, TimeUnit.SECONDS);
 
         //add a commit request to trigger waitForEmptyPool
-        poolEmpytied = new CountDownLatch(1);
+        poolEmptied = new CountDownLatch(1);
         commitProcessor.commit(createWriteRequest(1L, 1));
-        poolEmpytied.await(5, TimeUnit.SECONDS);
+        poolEmptied.await(5, TimeUnit.SECONDS);
 
         long actual = (long) MetricsUtils.currentServerMetrics().get("max_time_waiting_empty_pool_in_commit_processor_read_ms");
         //since each request takes 1000ms to process, so the waiting shouldn't be more than three times of that
@@ -387,9 +387,9 @@ public class CommitProcessorMetricsTest extends ZKTestCase {
         requestScheduled.await(5, TimeUnit.SECONDS);
 
         //add a commit request to trigger waitForEmptyPool, which will record number of requests being proccessed
-        poolEmpytied = new CountDownLatch(1);
+        poolEmptied = new CountDownLatch(1);
         commitProcessor.commit(createWriteRequest(1L, 1));
-        poolEmpytied.await(5, TimeUnit.SECONDS);
+        poolEmptied.await(5, TimeUnit.SECONDS);
 
         //this will change after we upstream batch write in CommitProcessor
         Map<String, Object> values = MetricsUtils.currentServerMetrics();

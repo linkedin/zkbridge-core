@@ -18,14 +18,14 @@
 
 package org.apache.zookeeper;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.jute.BinaryInputArchive;
 import org.apache.jute.BinaryOutputArchive;
 import org.apache.zookeeper.server.ByteBufferInputStream;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class MultiOperationRecordTest extends ZKTestCase {
 
@@ -33,7 +33,7 @@ public class MultiOperationRecordTest extends ZKTestCase {
     public void testRoundTrip() throws IOException {
         MultiOperationRecord request = new MultiOperationRecord();
         request.add(Op.check("check", 1));
-        request.add(Op.create("create", "create data".getBytes(), ZooDefs.Ids.CREATOR_ALL_ACL, ZooDefs.Perms.ALL));
+        request.add(Op.create("create", "create data".getBytes(), ZooDefs.Ids.CREATOR_ALL_ACL, CreateMode.EPHEMERAL.toFlag()));
         request.add(Op.delete("delete", 17));
         request.add(Op.setData("setData", "set data".getBytes(), 19));
 

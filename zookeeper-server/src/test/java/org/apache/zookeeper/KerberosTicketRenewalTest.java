@@ -20,11 +20,11 @@ package org.apache.zookeeper;
 
 import static org.apache.zookeeper.server.quorum.auth.MiniKdc.MAX_TICKET_LIFETIME;
 import static org.apache.zookeeper.server.quorum.auth.MiniKdc.MIN_TICKET_LIFETIME;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTimeout;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -43,10 +43,10 @@ import org.apache.zookeeper.common.ZKConfig;
 import org.apache.zookeeper.server.quorum.auth.KerberosTestUtils;
 import org.apache.zookeeper.server.quorum.auth.MiniKdc;
 import org.apache.zookeeper.test.ClientBase;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,7 +67,7 @@ public class KerberosTicketRenewalTest {
 
   TestableKerberosLogin login;
 
-  @BeforeClass
+  @BeforeAll
   public static void setupClass() throws Exception {
     // by default, we should wait at least 1 minute between subsequent TGT renewals.
     // changing it to 500ms.
@@ -96,7 +96,7 @@ public class KerberosTicketRenewalTest {
     setupJaasConfig(jaasEntries);
   }
 
-  @AfterClass
+  @AfterAll
   public static void tearDownClass() {
     System.clearProperty(Login.MIN_TIME_BEFORE_RELOGIN_CONFIG_KEY);
     System.clearProperty("java.security.auth.login.config");
@@ -108,7 +108,7 @@ public class KerberosTicketRenewalTest {
     }
   }
 
-  @After
+  @AfterEach
   public void tearDownTest() throws Exception {
     if (login != null) {
       login.shutdown();
@@ -213,19 +213,14 @@ public class KerberosTicketRenewalTest {
   }
 
   private static void assertEventually(Duration timeout, Supplier<Boolean> test) {
-    long until = System.currentTimeMillis() + timeout.toMillis();
-    while (System.currentTimeMillis() < until) {
-      if (test.get()) {
-        return;
-      }
-      try {
+    assertTimeout(timeout, () -> {
+      while (true) {
+        if (test.get()) {
+          return;
+        }
         Thread.sleep(100);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        fail("interrupted while waining for test condition to appear");
       }
-    }
-    fail("timeout");
+    });
   }
 
   public static void startMiniKdcAndAddPrincipal() throws Exception {

@@ -18,6 +18,7 @@
 
 package org.apache.zookeeper.server;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -35,12 +36,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+import java.util.zip.CheckedInputStream;
 import org.apache.jute.InputArchive;
 import org.apache.jute.OutputArchive;
 import org.apache.jute.Record;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.NoNodeException;
-import org.apache.zookeeper.PaginationNextPage;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.Watcher.WatcherType;
 import org.apache.zookeeper.ZooDefs;
@@ -48,12 +49,13 @@ import org.apache.zookeeper.common.Time;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.server.DataTree.ProcessTxnResult;
+import org.apache.zookeeper.server.persistence.FileSnap;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog.PlayBackListener;
+import org.apache.zookeeper.server.persistence.SnapStream;
 import org.apache.zookeeper.server.persistence.TxnLog.TxnIterator;
-import org.apache.zookeeper.server.quorum.Leader;
 import org.apache.zookeeper.server.quorum.Leader.Proposal;
-import org.apache.zookeeper.server.quorum.QuorumPacket;
+import org.apache.zookeeper.server.quorum.Leader.PureRequestProposal;
 import org.apache.zookeeper.server.quorum.flexible.QuorumVerifier;
 import org.apache.zookeeper.server.util.SerializeUtils;
 import org.apache.zookeeper.txn.TxnDigest;
@@ -90,7 +92,6 @@ public class ZKDatabase {
     public static final String COMMIT_LOG_COUNT = "zookeeper.commitLogCount";
     public static final int DEFAULT_COMMIT_LOG_COUNT = 500;
     public int commitLogCount;
-    protected static int commitLogBuffer = 700;
     protected Queue<Proposal> committedLog = new ArrayDeque<>();
     protected ReentrantReadWriteLock logLock = new ReentrantReadWriteLock();
     private volatile boolean initialized = false;
@@ -108,7 +109,7 @@ public class ZKDatabase {
      */
     public ZKDatabase(FileTxnSnapLog snapLog) {
         dataTree = createDataTree();
-        sessionsWithTimeouts = new ConcurrentHashMap<Long, Integer>();
+        sessionsWithTimeouts = new ConcurrentHashMap<>();
         this.snapLog = snapLog;
 
         try {
@@ -321,20 +322,15 @@ public class ZKDatabase {
             wl.lock();
             if (committedLog.size() > commitLogCount) {
                 committedLog.remove();
-                minCommittedLog = committedLog.peek().packet.getZxid();
+                minCommittedLog = committedLog.peek().getZxid();
             }
             if (committedLog.isEmpty()) {
                 minCommittedLog = request.zxid;
                 maxCommittedLog = request.zxid;
             }
-
-            byte[] data = SerializeUtils.serializeRequest(request);
-            QuorumPacket pp = new QuorumPacket(Leader.PROPOSAL, request.zxid, data, null);
-            Proposal p = new Proposal();
-            p.packet = pp;
-            p.request = request;
+            PureRequestProposal p = new PureRequestProposal(request);
             committedLog.add(p);
-            maxCommittedLog = p.packet.getZxid();
+            maxCommittedLog = p.getZxid();
         } finally {
             wl.unlock();
         }
@@ -488,9 +484,9 @@ public class ZKDatabase {
      * @param path the path for which stat is to be done
      * @param serverCnxn the servercnxn attached to this request
      * @return the stat of this node
-     * @throws KeeperException.NoNodeException
+     * @throws NoNodeException
      */
-    public Stat statNode(String path, ServerCnxn serverCnxn) throws KeeperException.NoNodeException {
+    public Stat statNode(String path, ServerCnxn serverCnxn) throws NoNodeException {
         return dataTree.statNode(path, serverCnxn);
     }
 
@@ -508,10 +504,9 @@ public class ZKDatabase {
      * @param path the path being queried
      * @param stat the stat for this path
      * @param watcher the watcher function
-     * @return
-     * @throws KeeperException.NoNodeException
+     * @throws NoNodeException
      */
-    public byte[] getData(String path, Stat stat, Watcher watcher) throws KeeperException.NoNodeException {
+    public byte[] getData(String path, Stat stat, Watcher watcher) throws NoNodeException {
         return dataTree.getData(path, stat, watcher);
     }
 
@@ -561,33 +556,17 @@ public class ZKDatabase {
      * @param stat the stat of the node
      * @param watcher the watcher function for this path
      * @return the list of children for this path
-     * @throws KeeperException.NoNodeException
+     * @throws NoNodeException
      */
-    public List<String> getChildren(String path, Stat stat, Watcher watcher) throws KeeperException.NoNodeException {
+    public List<String> getChildren(String path, Stat stat, Watcher watcher) throws NoNodeException {
         return dataTree.getChildren(path, stat, watcher);
     }
 
     /*
      * get all sub-children number of this node
      * */
-    public int getAllChildrenNumber(String path) throws KeeperException.NoNodeException {
+    public int getAllChildrenNumber(String path) throws NoNodeException {
         return dataTree.getAllChildrenNumber(path);
-    }
-
-    /**
-     * Get a subset (a page) of the children of the given node
-     * @param path the path of the node
-     * @param stat the stat of the node
-     * @param watcher an optional watcher for this node children
-     * @param maxReturned the maximum number of nodes to be returned
-     * @param minCzxId only return children whose creation zxid greater than minCzxId
-     * @param czxIdOffset how many children with zxid == minCzxId to skip (as returned in previous pages)
-     * @return  A list of children. Size is bound to maxReturned (maxReturned+1 indicates truncation)
-     * @throws NoNodeException if the given path does not exist
-     */
-    public List<String> getPaginatedChildren(String path, Stat stat, Watcher watcher, int maxReturned,
-                                             long minCzxId, int czxIdOffset, PaginationNextPage nextPage) throws NoNodeException {
-        return dataTree.getPaginatedChildren(path, stat, watcher, maxReturned, minCzxId, czxIdOffset, nextPage);
     }
 
     /**
@@ -637,6 +616,42 @@ public class ZKDatabase {
         SerializeUtils.deserializeSnapshot(getDataTree(), ia, getSessionWithTimeOuts());
         initialized = true;
     }
+
+    /**
+     * Deserialize a snapshot that contains FileHeader from an input archive. It is used by
+     * the admin restore command.
+     *
+     * @param ia the input archive to deserialize from
+     * @param is the CheckInputStream to check integrity
+     *
+     * @throws IOException
+     */
+    public void deserializeSnapshot(final InputArchive ia, final CheckedInputStream is) throws IOException {
+        clear();
+
+        // deserialize data tree
+        final DataTree dataTree = getDataTree();
+        FileSnap.deserialize(dataTree, getSessionWithTimeOuts(), ia);
+        SnapStream.checkSealIntegrity(is, ia);
+
+        // deserialize digest and check integrity
+        if (dataTree.deserializeZxidDigest(ia, 0)) {
+            SnapStream.checkSealIntegrity(is, ia);
+        }
+
+        // deserialize lastProcessedZxid and check integrity
+        if (dataTree.deserializeLastProcessedZxid(ia)) {
+            SnapStream.checkSealIntegrity(is, ia);
+        }
+
+        // compare the digest to find inconsistency
+        if (dataTree.getDigestFromLoadedSnapshot() != null) {
+            dataTree.compareSnapshotDigests(dataTree.lastProcessedZxid);
+        }
+
+        initialized = true;
+    }
+
 
     /**
      * serialize the snapshot
@@ -697,7 +712,7 @@ public class ZKDatabase {
             }
             this.dataTree.setData(
                 ZooDefs.CONFIG_NODE,
-                qv.toString().getBytes(),
+                qv.toString().getBytes(UTF_8),
                 -1,
                 qv.getVersion(),
                 Time.currentWallTime());

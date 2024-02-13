@@ -19,8 +19,8 @@
 package org.apache.zookeeper.server;
 
 import static org.apache.zookeeper.test.ClientBase.CONNECTION_TIMEOUT;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -43,7 +43,8 @@ import org.apache.zookeeper.server.persistence.FileSnap;
 import org.apache.zookeeper.server.persistence.FileTxnLog;
 import org.apache.zookeeper.server.persistence.TxnLog.TxnIterator;
 import org.apache.zookeeper.test.ClientBase;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,14 +71,14 @@ public class CRCTest extends ZKTestCase {
     }
 
     /** return if checksum matches for a snapshot **/
-    private boolean getCheckSum(FileSnap snap, File snapFile) throws IOException {
+    private boolean getCheckSum(File snapFile) throws IOException {
         DataTree dt = new DataTree();
-        Map<Long, Integer> sessions = new ConcurrentHashMap<Long, Integer>();
+        Map<Long, Integer> sessions = new ConcurrentHashMap<>();
         InputStream snapIS = new BufferedInputStream(new FileInputStream(snapFile));
         CheckedInputStream crcIn = new CheckedInputStream(snapIS, new Adler32());
         InputArchive ia = BinaryInputArchive.getArchive(crcIn);
         try {
-            snap.deserialize(dt, sessions, ia);
+            FileSnap.deserialize(dt, sessions, ia);
         } catch (IOException ie) {
             // we failed on the most recent snapshot
             // must be incomplete
@@ -102,8 +103,7 @@ public class CRCTest extends ZKTestCase {
      * @throws Exception
      */
     @Test
-    public void testChecksums() throws Exception {
-        File tmpDir = ClientBase.createTmpDir();
+    public void testChecksums(@TempDir File tmpDir) throws Exception {
         ClientBase.setupTestEnv();
         ZooKeeperServer zks = new ZooKeeperServer(tmpDir, tmpDir, 3000);
         SyncRequestProcessor.setSnapCount(150);
@@ -111,7 +111,7 @@ public class CRCTest extends ZKTestCase {
         ServerCnxnFactory f = ServerCnxnFactory.createFactory(PORT, -1);
         f.startup(zks);
         LOG.info("starting up the zookeeper server .. waiting");
-        assertTrue("waiting for server being up", ClientBase.waitForServerUp(HOSTPORT, CONNECTION_TIMEOUT));
+        assertTrue(ClientBase.waitForServerUp(HOSTPORT, CONNECTION_TIMEOUT), "waiting for server being up");
         ZooKeeper zk = ClientBase.createZKClient(HOSTPORT);
         try {
             for (int i = 0; i < 2000; i++) {
@@ -122,7 +122,7 @@ public class CRCTest extends ZKTestCase {
         }
         f.shutdown();
         zks.shutdown();
-        assertTrue("waiting for server down", ClientBase.waitForServerDown(HOSTPORT, ClientBase.CONNECTION_TIMEOUT));
+        assertTrue(ClientBase.waitForServerDown(HOSTPORT, ClientBase.CONNECTION_TIMEOUT), "waiting for server down");
 
         File versionDir = new File(tmpDir, "version-2");
         File[] list = versionDir.listFiles();
@@ -154,16 +154,16 @@ public class CRCTest extends ZKTestCase {
         List<File> snapFiles = snap.findNRecentSnapshots(2);
         snapFile = snapFiles.get(0);
         corruptFile(snapFile);
-        boolean cfile = false;
+        boolean cfile;
         try {
-            cfile = getCheckSum(snap, snapFile);
+            cfile = getCheckSum(snapFile);
         } catch (IOException ie) {
-            //the last snapshot seems incompelte
+            //the last snapshot seems incomplete
             // corrupt the last but one
             // and use that
             snapFile = snapFiles.get(1);
             corruptFile(snapFile);
-            cfile = getCheckSum(snap, snapFile);
+            cfile = getCheckSum(snapFile);
         }
         assertTrue(cfile);
     }

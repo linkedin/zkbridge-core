@@ -19,16 +19,14 @@
 package org.apache.zookeeper.test;
 
 import static org.apache.zookeeper.test.ClientBase.CONNECTION_TIMEOUT;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.apache.zookeeper.AsyncCallback;
@@ -45,9 +43,9 @@ import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.server.ServerCnxnFactory;
 import org.apache.zookeeper.server.ZooKeeperServer;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,7 +64,7 @@ public class SessionTest extends ZKTestCase {
 
     private final int TICK_TIME = 3000;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         if (tmpDir == null) {
             tmpDir = ClientBase.createTmpDir();
@@ -79,14 +77,14 @@ public class SessionTest extends ZKTestCase {
         serverFactory = ServerCnxnFactory.createFactory(PORT, -1);
         serverFactory.startup(zs);
 
-        assertTrue("waiting for server up", ClientBase.waitForServerUp(HOSTPORT, CONNECTION_TIMEOUT));
+        assertTrue(ClientBase.waitForServerUp(HOSTPORT, CONNECTION_TIMEOUT), "waiting for server up");
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         serverFactory.shutdown();
         zs.shutdown();
-        assertTrue("waiting for server down", ClientBase.waitForServerDown(HOSTPORT, CONNECTION_TIMEOUT));
+        assertTrue(ClientBase.waitForServerDown(HOSTPORT, CONNECTION_TIMEOUT), "waiting for server down");
     }
 
     private static class CountdownWatcher implements Watcher {
@@ -247,12 +245,10 @@ public class SessionTest extends ZKTestCase {
                             + 1)), zk.getSessionId(), zk.getSessionPasswd());
             final int[] result = new int[1];
             result[0] = Integer.MAX_VALUE;
-            zknew.sync("/", new AsyncCallback.VoidCallback() {
-                public void processResult(int rc, String path, Object ctx) {
-                    synchronized (result) {
-                        result[0] = rc;
-                        result.notify();
-                    }
+            zknew.sync("/", (rc, path, ctx) -> {
+                synchronized (result) {
+                    result[0] = rc;
+                    result.notify();
                 }
             }, null);
             synchronized (result) {
@@ -335,7 +331,7 @@ public class SessionTest extends ZKTestCase {
 
     private class DupWatcher extends CountdownWatcher {
 
-        public List<WatchedEvent> states = new LinkedList<WatchedEvent>();
+        public List<WatchedEvent> states = new LinkedList<>();
         public void process(WatchedEvent event) {
             super.process(event);
             if (event.getType() == EventType.None) {
@@ -399,39 +395,4 @@ public class SessionTest extends ZKTestCase {
         }
     }
 
-    public void testSessionCountMetric() throws IOException, InterruptedException {
-        long originSessionCreate = zs.serverStats().getSessionCreateCount();
-        long originSessionClose = zs.serverStats().getSessionCloseCount();
-        long originConnectionCreate = zs.serverStats().getConnectionCreateCount();
-        long originConnectionClose = zs.serverStats().getConnectionCloseCount();
-
-        Random ran = new Random();
-        long expectedClientConnect = ran.nextInt(90) + 10;
-        long expectedClientClose = Math.max(ran.nextInt((int) expectedClientConnect - 5), 5);
-
-        List<DisconnectableZooKeeper> zks = new ArrayList<DisconnectableZooKeeper>();
-        for (int i = 0; i < expectedClientConnect; i++) {
-            DisconnectableZooKeeper zk = createClient();
-            if (i >= expectedClientClose) {
-                zks.add(zk);
-            } else {
-                zk.disconnect();
-            }
-        }
-
-        assertEquals(expectedClientConnect, zs.serverStats().getSessionCreateCount() - originSessionCreate);
-        assertEquals(expectedClientClose, zs.serverStats().getSessionCloseCount() - originSessionClose);
-
-        assertEquals(expectedClientConnect, zs.serverStats().getConnectionCreateCount() - originConnectionCreate);
-        assertEquals(expectedClientClose, zs.serverStats().getConnectionCloseCount() - originConnectionClose);
-
-        zs.serverStats().resetConnectionCounters();
-
-        assertEquals(0, zs.serverStats().getSessionCreateCount());
-        assertEquals(0, zs.serverStats().getSessionCloseCount());
-
-        assertEquals(0, zs.serverStats().getConnectionCreateCount());
-        assertEquals(0, zs.serverStats().getConnectionCloseCount());
-
-    }
 }

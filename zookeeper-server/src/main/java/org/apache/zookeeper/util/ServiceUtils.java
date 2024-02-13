@@ -62,7 +62,7 @@ public abstract class ServiceUtils {
         }
     };
 
-    private static Consumer<Integer> systemExitProcedure = SYSTEM_EXIT;
+    private static volatile Consumer<Integer> systemExitProcedure = SYSTEM_EXIT;
 
     /**
      * Override system callback. Useful for preventing the JVM to exit in tests

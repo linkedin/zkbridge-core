@@ -57,7 +57,7 @@ public abstract class ServerCnxnFactory {
     protected int maxCnxns;
 
     // sessionMap is used by closeSession()
-    final ConcurrentHashMap<Long, ServerCnxn> sessionMap = new ConcurrentHashMap<Long, ServerCnxn>();
+    final ConcurrentHashMap<Long, ServerCnxn> sessionMap = new ConcurrentHashMap<>();
 
     private static String loginUser = Login.SYSTEM_USER;
 
@@ -198,44 +198,15 @@ public abstract class ServerCnxnFactory {
 
     public abstract Iterable<Map<String, Object>> getAllConnectionInfo(boolean brief);
 
-    private final ConcurrentHashMap<ServerCnxn, ConnectionBean> connectionBeans = new ConcurrentHashMap<ServerCnxn, ConnectionBean>();
-
-    // Connection create count is increased after connection established. But this connection may not establish a session.
-    // In this case, registerConnection won't be called.
-    // So the following method need to be called in the implementation class.
-    public void increaseConnectionCreateCount() {
-        if (zkServer != null) {
-            zkServer.serverStats().incrementConnectionCreated();
-        }
-    }
-
-    private void increaseConnectionCloseCount() {
-        if (zkServer != null) {
-            zkServer.serverStats().incrementConnectionClosed();
-        }
-    }
-
-    private void increaseSessionCreateCount() {
-        if (zkServer != null) {
-            zkServer.serverStats().incrementSessionCreated();
-        }
-    }
-
-    private void increaseSessionCloseCount() {
-        if (zkServer != null) {
-            zkServer.serverStats().incrementSessionClosed();
-        }
-    }
+    private final ConcurrentHashMap<ServerCnxn, ConnectionBean> connectionBeans = new ConcurrentHashMap<>();
 
     // Connection set is relied on heavily by four letter commands
     // Construct a ConcurrentHashSet using a ConcurrentHashMap
-    protected final Set<ServerCnxn> cnxns = Collections.newSetFromMap(new ConcurrentHashMap<ServerCnxn, Boolean>());
+    protected final Set<ServerCnxn> cnxns = Collections.newSetFromMap(new ConcurrentHashMap<>());
     public void unregisterConnection(ServerCnxn serverCnxn) {
-        increaseConnectionCloseCount();
         ConnectionBean jmxConnectionBean = connectionBeans.remove(serverCnxn);
         if (jmxConnectionBean != null) {
             MBeanRegistry.getInstance().unregister(jmxConnectionBean);
-            increaseSessionCloseCount();
         }
     }
 
@@ -245,7 +216,6 @@ public abstract class ServerCnxnFactory {
             try {
                 MBeanRegistry.getInstance().register(jmxConnectionBean, zkServer.jmxServerBean);
                 connectionBeans.put(serverCnxn, jmxConnectionBean);
-                increaseSessionCreateCount();
             } catch (JMException e) {
                 LOG.warn("Could not register connection", e);
             }
@@ -333,7 +303,7 @@ public abstract class ServerCnxnFactory {
         maxCnxns = Integer.getInteger(ZOOKEEPER_MAX_CONNECTION, ZOOKEEPER_MAX_CONNECTION_DEFAULT);
         if (maxCnxns < 0) {
             maxCnxns = ZOOKEEPER_MAX_CONNECTION_DEFAULT;
-            LOG.warn("maxCnxns should be greater than or equal to 0, using default vlaue {}.",
+            LOG.warn("maxCnxns should be greater than or equal to 0, using default value {}.",
                     ZOOKEEPER_MAX_CONNECTION_DEFAULT);
         } else if (maxCnxns == ZOOKEEPER_MAX_CONNECTION_DEFAULT) {
             LOG.warn("maxCnxns is not configured, using default value {}.",

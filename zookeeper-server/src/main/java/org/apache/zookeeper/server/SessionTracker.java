@@ -107,16 +107,16 @@ public interface SessionTracker {
      * @param sessionId
      * @param owner
      */
-    void checkSession(long sessionId, Object owner) throws KeeperException.SessionExpiredException, KeeperException.SessionMovedException, KeeperException.UnknownSessionException;
+    void checkSession(long sessionId, Object owner) throws SessionExpiredException, KeeperException.SessionMovedException, KeeperException.UnknownSessionException;
 
     /**
      * Strictly check that a given session is a global session or not
      * @param sessionId
      * @param owner
-     * @throws KeeperException.SessionExpiredException
+     * @throws SessionExpiredException
      * @throws KeeperException.SessionMovedException
      */
-    void checkGlobalSession(long sessionId, Object owner) throws KeeperException.SessionExpiredException, KeeperException.SessionMovedException;
+    void checkGlobalSession(long sessionId, Object owner) throws SessionExpiredException, KeeperException.SessionMovedException;
 
     void setOwner(long id, Object owner) throws SessionExpiredException;
 
@@ -138,4 +138,14 @@ public interface SessionTracker {
     long getLocalSessionCount();
 
     boolean isLocalSessionsEnabled();
+
+    /**
+     * Get a set of global session IDs
+     */
+    Set<Long> globalSessions();
+
+    /**
+     * Get a set of local session IDs
+     */
+    Set<Long> localSessions();
 }

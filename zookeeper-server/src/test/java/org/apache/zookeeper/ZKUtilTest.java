@@ -18,25 +18,28 @@
 
 package org.apache.zookeeper;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assume.assumeTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertIterableEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.test.ClientBase;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 public class ZKUtilTest extends ClientBase {
 
     private static final File testData = new File(System.getProperty("test.data.dir", "build/test/data"));
 
-    @BeforeClass
+    @BeforeAll
     public static void init() {
         testData.mkdirs();
     }
@@ -71,14 +74,15 @@ public class ZKUtilTest extends ClientBase {
         String absolutePath = file.getAbsolutePath();
         String error = ZKUtil.validateFileInput(absolutePath);
         assertNotNull(error);
-        String expectedMessage = "'" + absolutePath + "' is a direcory. it must be a file.";
+        String expectedMessage = "'" + absolutePath + "' is a directory. it must be a file.";
         assertEquals(expectedMessage, error);
     }
 
     @Test
     public void testUnreadableFileInput() throws Exception {
-        //skip this test on Windows, coverage on Linux
-        assumeTrue(!org.apache.zookeeper.Shell.WINDOWS);
+        //skip this test on Windows and WSL, coverage on Linux
+        assumeTrue("Skipping this test on Windows and WSL",
+                !(Shell.WINDOWS || Shell.isWsl()));
         File file = File.createTempFile("test", ".junit", testData);
         file.setReadable(false, false);
         file.deleteOnExit();
@@ -87,6 +91,36 @@ public class ZKUtilTest extends ClientBase {
         assertNotNull(error);
         String expectedMessage = "Read permission is denied on the file '" + absolutePath + "'";
         assertEquals(expectedMessage, error);
+    }
+
+    @Test
+    public void testListRootPathSuccess() throws IOException, InterruptedException, KeeperException {
+        TestableZooKeeper zk = createClient();
+        zk.setData("/", "some".getBytes(), -1);
+        zk.create("/a", "some".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+        zk.create("/a/b", "some".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+
+        List<String> list = ZKUtil.listSubTreeBFS(zk, "/");
+        list.remove(Quotas.procZookeeper);
+        list.remove(Quotas.quotaZookeeper);
+        list.remove(ZooDefs.CONFIG_NODE);
+        assertEquals(3, list.size());
+        assertIterableEquals(Arrays.asList("/", "/a", "/a/b"), list);
+    }
+
+    @Test
+    public void testListNoneRootPathSuccess() throws IOException, InterruptedException, KeeperException {
+        TestableZooKeeper zk = createClient();
+        zk.setData("/", "some".getBytes(), -1);
+        zk.create("/a", "some".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+        zk.create("/a/b", "some".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+        List<String> aList = ZKUtil.listSubTreeBFS(zk, "/a");
+        assertEquals(2, aList.size());
+        assertIterableEquals(Arrays.asList("/a", "/a/b"), aList);
+
+        List<String> bList = ZKUtil.listSubTreeBFS(zk, "/a/b");
+        assertEquals(1, bList.size());
+        assertIterableEquals(Collections.singletonList("/a/b"), bList);
     }
 
     @Test
@@ -134,6 +168,6 @@ public class ZKUtilTest extends ClientBase {
 
         ZKUtil.deleteRecursive(zk, parentPath, batchSize);
         Stat exists = zk.exists(parentPath, false);
-        assertNull("ZKUtil.deleteRecursive() could not delete all the z nodes", exists);
+        assertNull(exists, "ZKUtil.deleteRecursive() could not delete all the z nodes");
     }
 }

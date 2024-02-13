@@ -18,9 +18,9 @@
 
 package org.apache.zookeeper.test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -31,12 +31,13 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import org.apache.zookeeper.ZooDefs;
+import org.apache.zookeeper.server.Request;
 import org.apache.zookeeper.server.persistence.FileTxnLog;
 import org.apache.zookeeper.server.persistence.TxnLog;
 import org.apache.zookeeper.server.util.LogChopper;
 import org.apache.zookeeper.txn.DeleteTxn;
 import org.apache.zookeeper.txn.TxnHeader;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 class Pair<V1, V2> {
 
@@ -85,7 +86,7 @@ public class LogChopperTest extends ClientBase {
         }
         txnLog.close();
         rmr(tmp);
-        return new Pair<Long, Long>(firstZxid, lastZxid);
+        return new Pair<>(firstZxid, lastZxid);
     }
 
     @Test
@@ -101,12 +102,12 @@ public class LogChopperTest extends ClientBase {
 
         for (int i = 0; i < 100; i++) {
             TxnHeader hdr = new TxnHeader(clientId, cxid, ++zxid, ++time, type);
-            txnLog.append(hdr, txn);
+            txnLog.append(new Request(0, 0, 0, hdr, txn, 0));
         }
 
         // append a txn with gap
         TxnHeader hdr = new TxnHeader(clientId, cxid, zxid + 10, ++time, type);
-        txnLog.append(hdr, txn);
+        txnLog.append(new Request(0, 0, 0, hdr, txn, 0));
 
         txnLog.commit();
 

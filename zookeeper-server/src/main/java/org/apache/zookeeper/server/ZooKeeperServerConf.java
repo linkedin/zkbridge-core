@@ -67,10 +67,6 @@ public class ZooKeeperServerConf {
      */
     public static final String KEY_CLIENT_PORT_LISTEN_BACKLOG = "client_port_listen_backlog";
 
-    public static final String SPIRAL_SERVER = "spiral_server";
-
-    public static final String SPIRAL_PORT = "spiral_port";
-
     private final int clientPort;
     private final String dataDir;
     private final String dataLogDir;
@@ -80,9 +76,6 @@ public class ZooKeeperServerConf {
     private final int maxSessionTimeout;
     private final long serverId;
     private final int clientPortListenBacklog;
-
-    private String spiralServer;
-    private long spiralPort;
 
     /**
      * Creates a new configuration.
@@ -106,17 +99,8 @@ public class ZooKeeperServerConf {
         this.maxSessionTimeout = maxSessionTimeout;
         this.serverId = serverId;
         this.clientPortListenBacklog = clientPortListenBacklog;
-        this.spiralServer = null;
-        this.spiralPort = -1L;
     }
 
-    public void setSpiralServer(String spiralServer) {
-        this.spiralServer = spiralServer;
-    }
-
-    public void setSpiralPort(long spiralPort) {
-        this.spiralPort = spiralPort;
-    }
     /**
      * Gets the client port.
      *
@@ -203,7 +187,7 @@ public class ZooKeeperServerConf {
      * @return map representation of configuration
      */
     public Map<String, Object> toMap() {
-        Map<String, Object> conf = new LinkedHashMap<String, Object>();
+        Map<String, Object> conf = new LinkedHashMap<>();
         conf.put(KEY_CLIENT_PORT, clientPort);
         conf.put(KEY_DATA_DIR, dataDir);
         conf.put(KEY_DATA_LOG_DIR, dataLogDir);
@@ -213,8 +197,6 @@ public class ZooKeeperServerConf {
         conf.put(KEY_MAX_SESSION_TIMEOUT, maxSessionTimeout);
         conf.put(KEY_SERVER_ID, serverId);
         conf.put(KEY_CLIENT_PORT_LISTEN_BACKLOG, clientPortListenBacklog);
-        conf.put(SPIRAL_SERVER, spiralServer);
-        conf.put(SPIRAL_PORT, spiralPort);
         return conf;
     }
 

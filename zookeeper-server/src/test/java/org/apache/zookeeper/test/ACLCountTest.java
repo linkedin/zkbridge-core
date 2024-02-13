@@ -19,8 +19,8 @@
 package org.apache.zookeeper.test;
 
 import static org.apache.zookeeper.test.ClientBase.CONNECTION_TIMEOUT;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +35,8 @@ import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.server.ServerCnxnFactory;
 import org.apache.zookeeper.server.SyncRequestProcessor;
 import org.apache.zookeeper.server.ZooKeeperServer;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,8 +59,7 @@ public class ACLCountTest extends ZKTestCase {
      * since there are only 2 *unique* ACL values.
      */
     @Test
-    public void testAclCount() throws Exception {
-        File tmpDir = ClientBase.createTmpDir();
+    public void testAclCount(@TempDir File tmpDir) throws Exception {
         ClientBase.setupTestEnv();
         ZooKeeperServer zks = new ZooKeeperServer(tmpDir, tmpDir, 3000);
         SyncRequestProcessor.setSnapCount(1000);
@@ -70,16 +70,16 @@ public class ACLCountTest extends ZKTestCase {
 
         final ArrayList<ACL> CREATOR_ALL_AND_WORLD_READABLE = new ArrayList<ACL>() {
             {
-                add(new ACL(ZooDefs.Perms.READ, ZooDefs.Ids.ANYONE_ID_UNSAFE));
-                add(new ACL(ZooDefs.Perms.ALL, ZooDefs.Ids.AUTH_IDS));
-                add(new ACL(ZooDefs.Perms.READ, ZooDefs.Ids.ANYONE_ID_UNSAFE));
-                add(new ACL(ZooDefs.Perms.ALL, ZooDefs.Ids.AUTH_IDS));
+                add(new ACL(ZooDefs.Perms.READ, Ids.ANYONE_ID_UNSAFE));
+                add(new ACL(ZooDefs.Perms.ALL, Ids.AUTH_IDS));
+                add(new ACL(ZooDefs.Perms.READ, Ids.ANYONE_ID_UNSAFE));
+                add(new ACL(ZooDefs.Perms.ALL, Ids.AUTH_IDS));
             }
         };
 
         try {
             LOG.info("starting up the zookeeper server .. waiting");
-            assertTrue("waiting for server being up", ClientBase.waitForServerUp(HOSTPORT, CONNECTION_TIMEOUT));
+            assertTrue(ClientBase.waitForServerUp(HOSTPORT, CONNECTION_TIMEOUT), "waiting for server being up");
             zk = ClientBase.createZKClient(HOSTPORT);
 
             zk.addAuthInfo("digest", "pat:test".getBytes());

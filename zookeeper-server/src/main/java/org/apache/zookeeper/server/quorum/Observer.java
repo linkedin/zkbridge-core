@@ -18,10 +18,12 @@
 
 package org.apache.zookeeper.server.quorum;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.jute.Record;
+import org.apache.zookeeper.common.Time;
 import org.apache.zookeeper.server.ObserverBean;
 import org.apache.zookeeper.server.Request;
 import org.apache.zookeeper.server.ServerMetrics;
@@ -77,9 +79,9 @@ public class Observer extends Learner {
     /**
      * next learner master to try, when specified
      */
-    private static final AtomicReference<QuorumPeer.QuorumServer> nextLearnerMaster = new AtomicReference<>();
+    private static final AtomicReference<QuorumServer> nextLearnerMaster = new AtomicReference<>();
 
-    private QuorumPeer.QuorumServer currentLearnerMaster = null;
+    private QuorumServer currentLearnerMaster = null;
 
     Observer(QuorumPeer self, ObserverZooKeeperServer observerZooKeeperServer) {
         this.self = self;
@@ -113,11 +115,14 @@ public class Observer extends Learner {
                     throw new Exception("learned about role change");
                 }
 
+                final long startTime = Time.currentElapsedTime();
                 self.setLeaderAddressAndId(master.addr, master.getId());
                 self.setZabState(QuorumPeer.ZabState.SYNCHRONIZATION);
                 syncWithLeader(newLeaderZxid);
                 self.setZabState(QuorumPeer.ZabState.BROADCAST);
                 completedSync = true;
+                final long syncTime = Time.currentElapsedTime() - startTime;
+                ServerMetrics.getMetrics().OBSERVER_SYNC_TIME.add(syncTime);
                 QuorumPacket qp = new QuorumPacket();
                 while (this.isRunning() && nextLearnerMaster.get() == null) {
                     readPacket(qp);
@@ -147,13 +152,13 @@ public class Observer extends Learner {
     }
 
     private QuorumServer findLearnerMaster() {
-        QuorumPeer.QuorumServer prescribedLearnerMaster = nextLearnerMaster.getAndSet(null);
+        QuorumServer prescribedLearnerMaster = nextLearnerMaster.getAndSet(null);
         if (prescribedLearnerMaster != null
             && self.validateLearnerMaster(Long.toString(prescribedLearnerMaster.id)) == null) {
             LOG.warn("requested next learner master {} is no longer valid", prescribedLearnerMaster);
             prescribedLearnerMaster = null;
         }
-        final QuorumPeer.QuorumServer master = (prescribedLearnerMaster == null)
+        final QuorumServer master = (prescribedLearnerMaster == null)
             ? self.findLearnerMaster(findLeader())
             : prescribedLearnerMaster;
         currentLearnerMaster = master;
@@ -217,7 +222,7 @@ public class Observer extends Learner {
             hdr = logEntry.getHeader();
             txn = logEntry.getTxn();
             digest = logEntry.getDigest();
-            QuorumVerifier qv = self.configFromString(new String(((SetDataTxn) txn).getData()));
+            QuorumVerifier qv = self.configFromString(new String(((SetDataTxn) txn).getData(), UTF_8));
 
             request = new Request(hdr.getClientId(), hdr.getCxid(), hdr.getType(), hdr, txn, 0);
             request.setTxnDigest(digest);
@@ -266,7 +271,7 @@ public class Observer extends Learner {
     }
 
     public long getLearnerMasterId() {
-        QuorumPeer.QuorumServer current = currentLearnerMaster;
+        QuorumServer current = currentLearnerMaster;
         return current == null ? -1 : current.id;
     }
 
@@ -276,7 +281,7 @@ public class Observer extends Learner {
      * fail over to the next available learner master.
      */
     public boolean setLearnerMaster(String learnerMaster) {
-        final QuorumPeer.QuorumServer server = self.validateLearnerMaster(learnerMaster);
+        final QuorumServer server = self.validateLearnerMaster(learnerMaster);
         if (server == null) {
             return false;
         } else if (server.equals(currentLearnerMaster)) {
@@ -289,7 +294,7 @@ public class Observer extends Learner {
         }
     }
 
-    public QuorumPeer.QuorumServer getCurrentLearnerMaster() {
+    public QuorumServer getCurrentLearnerMaster() {
         return currentLearnerMaster;
     }
 

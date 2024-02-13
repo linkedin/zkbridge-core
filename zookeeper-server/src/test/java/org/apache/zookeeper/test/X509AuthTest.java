@@ -18,8 +18,9 @@
 
 package org.apache.zookeeper.test;
 
-import static org.junit.Assert.assertEquals;
-import com.google.common.annotations.VisibleForTesting;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 import java.math.BigInteger;
 import java.net.Socket;
 import java.security.InvalidKeyException;
@@ -34,23 +35,22 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateExpiredException;
 import java.security.cert.CertificateNotYetValidException;
 import java.security.cert.X509Certificate;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import javax.net.ssl.X509KeyManager;
 import javax.net.ssl.X509TrustManager;
 import javax.security.auth.x500.X500Principal;
+import javax.servlet.http.HttpServletRequest;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZKTestCase;
+import org.apache.zookeeper.data.Id;
 import org.apache.zookeeper.server.MockServerCnxn;
-import org.apache.zookeeper.server.auth.X509AuthenticationConfig;
 import org.apache.zookeeper.server.auth.X509AuthenticationProvider;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 public class X509AuthTest extends ZKTestCase {
 
@@ -58,7 +58,7 @@ public class X509AuthTest extends ZKTestCase {
     private static TestCertificate superCert;
     private static TestCertificate unknownCert;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         System.setProperty("zookeeper.X509AuthenticationProvider.superUser", "CN=SUPER");
         System.setProperty("zookeeper.ssl.keyManager", "org.apache.zookeeper.test.X509AuthTest.TestKeyManager");
@@ -75,6 +75,8 @@ public class X509AuthTest extends ZKTestCase {
         MockServerCnxn cnxn = new MockServerCnxn();
         cnxn.clientChain = new X509Certificate[]{clientCert};
         assertEquals(KeeperException.Code.OK, provider.handleAuthentication(cnxn, null));
+        final List<Id> ids = Arrays.asList(new Id("x509", "CN=CLIENT"));
+        assertEquals(ids, cnxn.getAuthInfo());
     }
 
     @Test
@@ -83,7 +85,8 @@ public class X509AuthTest extends ZKTestCase {
         MockServerCnxn cnxn = new MockServerCnxn();
         cnxn.clientChain = new X509Certificate[]{superCert};
         assertEquals(KeeperException.Code.OK, provider.handleAuthentication(cnxn, null));
-        assertEquals("super", cnxn.getAuthInfo().get(0).getScheme());
+        final List<Id> ids = Arrays.asList(new Id("super", "CN=SUPER"), new Id("x509", "CN=SUPER"));
+        assertEquals(ids, cnxn.getAuthInfo());
     }
 
     @Test
@@ -95,43 +98,32 @@ public class X509AuthTest extends ZKTestCase {
     }
 
     @Test
-    public void testSANBasedAuth() {
-        String clientCertIdType = "SAN";
-        String clientCertIdSANMatchType = "6";
-        // The following clientCertIdSANMatchRegex matches the entire SAN String
-        String clientCertIdSANMatchRegex = ".*";
-        // TEST_SAN_STR = "a:b:c(d;e;f)" in the test. The following clientCertIdSANExtractRegex
-        // extracts the first element in the parentheses excluding "a:b:c(" and trailing ";*"
-        String clientCertIdSANExtractRegex = "^a:b:c\\((.+);.+;.+\\)$";
-        // The following clientCertIdSANExtractMatcherGroupIndex specifies the first index in the
-        // Matcher group, which is "d"
-        String clientCertIdSANExtractMatcherGroupIndex = "1";
-        String expectedClientIdFromSANExtraction = "d";
+    public void testTrustedAuth_HttpServletRequest() {
+        final X509AuthenticationProvider provider = createProvider(clientCert);
+        final HttpServletRequest mockRequest =  mock(HttpServletRequest.class);
+        Mockito.doReturn(new X509Certificate[]{clientCert}).when(mockRequest).getAttribute(X509AuthenticationProvider.X509_CERTIFICATE_ATTRIBUTE_NAME);
+        final List<Id> ids = Arrays.asList(new Id("x509", "CN=CLIENT"));
+        assertEquals(ids, provider.handleAuthentication(mockRequest, null));
+    }
 
-    // Set JVM properties to enable SAN-based client id extraction
-    System.setProperty(X509AuthenticationConfig.SSL_X509_CLIENT_CERT_ID_TYPE, clientCertIdType);
-    System.setProperty(X509AuthenticationConfig.SSL_X509_CLIENT_CERT_ID_SAN_MATCH_TYPE, clientCertIdSANMatchType);
-    System.setProperty(X509AuthenticationConfig.SSL_X509_CLIENT_CERT_ID_SAN_MATCH_REGEX, clientCertIdSANMatchRegex);
-    System.setProperty(X509AuthenticationConfig.SSL_X509_CLIENT_CERT_ID_SAN_EXTRACT_REGEX, clientCertIdSANExtractRegex);
-    System.setProperty(X509AuthenticationConfig.SSL_X509_CLIENT_CERT_ID_SAN_EXTRACT_MATCHER_GROUP_INDEX,
-        clientCertIdSANExtractMatcherGroupIndex);
+    @Test
+    public void testSuperAuth_HttpServletRequest() {
+        final X509AuthenticationProvider provider = createProvider(superCert);
+        final HttpServletRequest mockRequest =  mock(HttpServletRequest.class);
+        Mockito.doReturn(new X509Certificate[]{superCert}).when(mockRequest).getAttribute(X509AuthenticationProvider.X509_CERTIFICATE_ATTRIBUTE_NAME);
+        final List<Id> ids = Arrays.asList(new Id("super", "CN=SUPER"), new Id("x509", "CN=SUPER"));
+        assertEquals(ids, provider.handleAuthentication(mockRequest, null));
+    }
 
-        X509AuthenticationProvider provider = createProvider(clientCert);
-        MockServerCnxn cnxn = new MockServerCnxn();
-        cnxn.clientChain = new X509Certificate[]{clientCert};
-        assertEquals(KeeperException.Code.OK, provider.handleAuthentication(cnxn, null));
-        assertEquals(expectedClientIdFromSANExtraction, cnxn.getAuthInfo().get(0).getId());
+    @Test
+    public void testUntrustedAuth_HttpServletRequest() {
+        final X509AuthenticationProvider provider = createProvider(clientCert);
+        final HttpServletRequest mockRequest =  mock(HttpServletRequest.class);
+        Mockito.doReturn(new X509Certificate[]{unknownCert}).when(mockRequest).getAttribute(X509AuthenticationProvider.X509_CERTIFICATE_ATTRIBUTE_NAME);
+        assertTrue(provider.handleAuthentication(mockRequest, null).isEmpty());
+    }
 
-    // Remove JVM properties so they don't interfere with other tests
-    System.clearProperty(X509AuthenticationConfig.SSL_X509_CLIENT_CERT_ID_TYPE);
-    System.clearProperty(X509AuthenticationConfig.SSL_X509_CLIENT_CERT_ID_SAN_MATCH_TYPE);
-    System.clearProperty(X509AuthenticationConfig.SSL_X509_CLIENT_CERT_ID_SAN_MATCH_REGEX);
-    System.clearProperty(X509AuthenticationConfig.SSL_X509_CLIENT_CERT_ID_SAN_EXTRACT_REGEX);
-    System.clearProperty(X509AuthenticationConfig.SSL_X509_CLIENT_CERT_ID_SAN_EXTRACT_MATCHER_GROUP_INDEX);
-    X509AuthenticationConfig.reset();
-  }
-
-  protected static class TestPublicKey implements PublicKey {
+    private static class TestPublicKey implements PublicKey {
 
         private static final long serialVersionUID = 1L;
         @Override
@@ -149,25 +141,17 @@ public class X509AuthTest extends ZKTestCase {
 
     }
 
-    public static class TestCertificate extends X509Certificate {
-        @VisibleForTesting
-        static final String TEST_SAN_STR = "a:b:c(d;e;f)";
+    private static class TestCertificate extends X509Certificate {
+
         private byte[] encoded;
         private X500Principal principal;
         private PublicKey publicKey;
-        private String subjectAlternativeName;
-
         public TestCertificate(String name) {
-          this(name, TEST_SAN_STR);
+            encoded = name.getBytes();
+            principal = new X500Principal("CN=" + name);
+            publicKey = new TestPublicKey();
         }
-
-        public TestCertificate(String name, String sanVal) {
-          encoded = name.getBytes();
-          principal = new X500Principal("CN=" + name);
-          publicKey = new TestPublicKey();
-          subjectAlternativeName = sanVal;
-        }
-          @Override
+        @Override
         public boolean hasUnsupportedCriticalExtension() {
             return false;
         }
@@ -271,13 +255,7 @@ public class X509AuthTest extends ZKTestCase {
         public X500Principal getSubjectX500Principal() {
             return principal;
         }
-        @Override
-        public Collection<List<?>> getSubjectAlternativeNames() {
-            List<Object> subjectAlternativeNamePair = new ArrayList<>();
-            subjectAlternativeNamePair.add(6);
-            subjectAlternativeNamePair.add(subjectAlternativeName);
-            return Collections.singletonList(subjectAlternativeNamePair);
-        }
+
     }
 
     public static class TestKeyManager implements X509KeyManager {

@@ -18,7 +18,8 @@
 package org.apache.zookeeper.audit;
 
 import static org.apache.zookeeper.test.ClientBase.CONNECTION_TIMEOUT;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.LineNumberReader;
@@ -38,17 +39,17 @@ import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.audit.AuditEvent.Result;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
-import org.apache.zookeeper.server.Request;
 import org.apache.zookeeper.server.ServerCnxn;
 import org.apache.zookeeper.server.quorum.QuorumPeerTestBase;
+import org.apache.zookeeper.server.util.AuthUtil;
 import org.apache.zookeeper.test.ClientBase;
 import org.apache.zookeeper.test.ClientBase.CountdownWatcher;
 import org.apache.zookeeper.test.LoggerTestTool;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +60,7 @@ public class Slf4JAuditLoggerTest extends QuorumPeerTestBase {
     private static ZooKeeper zk;
     private static ByteArrayOutputStream os;
 
-    @BeforeClass
+    @BeforeAll
     public static void setUpBeforeClass() throws Exception {
         System.setProperty(ZKAuditProvider.AUDIT_ENABLE, "true");
         // setup the logger to capture all logs
@@ -73,7 +74,7 @@ public class Slf4JAuditLoggerTest extends QuorumPeerTestBase {
         verifyLogs(expectedAuditLog, logs);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         os.reset();
     }
@@ -289,9 +290,7 @@ public class Slf4JAuditLoggerTest extends QuorumPeerTestBase {
 
     private String getUser() {
         ServerCnxn next = getServerCnxn();
-        Request request = new Request(next, -1, -1, -1, null,
-                next.getAuthInfo());
-        return request.getUsers();
+        return AuthUtil.getUsers(next.getAuthInfo());
     }
 
     private String getIp() {
@@ -312,7 +311,7 @@ public class Slf4JAuditLoggerTest extends QuorumPeerTestBase {
         String searchString = " - ";
         int logStartIndex = log.indexOf(searchString);
         String auditLog = log.substring(logStartIndex + searchString.length());
-        Assert.assertTrue(auditLog.endsWith(expectedLog));
+        assertTrue(auditLog.endsWith(expectedLog));
     }
 
     private static void verifyLogs(String expectedLog, List<String> logs) {
@@ -346,10 +345,9 @@ public class Slf4JAuditLoggerTest extends QuorumPeerTestBase {
             logs.add(line);
         }
         os.reset();
-        assertEquals(
+        assertEquals(numberOfLogEntry, logs.size(),
                 "Expected number of log entries are not generated. Logs are "
-                        + logs,
-                numberOfLogEntry, logs.size());
+                        + logs);
         return logs;
 
     }
@@ -382,9 +380,8 @@ public class Slf4JAuditLoggerTest extends QuorumPeerTestBase {
 
         // ensure all servers started
         for (int i = 0; i < SERVER_COUNT; i++) {
-            Assert.assertTrue("waiting for server " + i + " being up",
-                    ClientBase.waitForServerUp("127.0.0.1:" + clientPorts[i],
-                            CONNECTION_TIMEOUT));
+            Assertions.assertTrue(ClientBase.waitForServerUp("127.0.0.1:" + clientPorts[i],
+                    CONNECTION_TIMEOUT), "waiting for server " + i + " being up");
         }
         return mt;
     }
@@ -399,16 +396,15 @@ public class Slf4JAuditLoggerTest extends QuorumPeerTestBase {
             try {
                 Thread.sleep(waitInterval);
             } catch (InterruptedException e) {
-                Assert.fail("CurrentEpoch update failed");
+                Assertions.fail("CurrentEpoch update failed");
             }
             elapsedTime = elapsedTime + waitInterval;
             exists = zooKeeper.exists(path, false);
         }
-        Assert.assertNull("Node " + path + " not deleted in " + timeout + " ms",
-                exists);
+        Assertions.assertNull(exists, "Node " + path + " not deleted in " + timeout + " ms");
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownAfterClass() {
         System.clearProperty(ZKAuditProvider.AUDIT_ENABLE);
         for (int i = 0; i < SERVER_COUNT; i++) {
@@ -417,11 +413,6 @@ public class Slf4JAuditLoggerTest extends QuorumPeerTestBase {
                     mt[i].shutdown();
                 }
             } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            try {
-                os.close();
-            } catch (IOException e) {
                 e.printStackTrace();
             }
         }

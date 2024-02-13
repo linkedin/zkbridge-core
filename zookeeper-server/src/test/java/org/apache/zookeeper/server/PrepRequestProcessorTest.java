@@ -18,25 +18,22 @@
 
 package org.apache.zookeeper.server;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import org.apache.jute.BinaryOutputArchive;
 import org.apache.jute.Record;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -48,6 +45,7 @@ import org.apache.zookeeper.PortAssignment;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooDefs.OpCode;
 import org.apache.zookeeper.data.Id;
+import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.proto.CreateRequest;
 import org.apache.zookeeper.proto.ReconfigRequest;
 import org.apache.zookeeper.proto.RequestHeader;
@@ -62,16 +60,15 @@ import org.apache.zookeeper.server.quorum.QuorumPeerConfig;
 import org.apache.zookeeper.server.quorum.flexible.QuorumVerifier;
 import org.apache.zookeeper.test.ClientBase;
 import org.apache.zookeeper.txn.ErrorTxn;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.zookeeper.txn.SetDataTxn;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 
 public class PrepRequestProcessorTest extends ClientBase {
 
-    private static final Logger LOG = LoggerFactory.getLogger(PrepRequestProcessorTest.class);
     private static final int CONNECTION_TIMEOUT = 3000;
     private static String HOSTPORT = "127.0.0.1:" + PortAssignment.unique();
     private CountDownLatch pLatch;
@@ -84,9 +81,8 @@ public class PrepRequestProcessorTest extends ClientBase {
     private boolean isReconfigEnabledPreviously;
     private boolean isStandaloneEnabledPreviously;
 
-    @Before
-    public void setup() throws Exception {
-        File tmpDir = ClientBase.createTmpDir();
+    @BeforeEach
+    public void setup(@TempDir File tmpDir) throws Exception {
         ClientBase.setupTestEnv();
         zks = new ZooKeeperServer(tmpDir, tmpDir, 3000);
         SyncRequestProcessor.setSnapCount(100);
@@ -94,14 +90,14 @@ public class PrepRequestProcessorTest extends ClientBase {
 
         servcnxnf = ServerCnxnFactory.createFactory(PORT, -1);
         servcnxnf.startup(zks);
-        assertTrue("waiting for server being up ", ClientBase.waitForServerUp(HOSTPORT, CONNECTION_TIMEOUT));
+        assertTrue(ClientBase.waitForServerUp(HOSTPORT, CONNECTION_TIMEOUT), "waiting for server being up ");
         zks.sessionTracker = new MySessionTracker();
 
         isReconfigEnabledPreviously = QuorumPeerConfig.isReconfigEnabled();
         isStandaloneEnabledPreviously = QuorumPeerConfig.isStandaloneEnabled();
     }
 
-    @After
+    @AfterEach
     public void teardown() throws Exception {
         if (servcnxnf != null) {
             servcnxnf.shutdown();
@@ -119,34 +115,28 @@ public class PrepRequestProcessorTest extends ClientBase {
     public void testPRequest() throws Exception {
         pLatch = new CountDownLatch(1);
         processor = new PrepRequestProcessor(zks, new MyRequestProcessor());
-        Request foo = new Request(null, 1L, 1, OpCode.create, ByteBuffer.allocate(3), null);
+        Request foo = new Request(null, 1L, 1, OpCode.create, RequestRecord.fromBytes(new byte[3]), null);
         processor.pRequest(foo);
 
-        assertEquals("Request should have marshalling error", new ErrorTxn(KeeperException.Code.MARSHALLINGERROR.intValue()), outcome.getTxn());
-        assertTrue("request hasn't been processed in chain", pLatch.await(5, TimeUnit.SECONDS));
+        assertEquals(new ErrorTxn(KeeperException.Code.MARSHALLINGERROR.intValue()), outcome.getTxn(), "Request should have marshalling error");
+        assertTrue(pLatch.await(5, TimeUnit.SECONDS), "request hasn't been processed in chain");
     }
 
-    private Request createRequest(Record record, int opCode) throws IOException {
+    private Request createRequest(Record record, int opCode) {
         return createRequest(record, opCode, 1L);
     }
 
-    private Request createRequest(Record record, int opCode, long sessionId) throws IOException {
+    private Request createRequest(Record record, int opCode, long sessionId) {
         return createRequest(record, opCode, sessionId, false);
     }
 
-    private Request createRequest(Record record, int opCode, boolean admin) throws IOException {
+    private Request createRequest(Record record, int opCode, boolean admin) {
         return createRequest(record, opCode, 1L, admin);
     }
 
-    private Request createRequest(Record record, int opCode, long sessionId, boolean admin) throws IOException {
-        // encoding
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        BinaryOutputArchive boa = BinaryOutputArchive.getArchive(baos);
-        record.serialize(boa, "request");
-        baos.close();
-        // Id
-        List<Id> ids = Arrays.asList(admin ? new Id("super", "super user") : Ids.ANYONE_ID_UNSAFE);
-        return new Request(null, sessionId, 0, opCode, ByteBuffer.wrap(baos.toByteArray()), ids);
+    private Request createRequest(Record record, int opCode, long sessionId, boolean admin) {
+        List<Id> ids = Collections.singletonList(admin ? new Id("super", "super user") : Ids.ANYONE_ID_UNSAFE);
+        return new Request(null, sessionId, 0, opCode, RequestRecord.fromRecord(record), ids);
     }
 
     private void process(List<Op> ops) throws Exception {
@@ -157,7 +147,7 @@ public class PrepRequestProcessorTest extends ClientBase {
         Request req = createRequest(record, OpCode.multi, false);
 
         processor.pRequest(req);
-        assertTrue("request hasn't been processed in chain", pLatch.await(5, TimeUnit.SECONDS));
+        assertTrue(pLatch.await(5, TimeUnit.SECONDS), "request hasn't been processed in chain");
     }
 
     /**
@@ -173,18 +163,18 @@ public class PrepRequestProcessorTest extends ClientBase {
         process(Arrays.asList(Op.setData("/foo", new byte[0], -1)));
 
         ChangeRecord cr = zks.outstandingChangesForPath.get("/foo");
-        assertNotNull("Change record wasn't set", cr);
-        assertEquals("Record zxid wasn't set correctly", 1, cr.zxid);
+        assertNotNull(cr, "Change record wasn't set");
+        assertEquals(1, cr.zxid, "Record zxid wasn't set correctly");
 
         process(Arrays.asList(Op.delete("/foo", -1)));
         cr = zks.outstandingChangesForPath.get("/foo");
-        assertEquals("Record zxid wasn't set correctly", 2, cr.zxid);
+        assertEquals(2, cr.zxid, "Record zxid wasn't set correctly");
 
         // It should fail and shouldn't change outstanding record.
         process(Arrays.asList(Op.delete("/foo", -1)));
         cr = zks.outstandingChangesForPath.get("/foo");
         // zxid should still be previous result because record's not changed.
-        assertEquals("Record zxid wasn't set correctly", 2, cr.zxid);
+        assertEquals(2, cr.zxid, "Record zxid wasn't set correctly");
     }
 
     @Test
@@ -194,7 +184,7 @@ public class PrepRequestProcessorTest extends ClientBase {
 
         QuorumPeer qp = new QuorumPeer();
         QuorumVerifier quorumVerifierMock = mock(QuorumVerifier.class);
-        when(quorumVerifierMock.getAllMembers()).thenReturn(LeaderBeanTest.getMockedPeerViews(qp.getId()));
+        when(quorumVerifierMock.getAllMembers()).thenReturn(LeaderBeanTest.getMockedPeerViews(qp.getMyId()));
 
         qp.setQuorumVerifier(quorumVerifierMock, false);
         FileTxnSnapLog snapLog = new FileTxnSnapLog(tmpDir, tmpDir);
@@ -207,13 +197,13 @@ public class PrepRequestProcessorTest extends ClientBase {
         Record record = new CreateRequest("/foo", "data".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT.toFlag());
         pLatch = new CountDownLatch(1);
         processor.pRequest(createRequest(record, OpCode.create, false));
-        assertTrue("request hasn't been processed in chain", pLatch.await(5, TimeUnit.SECONDS));
+        assertTrue(pLatch.await(5, TimeUnit.SECONDS), "request hasn't been processed in chain");
 
         String newMember = "server.0=localhost:" + PortAssignment.unique()  + ":" + PortAssignment.unique() + ":participant";
         record = new ReconfigRequest(null, null, newMember, 0);
         pLatch = new CountDownLatch(1);
         processor.pRequest(createRequest(record, OpCode.reconfig, true));
-        assertTrue("request hasn't been processed in chain", pLatch.await(5, TimeUnit.SECONDS));
+        assertTrue(pLatch.await(5, TimeUnit.SECONDS), "request hasn't been processed in chain");
         assertEquals(outcome.getHdr().getType(), OpCode.reconfig);   // Verifies that there was no error.
     }
 
@@ -383,7 +373,7 @@ public class PrepRequestProcessorTest extends ClientBase {
         }
         @Override
         public Map<Long, Set<Long>> getSessionExpiryMap() {
-            return new HashMap<Long, Set<Long>>();
+            return new HashMap<>();
         }
         @Override
         public long getLocalSessionCount() {
@@ -394,6 +384,119 @@ public class PrepRequestProcessorTest extends ClientBase {
         public boolean isLocalSessionsEnabled() {
             return false;
         }
+
+        public Set<Long> globalSessions() {
+            return Collections.emptySet();
+        }
+
+        public Set<Long> localSessions() {
+            return Collections.emptySet();
+        }
     }
 
+    @Test
+    public void testCheckAndIncVersion() throws Exception {
+        zks.getZKDatabase().dataTree.createNode("/foo", new byte[0], Ids.OPEN_ACL_UNSAFE, 0, 0, 0, 0);
+        pLatch = new CountDownLatch(1);
+        processor = new PrepRequestProcessor(zks, new MyRequestProcessor());
+
+        SetDataRequest record = new SetDataRequest("/foo", new byte[0], 0);
+        Request req = createRequest(record, OpCode.setData, false);
+        processor.pRequest(req);
+        pLatch.await();
+        assertEquals(OpCode.setData, outcome.getHdr().getType());
+        assertTrue(outcome.getTxn() instanceof SetDataTxn);
+        SetDataTxn setDataTxn = (SetDataTxn) outcome.getTxn();
+        assertEquals(1, setDataTxn.getVersion());
+    }
+
+    @Test
+    public void testCheckAndIncVersionOverflow() throws Exception {
+        Stat customStat = new Stat();
+        customStat.setVersion(Integer.MAX_VALUE);
+        zks.getZKDatabase().dataTree.createNode("/foo", new byte[0], Ids.OPEN_ACL_UNSAFE, 0, 0, 0, 0);
+        DataNode node = zks.getZKDatabase().dataTree.getNode("/foo");
+        node.stat = DataTree.createStat(Integer.MAX_VALUE);
+
+        pLatch = new CountDownLatch(1);
+        processor = new PrepRequestProcessor(zks, new MyRequestProcessor());
+
+        SetDataRequest record = new SetDataRequest("/foo", new byte[0], Integer.MAX_VALUE);
+        Request req = createRequest(record, OpCode.setData, false);
+        processor.pRequest(req);
+        pLatch.await();
+        assertEquals(OpCode.setData, outcome.getHdr().getType());
+        assertTrue(outcome.getTxn() instanceof SetDataTxn);
+        SetDataTxn setDataTxn = (SetDataTxn) outcome.getTxn();
+        assertEquals(Integer.MIN_VALUE, setDataTxn.getVersion());
+    }
+    @Test
+    public void testCheckAndIncVersionWithNegativeNumber() throws Exception {
+        zks.getZKDatabase().dataTree.createNode("/foo", new byte[0], Ids.OPEN_ACL_UNSAFE, 0, 0, 0, 0);
+        DataNode node = zks.getZKDatabase().dataTree.getNode("/foo");
+        node.stat = DataTree.createStat(Integer.MIN_VALUE);
+
+        pLatch = new CountDownLatch(1);
+        processor = new PrepRequestProcessor(zks, new MyRequestProcessor());
+
+        SetDataRequest record = new SetDataRequest("/foo", new byte[0], Integer.MIN_VALUE);
+        Request req = createRequest(record, OpCode.setData, false);
+        processor.pRequest(req);
+        pLatch.await();
+        assertEquals(OpCode.setData, outcome.getHdr().getType());
+        assertTrue(outcome.getTxn() instanceof SetDataTxn);
+        SetDataTxn setDataTxn = (SetDataTxn) outcome.getTxn();
+        assertEquals(Integer.MIN_VALUE + 1, setDataTxn.getVersion());
+    }
+
+    @Test
+    public void testCheckAndIncToZeroFromNegativeTwo() throws Exception {
+        zks.getZKDatabase().dataTree.createNode("/foo", new byte[0], Ids.OPEN_ACL_UNSAFE, 0, 0, 0, 0);
+        DataNode node = zks.getZKDatabase().dataTree.getNode("/foo");
+        node.stat = DataTree.createStat(-2);
+
+        pLatch = new CountDownLatch(1);
+        processor = new PrepRequestProcessor(zks, new MyRequestProcessor());
+
+        SetDataRequest record = new SetDataRequest("/foo", new byte[0], -2);
+        Request req = createRequest(record, OpCode.setData, false);
+        processor.pRequest(req);
+        pLatch.await();
+        assertEquals(OpCode.setData, outcome.getHdr().getType());
+        assertTrue(outcome.getTxn() instanceof SetDataTxn);
+        SetDataTxn setDataTxn = (SetDataTxn) outcome.getTxn();
+        assertEquals(0, setDataTxn.getVersion());
+    }
+
+    @Test
+    public void testCheckAndIncSkipEqualityCheck() throws Exception {
+        zks.getZKDatabase().dataTree.createNode("/foo", new byte[0], Ids.OPEN_ACL_UNSAFE, 0, 0, 0, 0);
+        DataNode node = zks.getZKDatabase().dataTree.getNode("/foo");
+
+        pLatch = new CountDownLatch(1);
+        processor = new PrepRequestProcessor(zks, new MyRequestProcessor());
+
+        SetDataRequest record = new SetDataRequest("/foo", new byte[0], -1);
+        Request req = createRequest(record, OpCode.setData, false);
+        processor.pRequest(req);
+        pLatch.await();
+        assertEquals(OpCode.setData, outcome.getHdr().getType());
+        assertTrue(outcome.getTxn() instanceof SetDataTxn);
+        SetDataTxn setDataTxn = (SetDataTxn) outcome.getTxn();
+        assertEquals(1, setDataTxn.getVersion());
+    }
+
+    @Test
+    public void testCheckAndIncWithBadVersion() throws Exception {
+        zks.getZKDatabase().dataTree.createNode("/foo", new byte[0], Ids.OPEN_ACL_UNSAFE, 0, 0, 0, 0);
+        pLatch = new CountDownLatch(1);
+        processor = new PrepRequestProcessor(zks, new MyRequestProcessor());
+
+        SetDataRequest record = new SetDataRequest("/foo", new byte[0], 1);
+        Request req = createRequest(record, OpCode.setData, false);
+        processor.pRequest(req);
+        pLatch.await();
+        assertEquals(OpCode.error, outcome.getHdr().getType());
+        assertEquals(KeeperException.Code.BADVERSION, outcome.getException().code());
+    }
 }

@@ -51,10 +51,11 @@ module org.apache.zookeeper.data {
         long ephemeralOwner; // owner id if ephemeral, 0 otw
         long pzxid;      // last modified children
     }
-    class PathWithStat {
-        ustring path;
-        org.apache.zookeeper.data.Stat  stat;
-     }
+
+    class ClientInfo {
+        ustring authScheme; // Authentication scheme
+        ustring user;       // user name or any other id(for example ip)
+    }
 }
 
 module org.apache.zookeeper.proto {
@@ -64,12 +65,14 @@ module org.apache.zookeeper.proto {
         int timeOut;
         long sessionId;
         buffer passwd;
+        boolean readOnly;
     }
     class ConnectResponse {
         int protocolVersion;
         int timeOut;
         long sessionId;
         buffer passwd;
+        boolean readOnly;
     }
     class SetWatches {
         long relativeZxid;
@@ -161,13 +164,6 @@ module org.apache.zookeeper.proto {
         ustring path;
         boolean watch;
     }
-    class GetChildrenPaginatedRequest {
-        ustring path;
-        int maxReturned;
-        long minCzxid;
-        int czxidOffset;
-        boolean watch;
-     }
     class CheckVersionRequest {
         ustring path;
         int version;
@@ -239,12 +235,6 @@ module org.apache.zookeeper.proto {
         vector<ustring> children;
         org.apache.zookeeper.data.Stat stat;
     }
-    class GetChildrenPaginatedResponse {
-        vector<ustring> children;
-        org.apache.zookeeper.data.Stat stat;
-        long nextPageCzxid;
-        int nextPageCzxidOffset;
-    }
     class GetACLResponse {
         vector<org.apache.zookeeper.data.ACL> acl;
         org.apache.zookeeper.data.Stat stat;
@@ -265,6 +255,11 @@ module org.apache.zookeeper.proto {
     class GetEphemeralsResponse {
         vector<ustring> ephemerals;
     }
+
+    class WhoAmIResponse {
+        vector<org.apache.zookeeper.data.ClientInfo> clientInfo;
+    }
+
 }
 
 module org.apache.zookeeper.server.quorum {

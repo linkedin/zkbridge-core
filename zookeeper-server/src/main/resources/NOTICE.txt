@@ -1,5 +1,5 @@
 Apache ZooKeeper
-Copyright 2009-2022 The Apache Software Foundation
+Copyright 2009-2021 The Apache Software Foundation
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
@@ -180,13 +180,13 @@ framework, which can be obtained at:
   * HOMEPAGE:
     * https://commons.apache.org/logging/
 
-This product optionally depends on 'Apache Logback', a logging framework,
-which can be obtained at:
+This product optionally depends on 'Apache Log4J', a logging framework, which
+can be obtained at:
 
   * LICENSE:
-    * license/LICENSE.logback.txt (Eclipse Public License 1.0)
+    * license/LICENSE.log4j.txt (Apache License 2.0)
   * HOMEPAGE:
-    * https://logback.qos.ch/
+    * https://logging.apache.org/log4j/
 
 This product optionally depends on 'Aalto XML', an ultra-high performance
 non-blocking XML processor, which can be obtained at:

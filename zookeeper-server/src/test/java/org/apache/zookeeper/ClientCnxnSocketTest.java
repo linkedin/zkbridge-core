@@ -18,25 +18,25 @@
 
 package org.apache.zookeeper;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import java.io.IOException;
 import org.apache.zookeeper.client.ZKClientConfig;
 import org.apache.zookeeper.common.ZKConfig;
 import org.apache.zookeeper.test.TestByteBufAllocator;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class ClientCnxnSocketTest {
 
-    @Before
+    @BeforeEach
     public void setUp() {
         ClientCnxnSocketNetty.setTestAllocator(TestByteBufAllocator.getInstance());
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         ClientCnxnSocketNetty.clearTestAllocator();
         TestByteBufAllocator.checkForLeaks();
@@ -89,5 +89,15 @@ public class ClientCnxnSocketTest {
         } catch (IOException e) {
             assertEquals("Packet len " + length + " is out of range!", e.getMessage());
         }
+    }
+
+    @Test
+    public void testClientCanBeClosedWhenNotInitialized() throws IOException {
+        ZKClientConfig clientConfig = new ZKClientConfig();
+        final ClientCnxnSocketNetty clientCnxnSocket = new ClientCnxnSocketNetty(clientConfig);
+        // Should not throw
+        clientCnxnSocket.close();
+        // Call onClosing explicitly since it otherwise won't be invoked without more setup.
+        clientCnxnSocket.onClosing();
     }
 }

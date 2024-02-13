@@ -79,8 +79,6 @@ public class ZooDefs {
 
         int multiRead = 22;
 
-        int getChildrenPaginated = 71;
-
         int auth = 100;
 
         int setWatches = 101;
@@ -94,6 +92,8 @@ public class ZooDefs {
         int setWatches2 = 105;
 
         int addWatch = 106;
+
+        int whoAmI = 107;
 
         int createSession = -10;
 
@@ -138,19 +138,19 @@ public class ZooDefs {
          * This is a completely open ACL .
          */
         @SuppressFBWarnings(value = "MS_MUTABLE_COLLECTION", justification = "Cannot break API")
-        ArrayList<ACL> OPEN_ACL_UNSAFE = new ArrayList<ACL>(Collections.singletonList(new ACL(Perms.ALL, ANYONE_ID_UNSAFE)));
+        ArrayList<ACL> OPEN_ACL_UNSAFE = new ArrayList<>(Collections.singletonList(new ACL(Perms.ALL, ANYONE_ID_UNSAFE)));
 
         /**
          * This ACL gives the creators authentication id's all permissions.
          */
         @SuppressFBWarnings(value = "MS_MUTABLE_COLLECTION", justification = "Cannot break API")
-        ArrayList<ACL> CREATOR_ALL_ACL = new ArrayList<ACL>(Collections.singletonList(new ACL(Perms.ALL, AUTH_IDS)));
+        ArrayList<ACL> CREATOR_ALL_ACL = new ArrayList<>(Collections.singletonList(new ACL(Perms.ALL, AUTH_IDS)));
 
         /**
          * This ACL gives the world the ability to read.
          */
         @SuppressFBWarnings(value = "MS_MUTABLE_COLLECTION", justification = "Cannot break API")
-        ArrayList<ACL> READ_ACL_UNSAFE = new ArrayList<ACL>(Collections.singletonList(new ACL(Perms.READ, ANYONE_ID_UNSAFE)));
+        ArrayList<ACL> READ_ACL_UNSAFE = new ArrayList<>(Collections.singletonList(new ACL(Perms.READ, ANYONE_ID_UNSAFE)));
 
     }
 
@@ -160,14 +160,5 @@ public class ZooDefs {
 
         int persistentRecursive = 1;  // matches AddWatchMode.PERSISTENT_RECURSIVE
     }
-
-    @InterfaceAudience.Public
-    public interface GetChildrenPaginated {
-        // Represents the current fetched page is the final page, no more children left to fetch.
-        long lastPageMinCzxid = -1L;
-        int lastPageCzxidOffset = -1;
-    }
-
-    public static final String[] opNames = {"notification", "create", "delete", "exists", "getData", "setData", "getACL", "setACL", "getChildren", "getChildren2", "getMaxChildren", "setMaxChildren", "ping", "reconfig", "getConfig"};
 
 }

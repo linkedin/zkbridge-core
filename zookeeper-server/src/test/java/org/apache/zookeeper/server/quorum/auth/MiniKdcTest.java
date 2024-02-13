@@ -18,8 +18,8 @@
 
 package org.apache.zookeeper.server.quorum.auth;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import java.io.File;
 import java.security.Principal;
 import java.util.Arrays;
@@ -32,7 +32,8 @@ import javax.security.auth.login.LoginContext;
 import org.apache.kerby.kerberos.kerb.keytab.Keytab;
 import org.apache.kerby.kerberos.kerb.type.base.PrincipalName;
 import org.apache.zookeeper.server.quorum.auth.KerberosTestUtils.KerberosConfiguration;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 /*
  * This code is originally from HDFS, see the file name TestMiniKdc there
@@ -43,13 +44,16 @@ import org.junit.Test;
  */
 public class MiniKdcTest extends KerberosSecurityTestcase {
 
-    @Test(timeout = 60000)
+
+    @Test
+    @Timeout(value = 60)
     public void testMiniKdcStart() {
         MiniKdc kdc = getKdc();
         assertNotSame(0, kdc.getPort());
     }
 
-    @Test(timeout = 60000)
+    @Test
+    @Timeout(value = 60)
     public void testKeytabGen() throws Exception {
         MiniKdc kdc = getKdc();
         File workDir = getWorkDir();
@@ -57,17 +61,18 @@ public class MiniKdcTest extends KerberosSecurityTestcase {
         kdc.createPrincipal(new File(workDir, "keytab"), "foo/bar", "bar/foo");
         List<PrincipalName> principalNameList = Keytab.loadKeytab(new File(workDir, "keytab")).getPrincipals();
 
-        Set<String> principals = new HashSet<String>();
+        Set<String> principals = new HashSet<>();
         for (PrincipalName principalName : principalNameList) {
             principals.add(principalName.getName());
         }
 
-        assertEquals(
-            new HashSet<>(Arrays.asList("foo/bar@" + kdc.getRealm(), "bar/foo@" + kdc.getRealm())),
+        assertEquals(new HashSet<>(Arrays.asList("foo/bar@" + kdc.getRealm(), "bar/foo@" + kdc.getRealm())),
             principals);
     }
 
-    @Test(timeout = 60000)
+
+    @Test
+    @Timeout(value = 60)
     public void testKerberosLogin() throws Exception {
         MiniKdc kdc = getKdc();
         File workDir = getWorkDir();
@@ -77,7 +82,7 @@ public class MiniKdcTest extends KerberosSecurityTestcase {
             File keytab = new File(workDir, "foo.keytab");
             kdc.createPrincipal(keytab, principal);
 
-            Set<Principal> principals = new HashSet<Principal>();
+            Set<Principal> principals = new HashSet<>();
             principals.add(new KerberosPrincipal(principal));
 
             // client login

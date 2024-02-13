@@ -210,15 +210,6 @@ This distribution bundles jline 2.14.6, which is available under the
 2-clause BSD License. For details, see a copy of the license in
 lib/jline-2.14.6.LICENSE.txt
 
-This distribution bundles slf4j 1.7.36 along with the slf4j-reload4j binding,
-which are available under the MIT License. For details, see a copy of the license in
-lib/slf4j-1.7.36.LICENSE.txt
-
-This distribution bundles json-simple v1.1.1, which is available under the
-Apache Software License, Version 2.0. For details, see a copy of the license in
-lib/json-simple-1.1.1.LICENSE.txt
-
-This distribution bundles Bouncy Castle libraries (bcprov-jdk15on, bcpkix-jdk15on
-and bcutil-jdk15on) v1.70, which are available under the Bouncy Castle License
-(https://www.bouncycastle.org/licence.html). For details, see a copy of the
-license in lib/bouncycastle-1.70.LICENSE.txt
+This distribution bundles SLF4J 1.7.30, which is available under the MIT
+License. For details, see a copy of the license in
+lib/slf4j-1.7.30.LICENSE.txt

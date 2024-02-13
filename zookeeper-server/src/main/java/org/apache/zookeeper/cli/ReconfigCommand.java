@@ -18,6 +18,7 @@
 
 package org.apache.zookeeper.cli;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import java.io.FileInputStream;
 import java.util.Properties;
 import org.apache.commons.cli.CommandLine;
@@ -129,7 +130,7 @@ public class ReconfigCommand extends CliCommand {
                 //check that membership makes sense; leader will make these checks again
                 //don't check for leader election ports since
                 //client doesn't know what leader election alg is used
-                members = QuorumPeerConfig.parseDynamicConfig(dynamicCfg, 0, true, false).toString();
+                members = QuorumPeerConfig.parseDynamicConfig(dynamicCfg, 0, true, false, null).toString();
             } catch (Exception e) {
                 throw new CliParseException("Error processing " + cl.getOptionValue("file") + e.getMessage());
             }
@@ -151,7 +152,7 @@ public class ReconfigCommand extends CliCommand {
             }
 
             byte[] curConfig = ((ZooKeeperAdmin) zk).reconfigure(joining, leaving, members, version, stat);
-            out.println("Committed new configuration:\n" + new String(curConfig));
+            out.println("Committed new configuration:\n" + new String(curConfig, UTF_8));
 
             if (cl.hasOption("s")) {
                 new StatPrinter(out).print(stat);

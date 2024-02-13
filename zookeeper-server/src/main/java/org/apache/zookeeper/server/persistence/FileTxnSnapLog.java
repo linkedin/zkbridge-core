@@ -51,10 +51,10 @@ import org.slf4j.LoggerFactory;
  */
 public class FileTxnSnapLog {
 
-    //the directory containing the
+    //the directory containing
     //the transaction logs
     final File dataDir;
-    //the directory containing the
+    //the directory containing
     //the snapshot directory
     final File snapDir;
     TxnLog txnLog;
@@ -204,11 +204,11 @@ public class FileTxnSnapLog {
     }
 
     /**
-     * get the datadir used by this filetxn
+     * get the data log dir used by this filetxn
      * snap log
-     * @return the data dir
+     * @return the data log dir
      */
-    public File getDataDir() {
+    public File getDataLogDir() {
         return this.dataDir;
     }
 
@@ -463,23 +463,15 @@ public class FileTxnSnapLog {
     }
 
     /**
-     * the last logged TxnHeader from the transaction log
-     * @return last logged TxnHeader
-     */
-    public TxnHeader getLastLoggedTxnHeader() {
-        FileTxnLog txnLog = new FileTxnLog(dataDir);
-        return txnLog.getLastLoggedTxnHeader();
-    }
-
-    /**
      * save the datatree and the sessions into a snapshot
      * @param dataTree the datatree to be serialized onto disk
      * @param sessionsWithTimeouts the session timeouts to be
      * serialized onto disk
      * @param syncSnap sync the snapshot immediately after write
+     * @return the snapshot file
      * @throws IOException
      */
-    public void save(
+    public File save(
         DataTree dataTree,
         ConcurrentHashMap<Long, Integer> sessionsWithTimeouts,
         boolean syncSnap) throws IOException {
@@ -488,6 +480,7 @@ public class FileTxnSnapLog {
         LOG.info("Snapshotting: 0x{} to {}", Long.toHexString(lastZxid), snapshotFile);
         try {
             snapLog.serialize(dataTree, sessionsWithTimeouts, snapshotFile, syncSnap);
+            return snapshotFile;
         } catch (IOException e) {
             if (snapshotFile.length() == 0) {
                 /* This may be caused by a full disk. In such a case, the server
@@ -570,25 +563,10 @@ public class FileTxnSnapLog {
      * @param n the number of recent valid snapshots
      * @return the list of n recent valid snapshots, with
      * the most recent in front
-     * @throws IOException
      */
-    public List<File> findNValidSnapshots(int n) throws IOException {
+    public List<File> findNValidSnapshots(int n) {
         FileSnap snaplog = new FileSnap(snapDir);
         return snaplog.findNValidSnapshots(n);
-    }
-
-    /**
-     * returns all valid snapshots excluding the zxid interval given
-     * for example, if the interval given is [A, B], then snapshot.B will not be included in the
-     * returned list
-     * @param startZxid start of the zxid interval
-     * @param endZxid end of the zxid interval
-     * @return the list of snapshots in the most recent in front
-     * @throws IOException
-     */
-    public List<File> findValidSnapshots(long startZxid, long endZxid) throws IOException {
-        FileSnap snaplog = new FileSnap(snapDir);
-        return snaplog.findValidSnapshots(startZxid, endZxid);
     }
 
     /**
@@ -598,7 +576,7 @@ public class FileTxnSnapLog {
      * file may contain transactions beyond given zxid.
      * @param zxid the zxid that contains logs greater than
      * zxid
-     * @return
+     * @return the snapshot logs which may contain transactions newer than the given zxid
      */
     public File[] getSnapshotLogs(long zxid) {
         return FileTxnLog.getLogFiles(dataDir.listFiles(), zxid);
@@ -611,7 +589,7 @@ public class FileTxnSnapLog {
      * @throws IOException
      */
     public boolean append(Request si) throws IOException {
-        return txnLog.append(si.getHdr(), si.getTxn(), si.getTxnDigest());
+        return txnLog.append(si);
     }
 
     /**
@@ -643,14 +621,16 @@ public class FileTxnSnapLog {
      * @throws IOException
      */
     public void close() throws IOException {
-        if (txnLog != null) {
-            txnLog.close();
-            txnLog = null;
+        TxnLog txnLogToClose = txnLog;
+        if (txnLogToClose != null) {
+            txnLogToClose.close();
         }
-        if (snapLog != null) {
-            snapLog.close();
-            snapLog = null;
+        txnLog = null;
+        SnapShot snapSlogToClose = snapLog;
+        if (snapSlogToClose != null) {
+            snapSlogToClose.close();
         }
+        snapLog = null;
     }
 
     @SuppressWarnings("serial")

@@ -41,7 +41,7 @@ import org.apache.zookeeper.common.PathUtils;
 import org.apache.zookeeper.server.admin.JettyAdminServer;
 import org.apache.zookeeper.test.ClientBase;
 import org.apache.zookeeper.test.QuorumBase;
-import org.junit.After;
+import org.junit.jupiter.api.AfterEach;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,7 +58,7 @@ public class QuorumPeerTestBase extends ZKTestCase implements Watcher {
     protected Servers servers;
     protected int numServers = 0;
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         if (servers == null || servers.mt == null) {
             LOG.info("No servers to shutdown!");
@@ -135,7 +135,7 @@ public class QuorumPeerTestBase extends ZKTestCase implements Watcher {
 
             // Convert windows path to UNIX to avoid problems with "\"
             String dir = tmpDir.toString();
-            String osname = java.lang.System.getProperty("os.name");
+            String osname = System.getProperty("os.name");
             if (osname.toLowerCase().contains("windows")) {
                 dir = dir.replace('\\', '/');
             }
@@ -303,7 +303,7 @@ public class QuorumPeerTestBase extends ZKTestCase implements Watcher {
         }
 
         public MainThread(int myid, int clientPort, String quorumCfgSection) throws IOException {
-            this(myid, clientPort, quorumCfgSection, new HashMap<String, String>());
+            this(myid, clientPort, quorumCfgSection, new HashMap<>());
         }
 
         public MainThread(int myid, int clientPort, String quorumCfgSection, Map<String, String> otherConfigs) throws IOException {
@@ -314,6 +314,18 @@ public class QuorumPeerTestBase extends ZKTestCase implements Watcher {
 
         public synchronized void start() {
             main = getTestQPMain();
+            currentThread = new Thread(this);
+            currentThread.start();
+        }
+
+        /**
+         * start the QuorumPeer with the passed TestQPMain
+         *
+         * @param testQPMain the TestQPMain to use
+         */
+
+        public synchronized void start(final TestQPMain testQPMain) {
+            main = testQPMain;
             currentThread = new Thread(this);
             currentThread.start();
         }
@@ -356,7 +368,7 @@ public class QuorumPeerTestBase extends ZKTestCase implements Watcher {
         }
 
         public void reinitialize() throws IOException {
-            File dataDir = main.quorumPeer.getTxnFactory().getDataDir();
+            File dataDir = main.quorumPeer.getTxnFactory().getDataLogDir();
             ClientBase.recursiveDelete(dataDir);
             ClientBase.createInitializeFile(dataDir.getParentFile());
         }
@@ -402,11 +414,12 @@ public class QuorumPeerTestBase extends ZKTestCase implements Watcher {
     }
 
     // This class holds the servers and clients for those servers
-    protected static class Servers {
+    public static class Servers {
 
-        MainThread[] mt;
-        ZooKeeper[] zk;
-        int[] clientPorts;
+        public MainThread[] mt;
+        public ZooKeeper[] zk;
+        public int[] clientPorts;
+        public int[] adminPorts;
 
         public void shutDownAllServers() throws InterruptedException {
             for (MainThread t : mt) {
@@ -415,9 +428,12 @@ public class QuorumPeerTestBase extends ZKTestCase implements Watcher {
         }
 
         public void restartAllServersAndClients(Watcher watcher) throws IOException, InterruptedException {
+            int index = 0;
             for (MainThread t : mt) {
                 if (!t.isAlive()) {
+                    System.setProperty("zookeeper.admin.serverPort", String.valueOf(adminPorts[index]));
                     t.start();
+                    index++;
                 }
             }
             for (int i = 0; i < zk.length; i++) {
@@ -470,25 +486,37 @@ public class QuorumPeerTestBase extends ZKTestCase implements Watcher {
     }
 
     protected Servers LaunchServers(int numServers) throws IOException, InterruptedException {
-        return LaunchServers(numServers, null);
+        return LaunchServers(numServers, (Integer) null);
+    }
+
+    protected Servers LaunchServers(int numServers, Map<String, String> otherConfigs)
+        throws IOException, InterruptedException {
+        return LaunchServers(numServers, 0, null, otherConfigs);
     }
 
     protected Servers LaunchServers(int numServers, Integer tickTime) throws IOException, InterruptedException {
         return LaunchServers(numServers, 0, tickTime);
     }
 
+    protected Servers LaunchServers(int numServers, int numObservers, Integer tickTime)
+        throws IOException, InterruptedException {
+        return LaunchServers(numServers, numObservers, tickTime, new HashMap<>());
+    }
+
     /** * This is a helper function for launching a set of servers
      *
      * @param numServers the number of participant servers
-     * @param numObserver the number of observer servers
+     * @param numObservers the number of observer servers
      * @param tickTime A ticktime to pass to MainThread
+     * @param otherConfigs any zoo.cfg configuration
      * @return
      * @throws IOException
      * @throws InterruptedException
      */
-    protected Servers LaunchServers(int numServers, int numObservers, Integer tickTime) throws IOException, InterruptedException {
+    protected Servers LaunchServers(int numServers, int numObservers, Integer tickTime,
+        Map<String, String> otherConfigs) throws IOException, InterruptedException {
         int SERVER_COUNT = numServers + numObservers;
-        QuorumPeerMainTest.Servers svrs = new QuorumPeerMainTest.Servers();
+        Servers svrs = new Servers();
         svrs.clientPorts = new int[SERVER_COUNT];
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < SERVER_COUNT; i++) {
@@ -498,16 +526,23 @@ public class QuorumPeerTestBase extends ZKTestCase implements Watcher {
                     i, PortAssignment.unique(), PortAssignment.unique(), role,
                     svrs.clientPorts[i]));
         }
+
+        svrs.adminPorts = new int[SERVER_COUNT];
+        for (int i = 0; i < SERVER_COUNT; i++) {
+            svrs.adminPorts[i] = PortAssignment.unique();
+        }
+
         String quorumCfgSection = sb.toString();
 
         svrs.mt = new MainThread[SERVER_COUNT];
         svrs.zk = new ZooKeeper[SERVER_COUNT];
         for (int i = 0; i < SERVER_COUNT; i++) {
             if (tickTime != null) {
-                svrs.mt[i] = new MainThread(i, svrs.clientPorts[i], quorumCfgSection, new HashMap<String, String>(), tickTime);
+                svrs.mt[i] = new MainThread(i, svrs.clientPorts[i], quorumCfgSection, otherConfigs, tickTime);
             } else {
-                svrs.mt[i] = new MainThread(i, svrs.clientPorts[i], quorumCfgSection);
+                svrs.mt[i] = new MainThread(i, svrs.clientPorts[i], quorumCfgSection, otherConfigs);
             }
+            System.setProperty("zookeeper.admin.serverPort", String.valueOf(svrs.adminPorts[i]));
             svrs.mt[i].start();
             svrs.restartClient(i, this);
         }

@@ -17,17 +17,17 @@
  */
 package org.apache.zookeeper.server;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import org.apache.zookeeper.PortAssignment;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.client.ZKClientConfig;
 import org.apache.zookeeper.common.ClientX509Util;
 import org.apache.zookeeper.test.ClientBase;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +38,7 @@ public class X509AuthFailureTest extends ZKTestCase {
     public static final int TIMEOUT = 5000;
     public static int CONNECTION_TIMEOUT = 30000;
 
-    @Before
+    @BeforeEach
     public void setup() throws Exception{
         clientX509Util = new ClientX509Util();
         String testDataPath = System.getProperty("test.data.dir", "src/test/resources/data");
@@ -50,7 +50,7 @@ public class X509AuthFailureTest extends ZKTestCase {
         System.setProperty("zookeeper.admin.serverPort", "" + PortAssignment.unique());
     }
 
-    @After
+    @AfterEach
     public void teardown() throws Exception {
         System.clearProperty(ServerCnxnFactory.ZOOKEEPER_SERVER_CNXN_FACTORY);
         System.clearProperty(ZKClientConfig.ZOOKEEPER_CLIENT_CNXN_SOCKET);

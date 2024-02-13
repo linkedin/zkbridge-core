@@ -45,28 +45,6 @@ import org.slf4j.LoggerFactory;
  */
 public class Util {
 
-    /**
-     * Constants and enums added for backup and restore.
-     */
-    public static final String SNAP_PREFIX = FileSnap.SNAPSHOT_FILE_PREFIX;
-    public static final String TXLOG_PREFIX = FileTxnLog.LOG_FILE_PREFIX;
-
-    public enum FileType {
-        SNAPSHOT,
-        TXNLOG;
-
-        public static FileType fromPrefix(String prefix) {
-            switch (prefix) {
-                case SNAP_PREFIX:
-                    return SNAPSHOT;
-                case TXLOG_PREFIX:
-                    return TXNLOG;
-                default:
-                    throw new IllegalArgumentException("Unknown FileType prefix: " + prefix);
-            }
-        }
-    }
-
     private static final Logger LOG = LoggerFactory.getLogger(Util.class);
     private static final String SNAP_DIR = "snapDir";
     private static final String LOG_DIR = "logDir";
@@ -170,26 +148,6 @@ public class Util {
     }
 
     /**
-     * Returns a ZxidRange whose high Zxid could be absent.
-     * @param name
-     * @param prefix
-     * @return
-     */
-    public static ZxidRange getZxidRangeFromName(String name, String prefix) {
-        ZxidRange zxidRange = ZxidRange.INVALID;
-        String nameParts[] = name.split("[\\.-]");
-        try {
-            if (nameParts.length == 2 && nameParts[0].equals(prefix)) {
-                zxidRange = new ZxidRange(Long.parseLong(nameParts[1], 16));
-            } else if (nameParts.length == 3 && nameParts[0].equals(prefix)) {
-                zxidRange = new ZxidRange(Long.parseLong(nameParts[1], 16),
-                    Long.parseLong(nameParts[2], 16));
-            }
-        } catch (NumberFormatException e) {}
-        return zxidRange;
-    }
-
-    /**
      * Reads a transaction entry from the input archive.
      * @param ia archive to read from
      * @return null if the entry is corrupted or EOF has been reached; a buffer
@@ -214,23 +172,19 @@ public class Util {
         return null;
     }
 
+
     /**
      * Serializes transaction header and transaction data into a byte buffer.
      *
      * @param hdr transaction header
      * @param txn transaction data
+     * @param digest transaction digest
+     *
      * @return serialized transaction record
-     * @throws IOException
      */
-    public static byte[] marshallTxnEntry(TxnHeader hdr, Record txn) throws IOException {
-        return marshallTxnEntry(hdr, txn, null);
-    }
-
-    public static byte[] marshallTxnEntry(TxnHeader hdr, Record txn, TxnDigest digest)
-            throws IOException {
+    public static byte[] marshallTxnEntry(TxnHeader hdr, Record txn, TxnDigest digest) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         OutputArchive boa = BinaryOutputArchive.getArchive(baos);
-
         hdr.serialize(boa, "hdr");
         if (txn != null) {
             txn.serialize(boa, "txn");
@@ -290,7 +244,7 @@ public class Util {
      */
     public static List<File> sortDataDir(File[] files, String prefix, boolean ascending) {
         if (files == null) {
-            return new ArrayList<File>(0);
+            return new ArrayList<>(0);
         }
         List<File> filelist = Arrays.asList(files);
         Collections.sort(filelist, new DataDirFileComparator(prefix, ascending));
@@ -301,7 +255,6 @@ public class Util {
      * Returns true if fileName is a log file name.
      *
      * @param fileName
-     * @return
      */
     public static boolean isLogFileName(String fileName) {
         return fileName.startsWith(FileTxnLog.LOG_FILE_PREFIX + ".");
@@ -311,7 +264,6 @@ public class Util {
      * Returns true if fileName is a snapshot file name.
      *
      * @param fileName
-     * @return
      */
     public static boolean isSnapshotFileName(String fileName) {
         return fileName.startsWith(FileSnap.SNAPSHOT_FILE_PREFIX + ".");

@@ -69,7 +69,7 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
     private int randRoll;
     private long randSize;
 
-    private final BlockingQueue<Request> queuedRequests = new LinkedBlockingQueue<Request>();
+    private final BlockingQueue<Request> queuedRequests = new LinkedBlockingQueue<>();
 
     private final Semaphore snapThreadMutex = new Semaphore(1);
 
@@ -178,7 +178,7 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
                 ServerMetrics.getMetrics().SYNC_PROCESSOR_QUEUE_TIME.add(startProcessTime - si.syncQueueStartTime);
 
                 // track the number of records written to the log
-                if (zks.getZKDatabase().append(si)) {
+                if (!si.isThrottled() && zks.getZKDatabase().append(si)) {
                     if (shouldSnapshot()) {
                         resetSnapshotStats();
                         // roll the log
@@ -202,9 +202,8 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
                     }
                 } else if (toFlush.isEmpty()) {
                     // optimization for read heavy workloads
-                    // iff this is a read, and there are no pending
-                    // flushes (writes), then just pass this to the next
-                    // processor
+                    // iff this is a read or a throttled request(which doesn't need to be written to the disk),
+                    // and there are no pending flushes (writes), then just pass this to the next processor
                     if (nextProcessor != null) {
                         nextProcessor.processRequest(si);
                         if (nextProcessor instanceof Flushable) {
@@ -213,7 +212,6 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
                     }
                     continue;
                 }
-                //Here we flush
                 toFlush.add(si);
                 if (shouldFlush()) {
                     flush();
@@ -249,8 +247,8 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
             if (this.nextProcessor instanceof Flushable) {
                 ((Flushable) this.nextProcessor).flush();
             }
-            lastFlushTime = Time.currentElapsedTime();
         }
+        lastFlushTime = Time.currentElapsedTime();
     }
 
     public void shutdown() {

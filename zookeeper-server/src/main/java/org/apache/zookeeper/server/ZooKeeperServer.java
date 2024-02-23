@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.zip.Adler32;
 import java.util.zip.CheckedInputStream;
+import javax.net.ssl.SSLException;
 import javax.security.sasl.SaslException;
 import org.apache.jute.BinaryInputArchive;
 import org.apache.jute.BinaryOutputArchive;
@@ -90,6 +91,7 @@ import org.apache.zookeeper.server.util.JvmPauseMonitor;
 import org.apache.zookeeper.server.util.OSMXBean;
 import org.apache.zookeeper.server.util.QuotaMetricsUtils;
 import org.apache.zookeeper.server.util.RequestPathMetricsCollector;
+import org.apache.zookeeper.spiral.SpiralClient;
 import org.apache.zookeeper.txn.CreateSessionTxn;
 import org.apache.zookeeper.txn.TxnDigest;
 import org.apache.zookeeper.txn.TxnHeader;
@@ -102,6 +104,7 @@ import org.slf4j.LoggerFactory;
  * following chain of RequestProcessors to process requests:
  * PrepRequestProcessor -&gt; SyncRequestProcessor -&gt; FinalRequestProcessor
  */
+@SuppressWarnings("ALL")
 public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
 
     protected static final Logger LOG;
@@ -135,6 +138,10 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     public static final String CLOSE_SESSION_TXN_ENABLED = "zookeeper.closeSessionTxn.enabled";
     private static boolean closeSessionTxnEnabled = true;
     private volatile CountDownLatch restoreLatch;
+
+    // Connection to spiralClient.
+    private static SpiralClient spiralClient;
+    private static boolean spiralEnabled = false;
 
     static {
         LOG = LoggerFactory.getLogger(ZooKeeperServer.class);
@@ -384,9 +391,9 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
 
         LOG.info(
             "Created server with"
-                + " tickTime {} ms"
-                + " minSessionTimeout {} ms"
-                + " maxSessionTimeout {} ms"
+                + " tickTime {}"
+                + " minSessionTimeout {}"
+                + " maxSessionTimeout {}"
                 + " clientPortListenBacklog {}"
                 + " dataLogdir {}"
                 + " snapdir {}",
@@ -423,6 +430,13 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
      */
     public ZooKeeperServer(FileTxnSnapLog txnLogFactory, int tickTime, String initialConfig) {
         this(txnLogFactory, tickTime, -1, -1, -1, new ZKDatabase(txnLogFactory), initialConfig, QuorumPeerConfig.isReconfigEnabled());
+    }
+
+    public static void setupSpiral(String spiralEndpoint, String identityCert, String identityKey,
+        String caBundle, String overrideAuthority, String namespace) throws SSLException {
+        // TODO: add to property/env config file.
+        spiralClient = new SpiralClient(spiralEndpoint, identityCert, identityKey, caBundle, overrideAuthority, namespace);
+        spiralEnabled = true;
     }
 
     public ServerStats serverStats() {
@@ -2251,6 +2265,10 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     public static void setSerializeLastProcessedZxidEnabled(boolean serializeLastZxidEnabled) {
         serializeLastProcessedZxidEnabled = serializeLastZxidEnabled;
         LOG.info("{} = {}", ZOOKEEPER_SERIALIZE_LAST_PROCESSED_ZXID_ENABLED, serializeLastZxidEnabled);
+    }
+
+    public static boolean isSpiralEnabled() {
+        return spiralEnabled;
     }
 
     /**

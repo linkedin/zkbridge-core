@@ -56,6 +56,18 @@ public class ServerConfig {
     protected int listenBacklog = -1;
     protected String initialConfig;
 
+    // Spiral Specific - ZKBridge
+    protected boolean spiralEnabled = false;
+    protected String spiralServer = null;
+    protected long spiralServerPort = -1L;
+    protected String spiralNamespace = "test";
+
+    protected String identityCert = null;
+    protected String identityKey = null;
+    protected String caBundle = null;
+    protected String overrideAuthority = null;
+
+
     /** JVM Pause Monitor feature switch */
     protected boolean jvmPauseMonitorToRun = false;
     /** JVM Pause Monitor warn threshold in ms */
@@ -121,6 +133,14 @@ public class ServerConfig {
         metricsProviderConfiguration = config.getMetricsProviderConfiguration();
         listenBacklog = config.getClientPortListenBacklog();
         initialConfig = config.getInitialConfig();
+        spiralEnabled = config.isSpiralEnabled();
+        spiralServer = config.getSpiralServer();
+        spiralServerPort = config.getSpiralServerPort();
+        identityCert = config.getIdentityCert();
+        identityKey = config.getIdentityKey();
+        caBundle = config.getCaBundle();
+        overrideAuthority = config.getOverrideAuthority();
+        spiralNamespace = config.getSpiralNamespace();
     }
 
     public InetSocketAddress getClientPortAddress() {
@@ -173,4 +193,29 @@ public class ServerConfig {
         return listenBacklog;
     }
 
+    public String getSpiralEndpoint() {
+        return spiralServer + ":" + spiralServerPort;
+    }
+
+    public String getIdentityCert() {
+        return identityCert;
+    }
+    public String getIdentityKey() {
+        return identityKey;
+    }
+    public String getCaBundle() {
+        return caBundle;
+    }
+
+    public String getOverrideAuthority() {
+        return overrideAuthority;
+    }
+
+    public boolean isSpiralEnabled() {
+        return spiralEnabled;
+    }
+
+    public String getSpiralNamespace() {
+        return spiralNamespace;
+    }
 }

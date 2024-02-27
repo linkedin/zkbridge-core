@@ -21,13 +21,13 @@
   -->
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.apache.zookeeper</groupId>
+    <groupId>com.linkedin.zkbridge</groupId>
     <artifactId>parent</artifactId>
-    <version>3.10.0-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>zookeeper-docs</artifactId>
-  <name>Apache ZooKeeper - Documentation</name>
+  <name>ZKBridge - Documentation</name>
   <description>Documentation</description>
   <packaging>pom</packaging>
 

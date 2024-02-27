@@ -63,6 +63,7 @@ public class ZooKeeperServerMain {
      * @param args the configfile or the port datadir [ticktime]
      */
     public static void main(String[] args) {
+        LOG.info("---ZKBridge: Starting");
         ZooKeeperServerMain main = new ZooKeeperServerMain();
         try {
             main.initializeAndRun(args);
@@ -143,6 +144,13 @@ public class ZooKeeperServerMain {
             }
             final ZooKeeperServer zkServer = new ZooKeeperServer(jvmPauseMonitor, txnLog, config.tickTime, config.minSessionTimeout, config.maxSessionTimeout, config.listenBacklog, null, config.initialConfig);
             txnLog.setServerStats(zkServer.serverStats());
+
+            // Set Spiral Specific configuration.
+            LOG.info("Spiral enabled: {}", config.isSpiralEnabled());
+            if (config.isSpiralEnabled()) {
+                zkServer.setupSpiral(config.getSpiralEndpoint(), config.getIdentityCert(), config.getIdentityKey(),
+                    config.getCaBundle(), config.getOverrideAuthority(), config.getSpiralNamespace());
+            }
 
             // Registers shutdown handler which will be used to know the
             // server error or shutdown state changes.

@@ -1,24 +1,20 @@
 package org.apache.zookeeper.spiral;
 
-import java.io.File;
-import javax.net.ssl.SSLException;
-
 import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
-
 import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts;
 import io.grpc.netty.shaded.io.grpc.netty.NegotiationType;
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
 import io.grpc.netty.shaded.io.netty.handler.ssl.SslContext;
 import io.grpc.stub.StreamObserver;
+import java.io.File;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import proto.com.linkedin.spiral.CreateBucketRequest;
 import proto.com.linkedin.spiral.CreateNamespaceRequest;
 import proto.com.linkedin.spiral.GetBucketRequest;
 import proto.com.linkedin.spiral.GetNamespaceRequest;
-
-import proto.com.linkedin.spiral.GetNamespaceResponse;
 import proto.com.linkedin.spiral.GetRequest;
 import proto.com.linkedin.spiral.GetResponse;
 import proto.com.linkedin.spiral.Key;
@@ -37,8 +33,8 @@ public class SpiralClient {
   private final SpiralApiGrpc.SpiralApiBlockingStub _blockingStub;
   private final SpiralApiGrpc.SpiralApiStub _asyncStub;
 
-  public SpiralClient(String spiralEndpoint, String identityCert, String identityKey,
-      String caBundle, String overrideAuthority, String namespace) throws SSLException {
+  private SpiralClient(String spiralEndpoint, String identityCert, String identityKey,
+      String caBundle, String overrideAuthority, String namespace) {
     try {
       SslContext sslContext = GrpcSslContexts.forClient()
           .trustManager(new File(caBundle))
@@ -59,24 +55,21 @@ public class SpiralClient {
       _asyncStub = SpiralApiGrpc.newStub(channel);
       _namespace = namespace == null ? DEFAULT_NAMESPACE : namespace;
 
-      // verify namespace and bucket exists
+      // verify namespace and buckets exists
       verifySpiralContextExists();
       LOGGER.info("Connected to spiral-service : {}", spiralEndpoint);
     } catch (Exception e) {
       LOGGER.error("Failed to connect to spiral service at endpoint : {}", spiralEndpoint, e);
-      throw e;
+      throw new RuntimeException(String.format("Failed to connect to spiral service at endpoint : %s", spiralEndpoint), e);
     }
   }
 
   // TODO - We are not suppose to create the zookeeper namespace in the real world.
   // But we are not there yet, so we will verify that namespace / bucket exists.
   public void verifySpiralContextExists() {
-    try {
-      LOGGER.info("Create or Validate namespace: {}", _namespace);
-      createNamespace(_namespace);
-    } catch (Exception e) {
-      LOGGER.error("Failed to create namespace : {}", _namespace, e);
-      throw e;
+    createNamespace(_namespace);
+    for (SpiralBucket bucket : SpiralBucket.values()) {
+      createBucket(bucket.getBucketName());
     }
   }
 
@@ -221,4 +214,56 @@ public class SpiralClient {
     }
   }
 
+  //Builder Class
+  public static class SpiralClientBuilder{
+
+    private String spiralEndpoint;
+    private String identityCert;
+    private String identityKey;
+    private String caBundle;
+    private String overrideAuthority;
+    private String namespace;
+
+    public SpiralClientBuilder setSpiralEndpoint(String spiralEndpoint) {
+      this.spiralEndpoint = spiralEndpoint;
+      return this;
+    }
+
+    public SpiralClientBuilder setIdentityCert(String identityCert) {
+      this.identityCert = identityCert;
+      return this;
+    }
+
+    public SpiralClientBuilder setIdentityKey(String identityKey) {
+      this.identityKey = identityKey;
+      return this;
+    }
+
+    public SpiralClientBuilder setCaBundle(String caBundle) {
+      this.caBundle = caBundle;
+      return this;
+    }
+
+    public SpiralClientBuilder setOverrideAuthority(String overrideAuthority) {
+      this.overrideAuthority = overrideAuthority;
+      return this;
+    }
+
+    public SpiralClientBuilder setNamespace(String namespace) {
+      this.namespace = namespace;
+      return this;
+    }
+
+    public SpiralClient build() {
+      Objects.requireNonNull(spiralEndpoint, "Spiral endpoint cannot be null");
+      Objects.requireNonNull(identityCert, "identity cert for Spiral cannot be null");
+      Objects.requireNonNull(identityKey, "identity key for Spiral cannot be null");
+      Objects.requireNonNull(caBundle, "CA bundle for Spiral cannot be null");
+      Objects.requireNonNull(overrideAuthority, "Override auth for spiral cannot be null");
+      Objects.requireNonNull(namespace, "Spiral namespace cannot be null");
+
+      return new SpiralClient(spiralEndpoint, identityCert, identityKey, caBundle, overrideAuthority, namespace);
+    }
+
+  }
 }

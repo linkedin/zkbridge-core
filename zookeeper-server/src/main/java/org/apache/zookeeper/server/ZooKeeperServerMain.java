@@ -34,8 +34,10 @@ import org.apache.zookeeper.server.admin.AdminServerFactory;
 import org.apache.zookeeper.server.auth.ProviderRegistry;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog.DatadirException;
+import org.apache.zookeeper.server.persistence.SpiralTxnSnapLog;
 import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
 import org.apache.zookeeper.server.util.JvmPauseMonitor;
+import org.apache.zookeeper.spiral.SpiralClient;
 import org.apache.zookeeper.util.ServiceUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +68,7 @@ public class ZooKeeperServerMain {
         LOG.info("---ZKBridge: Starting");
         ZooKeeperServerMain main = new ZooKeeperServerMain();
         try {
+            Thread.currentThread().sleep(10000);
             main.initializeAndRun(args);
         } catch (IllegalArgumentException e) {
             LOG.error("Invalid arguments, exiting abnormally", e);
@@ -145,11 +148,18 @@ public class ZooKeeperServerMain {
             final ZooKeeperServer zkServer = new ZooKeeperServer(jvmPauseMonitor, txnLog, config.tickTime, config.minSessionTimeout, config.maxSessionTimeout, config.listenBacklog, null, config.initialConfig);
             txnLog.setServerStats(zkServer.serverStats());
 
-            // Set Spiral Specific configuration.
+            // Set ZKBridge Specific configuration, if ZKBridge is enabled.
             LOG.info("Spiral enabled: {}", config.isSpiralEnabled());
             if (config.isSpiralEnabled()) {
-                zkServer.setupSpiral(config.getSpiralEndpoint(), config.getIdentityCert(), config.getIdentityKey(),
-                    config.getCaBundle(), config.getOverrideAuthority(), config.getSpiralNamespace());
+                SpiralClient spiralClient = new SpiralClient.SpiralClientBuilder()
+                    .setSpiralEndpoint(config.getSpiralEndpoint())
+                    .setIdentityCert(config.getIdentityCert())
+                    .setIdentityKey(config.getIdentityKey())
+                    .setCaBundle(config.getCaBundle())
+                    .setOverrideAuthority(config.getOverrideAuthority())
+                    .setNamespace(config.getSpiralNamespace())
+                    .build();
+                zkServer.setSpiralClient(spiralClient);
             }
 
             // Registers shutdown handler which will be used to know the

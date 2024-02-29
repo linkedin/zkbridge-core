@@ -310,8 +310,10 @@
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
     <dependency.locations.enabled>false</dependency.locations.enabled>
+    <surefire.version>2.22.1</surefire.version>
 
     <surefire-forkcount>8</surefire-forkcount>
+    <redirectTestOutputToFile>true</redirectTestOutputToFile>
 
     <!-- dependency versions -->
     <slf4j.version>1.7.36</slf4j.version>
@@ -507,17 +509,6 @@
         <version>${jackson.version}</version>
       </dependency>
       <dependency>
-        <groupId>com.googlecode.json-simple</groupId>
-        <artifactId>json-simple</artifactId>
-        <version>${json.version}</version>
-        <exclusions>
-          <exclusion>
-              <groupId>junit</groupId>
-              <artifactId>junit</artifactId>
-          </exclusion>
-        </exclusions>
-      </dependency>
-      <dependency>
         <groupId>jline</groupId>
         <artifactId>jline</artifactId>
         <version>${jline.version}</version>
@@ -682,7 +673,7 @@
         <plugin>
           <groupId>org.openclover</groupId>
           <artifactId>clover-maven-plugin</artifactId>
-          <version>4.3.1</version>
+          <version>${clover-maven-plugin.version}</version>
         </plugin>
         <plugin>
           <groupId>com.github.spotbugs</groupId>
@@ -788,6 +779,7 @@
         <artifactId>maven-antrun-plugin</artifactId>
         <executions>
           <execution>
+            <id>set-hostname-property</id>
             <phase>validate</phase>
             <goals>
               <goal>run</goal>
@@ -912,6 +904,7 @@
             <exclude>src/main/resources/markdown/skin/*</exclude>
             <exclude>src/main/resources/markdown/html/*</exclude>
             <exclude>src/main/resources/markdown/images/*</exclude>
+            <exclude>**/src/test/resources/embedded/*.conf</exclude>
             <!-- contrib -->
             <exclude>**/JMX-RESOURCES</exclude>
             <exclude>**/src/main/resources/mainClasses</exclude>
@@ -1014,6 +1007,23 @@
                   </excludes>
                   <searchTransitive>false</searchTransitive>
                   <message>We don't use commons-lang3, so do not depend on it directly.</message>
+                </bannedDependencies>
+              </rules>
+            </configuration>
+          </execution>
+          <execution>
+            <id>banned-json-simple</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <bannedDependencies>
+                  <excludes>
+                    <exclude>com.googlecode.json-simple:json-simple</exclude>
+                  </excludes>
+                  <searchTransitive>false</searchTransitive>
+                  <message>We don't use json-simple anymore, so do not depend on it directly.</message>
                 </bannedDependencies>
               </rules>
             </configuration>

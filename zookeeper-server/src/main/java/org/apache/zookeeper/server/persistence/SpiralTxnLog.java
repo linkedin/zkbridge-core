@@ -20,7 +20,6 @@ package org.apache.zookeeper.server.persistence;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.Closeable;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
@@ -29,29 +28,27 @@ import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Queue;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.Adler32;
 import java.util.zip.Checksum;
 import org.apache.jute.BinaryInputArchive;
 import org.apache.jute.BinaryOutputArchive;
 import org.apache.jute.InputArchive;
-import org.apache.jute.OutputArchive;
 import org.apache.jute.Record;
 import org.apache.zookeeper.server.Request;
 import org.apache.zookeeper.server.ServerMetrics;
-import org.apache.zookeeper.server.ServerStats;
 import org.apache.zookeeper.server.TxnLogEntry;
 import org.apache.zookeeper.server.util.SerializeUtils;
+import org.apache.zookeeper.spiral.SpiralBucket;
+import org.apache.zookeeper.spiral.SpiralClient;
 import org.apache.zookeeper.txn.TxnDigest;
 import org.apache.zookeeper.txn.TxnHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 
 /**
  * This class implements the TxnLog interface. It provides api's
@@ -95,174 +92,19 @@ import org.slf4j.LoggerFactory;
  *     0 padded to EOF (filled during preallocation stage)
  * </pre></blockquote>
  */
-public class FileTxnLog implements TxnLog, Closeable {
+public class SpiralTxnLog extends FileTxnLog {
 
-    private static final Logger LOG;
-
-    public static final int TXNLOG_MAGIC = ByteBuffer.wrap("ZKLG".getBytes()).getInt();
-
-    public static final int VERSION = 2;
-
-    public static final String LOG_FILE_PREFIX = "log";
-
-    static final String FSYNC_WARNING_THRESHOLD_MS_PROPERTY = "fsync.warningthresholdms";
-    static final String ZOOKEEPER_FSYNC_WARNING_THRESHOLD_MS_PROPERTY = "zookeeper." + FSYNC_WARNING_THRESHOLD_MS_PROPERTY;
-
-    /** Maximum time we allow for elapsed fsync before WARNing */
-    protected static final long fsyncWarningThresholdMS;
+    private static final Logger LOG = LoggerFactory.getLogger(SpiralTxnLog.class);
+    private final SpiralClient spiralClient;
 
     /**
-     * This parameter limit the size of each txnlog to a given limit (KB).
-     * It does not affect how often the system will take a snapshot [zookeeper.snapCount]
-     * We roll the txnlog when either of the two limits are reached.
-     * Also since we only roll the logs at transaction boundaries, actual file size can exceed
-     * this limit by the maximum size of a serialized transaction.
-     * The feature is disabled by default (-1)
-     */
-    protected static final String txnLogSizeLimitSetting = "zookeeper.txnLogSizeLimitInKb";
-
-    /**
-     * The actual txnlog size limit in bytes.
-     */
-    protected static long txnLogSizeLimit = -1;
-
-    static {
-        LOG = LoggerFactory.getLogger(FileTxnLog.class);
-
-        /** Local variable to read fsync.warningthresholdms into */
-        Long fsyncWarningThreshold;
-        if ((fsyncWarningThreshold = Long.getLong(ZOOKEEPER_FSYNC_WARNING_THRESHOLD_MS_PROPERTY)) == null) {
-            fsyncWarningThreshold = Long.getLong(FSYNC_WARNING_THRESHOLD_MS_PROPERTY, 1000);
-        }
-        fsyncWarningThresholdMS = fsyncWarningThreshold;
-
-        Long logSize = Long.getLong(txnLogSizeLimitSetting, -1);
-        if (logSize > 0) {
-            LOG.info("{} = {}", txnLogSizeLimitSetting, logSize);
-
-            // Convert to bytes
-            logSize = logSize * 1024;
-            txnLogSizeLimit = logSize;
-        }
-    }
-
-    long lastZxidSeen;
-    volatile BufferedOutputStream logStream = null;
-    volatile OutputArchive oa;
-    volatile FileOutputStream fos = null;
-
-    protected File logDir;
-    protected final boolean forceSync = !System.getProperty("zookeeper.forceSync", "yes").equals("no");
-    long dbId;
-    protected final Queue<FileOutputStream> streamsToFlush = new ArrayDeque<>();
-    File logFileWrite = null;
-    protected FilePadding filePadding = new FilePadding();
-
-    protected ServerStats serverStats;
-
-    protected volatile long syncElapsedMS = -1L;
-
-    /**
-     * A running total of all complete log files
-     * This does not include the current file being written to
-     */
-    private long prevLogsRunningTotal;
-
-    long filePosition = 0;
-
-    protected long unFlushedSize = 0;
-
-    protected long fileSize = 0;
-
-    /**
-     * constructor for FileTxnLog. Take the directory
+     * constructor for SpiralTxnLog. Take the directory
      * where the txnlogs are stored
      * @param logDir the directory where the txnlogs are stored
      */
-    public FileTxnLog(File logDir) {
-        this.logDir = logDir;
-    }
-
-    /**
-     * method to allow setting preallocate size
-     * of log file to pad the file.
-     * @param size the size to set to in bytes
-     */
-    public static void setPreallocSize(long size) {
-        FilePadding.setPreallocSize(size);
-    }
-
-    /**
-     * Setter for ServerStats to monitor fsync threshold exceed
-     * @param serverStats used to update fsyncThresholdExceedCount
-     */
-    @Override
-    public synchronized void setServerStats(ServerStats serverStats) {
-        this.serverStats = serverStats;
-    }
-
-    /**
-     * Set log size limit
-     */
-    public static void setTxnLogSizeLimit(long size) {
-        txnLogSizeLimit = size;
-    }
-
-    /**
-     * Return the current on-disk size of log size. This will be accurate only
-     * after commit() is called. Otherwise, unflushed txns may not be included.
-     */
-    public synchronized long getCurrentLogSize() {
-        if (logFileWrite != null) {
-            return fileSize;
-        }
-        return 0;
-    }
-
-    public synchronized void setTotalLogSize(long size) {
-        prevLogsRunningTotal = size;
-    }
-
-    public synchronized long getTotalLogSize() {
-        return prevLogsRunningTotal + getCurrentLogSize();
-    }
-
-    /**
-     * creates a checksum algorithm to be used
-     * @return the checksum used for this txnlog
-     */
-    protected Checksum makeChecksumAlgorithm() {
-        return new Adler32();
-    }
-
-    /**
-     * rollover the current log file to a new one.
-     * @throws IOException
-     */
-    public synchronized void rollLog() throws IOException {
-        if (logStream != null) {
-            this.logStream.flush();
-            prevLogsRunningTotal += getCurrentLogSize();
-            this.logStream = null;
-            oa = null;
-            fileSize = 0;
-            filePosition = 0;
-            unFlushedSize = 0;
-            // Roll over the current log file into the running total
-        }
-    }
-
-    /**
-     * close all the open file handles
-     * @throws IOException
-     */
-    public synchronized void close() throws IOException {
-        if (logStream != null) {
-            logStream.close();
-        }
-        for (FileOutputStream log : streamsToFlush) {
-            log.close();
-        }
+    public SpiralTxnLog(SpiralClient spiralClient, File logDir) {
+        super(logDir);
+        this.spiralClient = spiralClient;
     }
 
     @Override
@@ -316,7 +158,13 @@ public class FileTxnLog implements TxnLog, Closeable {
         // In this case, the data just write to the cache, not flushed, so add the size to unFlushedSize.
         // After flushed, the unFlushedSize will add to the filePosition.
         unFlushedSize += oa.getDataSize() - dataSize;
+        appendToSpiralTxnLog(hdr.getZxid(), buf);
         return true;
+    }
+
+    private void appendToSpiralTxnLog(long zxid, byte[] buf) {
+        spiralClient.put(SpiralBucket.SHARED_TRANSACTION_LOG.getBucketName(), String.valueOf(zxid), buf);
+        LOG.info("Appended zxid {} to global changelog", zxid);
     }
 
     /**
@@ -366,7 +214,7 @@ public class FileTxnLog implements TxnLog, Closeable {
         // if a log file is more recent we must scan it to find
         // the highest zxid
         long zxid = maxLog;
-        try (FileTxnLog txn = new FileTxnLog(logDir); TxnIterator itr = txn.read(maxLog)) {
+        try (SpiralTxnLog txn = new SpiralTxnLog(spiralClient, logDir); TxnIterator itr = txn.read(maxLog)) {
             while (true) {
                 if (!itr.next()) {
                     break;
@@ -672,7 +520,7 @@ public class FileTxnLog implements TxnLog, Closeable {
         void init() throws IOException {
             storedFiles = new ArrayList<>();
             List<File> files = Util.sortDataDir(
-                FileTxnLog.getLogFiles(logDir.listFiles(), 0),
+                SpiralTxnLog.getLogFiles(logDir.listFiles(), 0),
                 LOG_FILE_PREFIX,
                 false);
             for (File f : files) {
@@ -723,10 +571,10 @@ public class FileTxnLog implements TxnLog, Closeable {
         protected void inStreamCreated(InputArchive ia, InputStream is) throws IOException {
             FileHeader header = new FileHeader();
             header.deserialize(ia, "fileheader");
-            if (header.getMagic() != FileTxnLog.TXNLOG_MAGIC) {
+            if (header.getMagic() != SpiralTxnLog.TXNLOG_MAGIC) {
                 throw new IOException("Transaction log: " + this.logFile
                                       + " has invalid magic number "
-                                      + header.getMagic() + " != " + FileTxnLog.TXNLOG_MAGIC);
+                                      + header.getMagic() + " != " + SpiralTxnLog.TXNLOG_MAGIC);
             }
         }
 

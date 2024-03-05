@@ -213,6 +213,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     /** Socket listen backlog. Value of -1 indicates unset */
     protected int listenBacklog = -1;
     protected SessionTracker sessionTracker;
+    protected SpiralSessionTrackerImpl spiralSessionTracker;
     private FileTxnSnapLog txnLogFactory = null;
     private ZKDatabase zkDb;
     private ResponseCache readResponseCache;
@@ -714,6 +715,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     }
 
     private void close(long sessionId) {
+        spiralSessionTracker.closeSession(sessionId);
         Request si = new Request(null, sessionId, 0, OpCode.closeSession, null, null);
         submitRequest(si);
     }
@@ -882,10 +884,12 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
 
     protected void createSessionTracker() {
         sessionTracker = new SessionTrackerImpl(this, zkDb.getSessionWithTimeOuts(), tickTime, createSessionTrackerServerId, getZooKeeperServerListener());
+        spiralSessionTracker = new SpiralSessionTrackerImpl(this, zkDb.getSessionWithTimeOuts(), tickTime, createSessionTrackerServerId, getZooKeeperServerListener(), spiralClient);
     }
 
     protected void startSessionTracker() {
         ((SessionTrackerImpl) sessionTracker).start();
+        ((SpiralSessionTrackerImpl) spiralSessionTracker).start();
     }
 
     /**
@@ -1124,6 +1128,10 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         Request si = new Request(cnxn, sessionId, 0, OpCode.createSession, RequestRecord.fromRecord(txn), null);
         submitRequest(si);
         return sessionId;
+    }
+
+    void createSpiralSession(long sessionId, ConnectRequest request) {
+        spiralSessionTracker.createSession(sessionId, request);
     }
 
     /**
@@ -1556,6 +1564,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         cnxn.disableRecv();
         if (sessionId == 0) {
             long id = createSession(cnxn, passwd, sessionTimeout);
+            createSpiralSession(id, request);
             LOG.debug(
                 "Client attempting to establish new session: session = 0x{}, zxid = 0x{}, timeout = {}, address = {}",
                 Long.toHexString(id),

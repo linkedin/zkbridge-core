@@ -21,6 +21,9 @@ import proto.com.linkedin.spiral.Key;
 import proto.com.linkedin.spiral.Put;
 import proto.com.linkedin.spiral.PutRequest;
 import proto.com.linkedin.spiral.PutResponse;
+import proto.com.linkedin.spiral.Delete;
+import proto.com.linkedin.spiral.DeleteRequest;
+import proto.com.linkedin.spiral.DeleteResponse;
 import proto.com.linkedin.spiral.SpiralApiGrpc;
 import proto.com.linkedin.spiral.SpiralContext;
 import proto.com.linkedin.spiral.Value;
@@ -151,7 +154,7 @@ public class SpiralClient {
       GetResponse response = _blockingStub.get(request);
       return response.getValue().getMessage().toByteArray();
     } catch (Exception e) {
-      LOGGER.error("Get: RPC failed or bucket: {}, key: {}", bucketName, key, e);
+      LOGGER.error("Get: RPC failed for bucket: {}, key: {}", bucketName, key, e);
       throw e;
     }
   }
@@ -183,7 +186,7 @@ public class SpiralClient {
         }
       });
     } catch (Exception e) {
-      LOGGER.error("Get: RPC failed or bucket: {}, key: {}", bucketName, key, e);
+      LOGGER.error("Get: RPC failed for bucket: {}, key: {}", bucketName, key, e);
       throw e;
     }
     return value[0];
@@ -209,7 +212,7 @@ public class SpiralClient {
       // TODO - convert response to ZK response.
       PutResponse response = _blockingStub.put(request);
     } catch (Exception e) {
-      LOGGER.error("Put: RPC failed or bucket: {}, key: {}", bucketName, key, e);
+      LOGGER.error("Put: RPC failed for bucket: {}, key: {}", bucketName, key, e);
       throw e;
     }
   }
@@ -266,4 +269,21 @@ public class SpiralClient {
     }
 
   }
+  public void delete(String bucketName, String key) {
+    try {
+      SpiralContext spiralContext = SpiralContext.newBuilder()
+          .setNamespace(_namespace)
+          .setBucket(bucketName)
+          .build();
+
+      ByteString keyBytes = ByteString.copyFromUtf8(key);
+      Key apiKey = Key.newBuilder().setMessage(keyBytes).build();
+      DeleteRequest request = DeleteRequest.newBuilder().setSpiralContext(spiralContext).setKey(apiKey).build();
+      DeleteResponse response = _blockingStub.delete(request);
+    } catch (Exception e) {
+      LOGGER.error("Delete: RPC failed for bucket: {}, key: {}", bucketName, key, e);
+      throw e;
+    }
+  }
+
 }

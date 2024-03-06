@@ -21,7 +21,6 @@ import proto.com.linkedin.spiral.Key;
 import proto.com.linkedin.spiral.Put;
 import proto.com.linkedin.spiral.PutRequest;
 import proto.com.linkedin.spiral.PutResponse;
-import proto.com.linkedin.spiral.Delete;
 import proto.com.linkedin.spiral.DeleteRequest;
 import proto.com.linkedin.spiral.DeleteResponse;
 import proto.com.linkedin.spiral.SpiralApiGrpc;
@@ -217,6 +216,26 @@ public class SpiralClient {
     }
   }
 
+  public void delete(String bucketName, String key) {
+    try {
+      SpiralContext spiralContext = SpiralContext.newBuilder()
+          .setNamespace(_namespace)
+          .setBucket(bucketName)
+          .build();
+
+      ByteString keyBytes = ByteString.copyFromUtf8(key);
+      Key apiKey = Key.newBuilder().setMessage(keyBytes).build();
+      DeleteRequest request = DeleteRequest.newBuilder().setSpiralContext(spiralContext).setKey(apiKey).build();
+      
+      // TODO: check for valid response
+      DeleteResponse response = _blockingStub.delete(request);
+      // LOGGER.info("Delete: RPC response for bucket: {}, key: {}", bucketName, key, response);
+    } catch (Exception e) {
+      LOGGER.error("Delete: RPC failed for bucket: {}, key: {}", bucketName, key, e);
+      throw e;
+    }
+  }
+
   //Builder Class
   public static class SpiralClientBuilder{
 
@@ -269,21 +288,4 @@ public class SpiralClient {
     }
 
   }
-  public void delete(String bucketName, String key) {
-    try {
-      SpiralContext spiralContext = SpiralContext.newBuilder()
-          .setNamespace(_namespace)
-          .setBucket(bucketName)
-          .build();
-
-      ByteString keyBytes = ByteString.copyFromUtf8(key);
-      Key apiKey = Key.newBuilder().setMessage(keyBytes).build();
-      DeleteRequest request = DeleteRequest.newBuilder().setSpiralContext(spiralContext).setKey(apiKey).build();
-      DeleteResponse response = _blockingStub.delete(request);
-    } catch (Exception e) {
-      LOGGER.error("Delete: RPC failed for bucket: {}, key: {}", bucketName, key, e);
-      throw e;
-    }
-  }
-
 }

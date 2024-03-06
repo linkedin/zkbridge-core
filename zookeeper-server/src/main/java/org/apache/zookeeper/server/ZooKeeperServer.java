@@ -715,7 +715,6 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     }
 
     private void close(long sessionId) {
-        spiralSessionTracker.closeSession(sessionId);
         Request si = new Request(null, sessionId, 0, OpCode.closeSession, null, null);
         submitRequest(si);
     }
@@ -889,7 +888,6 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
 
     protected void startSessionTracker() {
         ((SessionTrackerImpl) sessionTracker).start();
-        ((SpiralSessionTrackerImpl) spiralSessionTracker).start();
     }
 
     /**
@@ -1130,7 +1128,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         return sessionId;
     }
 
-    void createSpiralSession(long sessionId, ConnectRequest request) {
+    void createSpiralSession(long sessionId, Request request) {
         spiralSessionTracker.createSession(sessionId, request);
     }
 
@@ -1564,7 +1562,6 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         cnxn.disableRecv();
         if (sessionId == 0) {
             long id = createSession(cnxn, passwd, sessionTimeout);
-            createSpiralSession(id, request);
             LOG.debug(
                 "Client attempting to establish new session: session = 0x{}, zxid = 0x{}, timeout = {}, address = {}",
                 Long.toHexString(id),
@@ -1951,11 +1948,13 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
             if (hdr != null && txn instanceof CreateSessionTxn) {
                 CreateSessionTxn cst = (CreateSessionTxn) txn;
                 sessionTracker.commitSession(sessionId, cst.getTimeOut());
+                createSpiralSession(sessionId, request);
             } else if (request == null || !request.isLocalSession()) {
                 LOG.warn("*****>>>>> Got {} {}",  txn.getClass(), txn.toString());
             }
         } else if (opCode == OpCode.closeSession) {
             sessionTracker.removeSession(sessionId);
+            spiralSessionTracker.closeSession(sessionId);
         }
     }
 

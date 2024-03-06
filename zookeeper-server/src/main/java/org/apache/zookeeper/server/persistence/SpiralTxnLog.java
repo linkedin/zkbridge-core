@@ -42,12 +42,14 @@ import org.apache.zookeeper.server.Request;
 import org.apache.zookeeper.server.ServerMetrics;
 import org.apache.zookeeper.server.TxnLogEntry;
 import org.apache.zookeeper.server.util.SerializeUtils;
-import org.apache.zookeeper.spiral.SpiralBucket;
 import org.apache.zookeeper.spiral.SpiralClient;
 import org.apache.zookeeper.txn.TxnDigest;
 import org.apache.zookeeper.txn.TxnHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.apache.zookeeper.spiral.InternalStateKey.*;
+import static org.apache.zookeeper.spiral.SpiralBucket.*;
 
 
 /**
@@ -163,7 +165,7 @@ public class SpiralTxnLog extends FileTxnLog {
     }
 
     private void appendToSpiralTxnLog(long zxid, byte[] buf) {
-        spiralClient.put(SpiralBucket.SHARED_TRANSACTION_LOG.getBucketName(), String.valueOf(zxid), buf);
+        spiralClient.put(SHARED_TRANSACTION_LOG.getBucketName(), String.valueOf(zxid), buf);
         LOG.info("Appended zxid {} to global changelog", zxid);
     }
 

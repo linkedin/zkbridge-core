@@ -53,11 +53,13 @@ import org.apache.zookeeper.server.persistence.FileSnap;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog.PlayBackListener;
 import org.apache.zookeeper.server.persistence.SnapStream;
+import org.apache.zookeeper.server.persistence.SpiralTxnSnapLog;
 import org.apache.zookeeper.server.persistence.TxnLog.TxnIterator;
 import org.apache.zookeeper.server.quorum.Leader.Proposal;
 import org.apache.zookeeper.server.quorum.Leader.PureRequestProposal;
 import org.apache.zookeeper.server.quorum.flexible.QuorumVerifier;
 import org.apache.zookeeper.server.util.SerializeUtils;
+import org.apache.zookeeper.spiral.SpiralClient;
 import org.apache.zookeeper.txn.TxnDigest;
 import org.apache.zookeeper.txn.TxnHeader;
 import org.slf4j.Logger;
@@ -95,6 +97,8 @@ public class ZKDatabase {
     protected Queue<Proposal> committedLog = new ArrayDeque<>();
     protected ReentrantReadWriteLock logLock = new ReentrantReadWriteLock();
     private volatile boolean initialized = false;
+    protected SpiralTxnSnapLog spiralTxnLog;
+    protected boolean spiralEnabled = false;
 
     /**
      * Number of txn since last snapshot;
@@ -291,6 +295,11 @@ public class ZKDatabase {
         LOG.info("Snapshot loaded in {} ms, highest zxid is 0x{}, digest is {}",
                 loadTime, Long.toHexString(zxid), dataTree.getTreeDigest());
         return zxid;
+    }
+
+    public void enableSpiralFeatures(SpiralClient spiralClient) throws IOException {
+        this.spiralEnabled = true;
+        this.spiralTxnLog = new SpiralTxnSnapLog(spiralClient, snapLog.getDataLogDir(), snapLog.getSnapDir());
     }
 
     /**
@@ -669,6 +678,10 @@ public class ZKDatabase {
      * @return true if the append was succesfull and false if not
      */
     public boolean append(Request si) throws IOException {
+        if (spiralEnabled) {
+            spiralTxnLog.append(si);
+        }
+
         if (this.snapLog.append(si)) {
             txnCount.incrementAndGet();
             return true;

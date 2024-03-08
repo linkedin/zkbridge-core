@@ -30,6 +30,7 @@ import org.apache.jute.OutputArchive;
 import org.apache.jute.Record;
 import org.apache.zookeeper.ZooDefs.OpCode;
 import org.apache.zookeeper.server.DataTree;
+import org.apache.zookeeper.server.SpiralTxnLogEntry;
 import org.apache.zookeeper.server.TxnLogEntry;
 import org.apache.zookeeper.server.ZooKeeperServer;
 import org.apache.zookeeper.server.ZooTrace;
@@ -42,6 +43,7 @@ import org.apache.zookeeper.txn.CreateTxnV0;
 import org.apache.zookeeper.txn.DeleteTxn;
 import org.apache.zookeeper.txn.ErrorTxn;
 import org.apache.zookeeper.txn.MultiTxn;
+import org.apache.zookeeper.txn.ServerAwareTxnHeader;
 import org.apache.zookeeper.txn.SetACLTxn;
 import org.apache.zookeeper.txn.SetDataTxn;
 import org.apache.zookeeper.txn.TxnDigest;
@@ -140,6 +142,95 @@ public class SerializeUtils {
         }
 
         return new TxnLogEntry(txn, hdr, digest);
+    }
+
+    public static SpiralTxnLogEntry deserializeSpiralTxn(byte[] txnBytes) throws IOException {
+        ServerAwareTxnHeader hdr = new ServerAwareTxnHeader();
+        final ByteArrayInputStream bais = new ByteArrayInputStream(txnBytes);
+        InputArchive ia = BinaryInputArchive.getArchive(bais);
+
+        hdr.deserialize(ia, "hdr");
+        bais.mark(bais.available());
+        Record txn = null;
+        switch (hdr.getType()) {
+            case OpCode.createSession:
+                // This isn't really an error txn; it just has the same
+                // format. The error represents the timeout
+                txn = new CreateSessionTxn();
+                break;
+            case OpCode.closeSession:
+                txn = ZooKeeperServer.isCloseSessionTxnEnabled()
+                    ?  new CloseSessionTxn() : null;
+                break;
+            case OpCode.create:
+            case OpCode.create2:
+                txn = new CreateTxn();
+                break;
+            case OpCode.createTTL:
+                txn = new CreateTTLTxn();
+                break;
+            case OpCode.createContainer:
+                txn = new CreateContainerTxn();
+                break;
+            case OpCode.delete:
+            case OpCode.deleteContainer:
+                txn = new DeleteTxn();
+                break;
+            case OpCode.reconfig:
+            case OpCode.setData:
+                txn = new SetDataTxn();
+                break;
+            case OpCode.setACL:
+                txn = new SetACLTxn();
+                break;
+            case OpCode.error:
+                txn = new ErrorTxn();
+                break;
+            case OpCode.multi:
+                txn = new MultiTxn();
+                break;
+            default:
+                throw new IOException("Unsupported Txn with type=" + hdr.getType());
+        }
+        if (txn != null) {
+            try {
+                txn.deserialize(ia, "txn");
+            } catch (EOFException e) {
+                // perhaps this is a V0 Create
+                if (hdr.getType() == OpCode.create) {
+                    CreateTxn create = (CreateTxn) txn;
+                    bais.reset();
+                    CreateTxnV0 createv0 = new CreateTxnV0();
+                    createv0.deserialize(ia, "txn");
+                    // cool now make it V1. a -1 parentCVersion will
+                    // trigger fixup processing in processTxn
+                    create.setPath(createv0.getPath());
+                    create.setData(createv0.getData());
+                    create.setAcl(createv0.getAcl());
+                    create.setEphemeral(createv0.getEphemeral());
+                    create.setParentCVersion(-1);
+                } else if (hdr.getType() == OpCode.closeSession) {
+                    // perhaps this is before CloseSessionTxn was added,
+                    // ignore it and reset txn to null
+                    txn = null;
+                } else {
+                    throw e;
+                }
+            }
+        }
+        TxnDigest digest = null;
+
+        if (ZooKeeperServer.isDigestEnabled()) {
+            digest = new TxnDigest();
+            try {
+                digest.deserialize(ia, "digest");
+            } catch (EOFException exception) {
+                // may not have digest in the txn
+                digest = null;
+            }
+        }
+
+        return new SpiralTxnLogEntry(txn, hdr, digest);
     }
 
     public static void deserializeSnapshot(DataTree dt, InputArchive ia, Map<Long, Integer> sessions) throws IOException {

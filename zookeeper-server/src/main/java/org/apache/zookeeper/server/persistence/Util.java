@@ -34,6 +34,7 @@ import org.apache.jute.BinaryOutputArchive;
 import org.apache.jute.InputArchive;
 import org.apache.jute.OutputArchive;
 import org.apache.jute.Record;
+import org.apache.zookeeper.txn.ServerAwareTxnHeader;
 import org.apache.zookeeper.txn.TxnDigest;
 import org.apache.zookeeper.txn.TxnHeader;
 import org.slf4j.Logger;
@@ -172,6 +173,27 @@ public class Util {
         return null;
     }
 
+    /**
+     * Serializes transaction header and transaction data into a byte buffer.
+     *
+     * @param hdr transaction header
+     * @param txn transaction data
+     * @param digest transaction digest
+     *
+     * @return serialized transaction record
+     */
+    public static byte[] marshallTxnEntry(ServerAwareTxnHeader hdr, Record txn, TxnDigest digest) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        OutputArchive boa = BinaryOutputArchive.getArchive(baos);
+        hdr.serialize(boa, "hdr");
+        if (txn != null) {
+            txn.serialize(boa, "txn");
+        }
+        if (digest != null) {
+            digest.serialize(boa, "digest");
+        }
+        return baos.toByteArray();
+    }
 
     /**
      * Serializes transaction header and transaction data into a byte buffer.

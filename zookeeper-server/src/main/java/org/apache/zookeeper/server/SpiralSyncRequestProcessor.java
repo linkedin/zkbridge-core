@@ -19,19 +19,11 @@
 package org.apache.zookeeper.server;
 
 import java.io.Flushable;
-import java.io.IOException;
-import java.util.ArrayDeque;
 import java.util.Objects;
-import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import org.apache.zookeeper.common.Time;
-import org.apache.zookeeper.server.persistence.Util;
-import org.apache.zookeeper.server.util.SerializeUtils;
-import org.apache.zookeeper.spiral.SpiralBucket;
 import org.apache.zookeeper.spiral.SpiralClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,12 +45,12 @@ public class SpiralSyncRequestProcessor extends ZooKeeperCriticalThread implemen
     private final SpiralClient spiralClient;
     private final ZooKeeperServer zks;
     private final RequestProcessor nextProcessor;
-    private final SpiralSyncProcessor spiralSyncProcessor;
+    private final SpiralTxnLogSyncer spiralTxnLogSyncer;
 
-    public SpiralSyncRequestProcessor(ZooKeeperServer zks, SpiralClient spiralClient, SpiralSyncProcessor spiralSyncProcessor, RequestProcessor nextProcessor) {
+    public SpiralSyncRequestProcessor(ZooKeeperServer zks, SpiralClient spiralClient, SpiralTxnLogSyncer spiralTxnLogSyncer, RequestProcessor nextProcessor) {
         super("SpiralSyncThread:" + zks.getServerId(), zks.getZooKeeperServerListener());
         this.zks = zks;
-        this.spiralSyncProcessor = spiralSyncProcessor;
+        this.spiralTxnLogSyncer = spiralTxnLogSyncer;
         this.spiralClient = spiralClient;
         this.nextProcessor = nextProcessor;
     }
@@ -93,9 +85,9 @@ public class SpiralSyncRequestProcessor extends ZooKeeperCriticalThread implemen
                 }
 
                 // append write requests to the spiral change-log
-                zks.getZKDatabase().append(si);
-                spiralSyncProcessor.syncDeltaUntilLatest();
-                this.nextProcessor.processRequest(si);
+                zks.getZKDatabase().append(zks.getServerId(), si);
+                spiralTxnLogSyncer.syncDeltaUntilLatest();
+                nextProcessor.processRequest(si);
                 ServerMetrics.getMetrics().SPIRAL_SYNC_PROCESS_TIME.add(Time.currentElapsedTime() - startProcessTime);
             }
         } catch (Throwable t) {

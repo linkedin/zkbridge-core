@@ -25,6 +25,10 @@ import proto.com.linkedin.spiral.SpiralApiGrpc;
 import proto.com.linkedin.spiral.SpiralContext;
 import proto.com.linkedin.spiral.Value;
 
+import static org.apache.zookeeper.spiral.InternalStateKey.*;
+import static org.apache.zookeeper.spiral.SpiralBucket.*;
+
+
 public class SpiralClient {
   private static final Logger LOGGER = LoggerFactory.getLogger(SpiralClient.class);
   private static final String DEFAULT_NAMESPACE = "zookeeper";
@@ -117,6 +121,7 @@ public class SpiralClient {
           .setNamespace(_namespace)
           .setName(bucketName)
           .build();
+      LOGGER.error("Creating bucket : {}", bucketName);
       _blockingStub.createBucket(request);
     } catch (Exception e) {
       LOGGER.error("Failed to create bucket : {}", bucketName, e);
@@ -138,7 +143,26 @@ public class SpiralClient {
     return false;
   }
 
+  public boolean containsKey(String bucketName, String key) {
+    try {
+      return getResponse(bucketName, key).hasValue();
+    } catch (Exception e) {
+      LOGGER.error("ContainsKey: RPC failed or bucket: {}, key: {}", bucketName, key, e);
+    }
+    return false;
+  }
+
   public byte[] get(String bucketName, String key) {
+    try {
+      GetResponse response = getResponse(bucketName, key);
+      return response.getValue().getMessage().toByteArray();
+    } catch (Exception e) {
+      LOGGER.error("Get: RPC failed or bucket: {}, key: {}", bucketName, key, e);
+      throw e;
+    }
+  }
+
+  GetResponse getResponse(String bucketName, String key) {
     try {
       SpiralContext spiralContext = SpiralContext.newBuilder()
           .setNamespace(_namespace)
@@ -148,8 +172,7 @@ public class SpiralClient {
       ByteString keyBytes = ByteString.copyFromUtf8(key);
       Key apiKey = Key.newBuilder().setMessage(keyBytes).build();
       GetRequest request = GetRequest.newBuilder().setSpiralContext(spiralContext).setKey(apiKey).build();
-      GetResponse response = _blockingStub.get(request);
-      return response.getValue().getMessage().toByteArray();
+      return _blockingStub.get(request);
     } catch (Exception e) {
       LOGGER.error("Get: RPC failed or bucket: {}, key: {}", bucketName, key, e);
       throw e;
@@ -189,6 +212,23 @@ public class SpiralClient {
     return value[0];
   }
 
+  public void updateLastProcessedTxn(long serverId, long zxid) {
+    put(SpiralBucket.LAST_PROCESSED_OFFSET.getBucketName(), String.valueOf(serverId), String.valueOf(zxid).getBytes());
+  }
+
+  public Long generateTransactionId() {
+    if (!containsKey(INTERNAL_STATE.getBucketName(), LATEST_TRANSACTION_ID.name())) {
+      put(INTERNAL_STATE.getBucketName(), LATEST_TRANSACTION_ID.name(), String.valueOf(1).getBytes());
+      return 1L;
+    }
+
+    byte[] lastZxidBuf = get(INTERNAL_STATE.getBucketName(), LATEST_TRANSACTION_ID.name());
+    Long nextZxid = Long.valueOf(new String(lastZxidBuf)) + 1;
+    put(INTERNAL_STATE.getBucketName(), LATEST_TRANSACTION_ID.name(), String.valueOf(nextZxid).getBytes());
+    LOGGER.info("Generated new Transaction Id using Spiral: {}", nextZxid);
+    return nextZxid;
+  }
+
   public void put(String bucketName, String key, byte[] value) {
     try {
       SpiralContext spiralContext = SpiralContext.newBuilder()
@@ -214,8 +254,8 @@ public class SpiralClient {
     }
   }
 
-  //Builder Class
-  public static class SpiralClientBuilder{
+  // Builder Class
+  public static class SpiralClientBuilder {
 
     private String spiralEndpoint;
     private String identityCert;

@@ -19,6 +19,8 @@
 package org.apache.zookeeper.server;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.zookeeper.spiral.SpiralBucket.*;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -156,14 +158,24 @@ public class FinalRequestProcessor implements RequestProcessor {
         }
         ProcessTxnResult rc = null;
         if (!request.isThrottled()) {
-          rc = applyRequest(request);
+            rc = applyRequest(request);
         }
+
+        processRequestInternal(request, rc);
+    }
+
+    public void processRequestInternal(Request request, ProcessTxnResult rc) {
         if (request.cnxn == null) {
             return;
         }
         ServerCnxn cnxn = request.cnxn;
 
         long lastZxid = zks.getZKDatabase().getDataTreeLastProcessedZxid();
+
+        if (zks.isSpiralEnabled()) {
+            // write path last-zxid will always be the recent for this server.
+            zks.getSpiralClient().updateLastProcessedTxn(zks.getServerId(), lastZxid);
+        }
 
         String lastOp = "NA";
         // Notify ZooKeeperServer that the request has finished so that it can

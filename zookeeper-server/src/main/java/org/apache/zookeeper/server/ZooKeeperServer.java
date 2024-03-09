@@ -213,7 +213,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     /** Socket listen backlog. Value of -1 indicates unset */
     protected int listenBacklog = -1;
     protected SessionTracker sessionTracker;
-    protected SpiralSessionTrackerImpl spiralSessionTracker;
+    protected SpiralSessionTrackerImpl spiralSessionTracker = null;
     private FileTxnSnapLog txnLogFactory = null;
     private ZKDatabase zkDb;
     private ResponseCache readResponseCache;
@@ -883,7 +883,9 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
 
     protected void createSessionTracker() {
         sessionTracker = new SessionTrackerImpl(this, zkDb.getSessionWithTimeOuts(), tickTime, createSessionTrackerServerId, getZooKeeperServerListener());
-        spiralSessionTracker = new SpiralSessionTrackerImpl(this, zkDb.getSessionWithTimeOuts(), tickTime, createSessionTrackerServerId, getZooKeeperServerListener(), spiralClient);
+        if (spiralEnabled) {
+            spiralSessionTracker = new SpiralSessionTrackerImpl(this, zkDb.getSessionWithTimeOuts(), tickTime, createSessionTrackerServerId, getZooKeeperServerListener(), spiralClient);
+        }
     }
 
     protected void startSessionTracker() {
@@ -1144,6 +1146,10 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
 
     protected void revalidateSession(ServerCnxn cnxn, long sessionId, int sessionTimeout) throws IOException {
         boolean rc = sessionTracker.touchSession(sessionId, sessionTimeout);
+        
+        // Rehydrate session map for session handover for spiral. 
+        // TODO: Needs to add last seen zxid check to provide read-after-write consistency
+        rc = spiralSessionTracker.touchSession(sessionId, sessionTimeout);
         if (LOG.isTraceEnabled()) {
             ZooTrace.logTraceMessage(
                 LOG,
@@ -1948,13 +1954,17 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
             if (hdr != null && txn instanceof CreateSessionTxn) {
                 CreateSessionTxn cst = (CreateSessionTxn) txn;
                 sessionTracker.commitSession(sessionId, cst.getTimeOut());
-                createSpiralSession(sessionId, request);
+                if (spiralEnabled) {
+                    createSpiralSession(sessionId, request);
+                }
             } else if (request == null || !request.isLocalSession()) {
                 LOG.warn("*****>>>>> Got {} {}",  txn.getClass(), txn.toString());
             }
         } else if (opCode == OpCode.closeSession) {
             sessionTracker.removeSession(sessionId);
-            spiralSessionTracker.closeSession(sessionId);
+            if (spiralEnabled) {
+                spiralSessionTracker.closeSession(sessionId);
+            }
         }
     }
 

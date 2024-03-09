@@ -80,7 +80,7 @@ public class ZKDatabase {
     protected DataTree dataTree;
     protected ConcurrentHashMap<Long, Integer> sessionsWithTimeouts;
     protected FileTxnSnapLog snapLog;
-    protected long minCommittedLog, maxCommittedLog;
+        protected long minCommittedLog, maxCommittedLog;
 
     /**
      * Default value is to use snapshot if txnlog size exceeds 1/3 the size of snapshot
@@ -285,6 +285,12 @@ public class ZKDatabase {
     public long loadDataBase() throws IOException {
         long startTime = Time.currentElapsedTime();
         long zxid = snapLog.restore(dataTree, sessionsWithTimeouts, commitProposalPlaybackListener);
+
+        // TODO: Now here normally sessions are restored from transaction logs and snapshots. So we would depend on sessions to be
+        // restored from transaction logs through SpiralSyncProcessor and for session handover request, we would do lazy loading for that
+        // sesion and allow session handover to different node if session is valid and that node has atLeast LastZxid synced with last
+        // server to provide read-after-write consistency.
+
         initialized = true;
         long loadTime = Time.currentElapsedTime() - startTime;
         ServerMetrics.getMetrics().DB_INIT_TIME.add(loadTime);

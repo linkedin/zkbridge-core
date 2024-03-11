@@ -193,7 +193,7 @@ public class SessionTrackerImpl extends ZooKeeperCriticalThread implements Sessi
         return true;
     }
 
-    private void updateSessionExpiry(SessionImpl s, int timeout) {
+    protected void updateSessionExpiry(SessionImpl s, int timeout) {
         logTraceTouchSession(s.sessionId, timeout, "");
         sessionExpiryQueue.update(s, timeout);
     }
@@ -210,11 +210,11 @@ public class SessionTrackerImpl extends ZooKeeperCriticalThread implements Sessi
         }
     }
 
-    private void logTraceTouchInvalidSession(long sessionId, int timeout) {
+    protected void logTraceTouchInvalidSession(long sessionId, int timeout) {
         logTraceTouchSession(sessionId, timeout, "invalid ");
     }
 
-    private void logTraceTouchClosingSession(long sessionId, int timeout) {
+    protected void logTraceTouchClosingSession(long sessionId, int timeout) {
         logTraceTouchSession(sessionId, timeout, "closing ");
     }
 

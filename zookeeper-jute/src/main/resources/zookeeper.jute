@@ -294,6 +294,14 @@ module org.apache.zookeeper.txn {
         int version;
         long treeDigest;
     }
+    class ServerAwareTxnHeader {
+        long clientId;
+        int cxid;
+        long zxid;
+        long time;
+        int type;
+        ustring serverId;
+    }
     class TxnHeader {
         long clientId;
         int cxid;

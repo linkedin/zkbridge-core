@@ -85,13 +85,14 @@ import org.apache.zookeeper.server.auth.ProviderRegistry;
 import org.apache.zookeeper.server.auth.ServerAuthenticationProvider;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
 import org.apache.zookeeper.server.persistence.SpiralTxnLog;
-import org.apache.zookeeper.server.persistence.SpiralTxnSnapLog;
+import org.apache.zookeeper.server.persistence.SpiralTxnLog.SpiralTxnIterator;
 import org.apache.zookeeper.server.quorum.QuorumPeerConfig;
 import org.apache.zookeeper.server.quorum.ReadOnlyZooKeeperServer;
 import org.apache.zookeeper.server.util.JvmPauseMonitor;
 import org.apache.zookeeper.server.util.OSMXBean;
 import org.apache.zookeeper.server.util.QuotaMetricsUtils;
 import org.apache.zookeeper.server.util.RequestPathMetricsCollector;
+import org.apache.zookeeper.spiral.SpiralBucket;
 import org.apache.zookeeper.spiral.SpiralClient;
 import org.apache.zookeeper.txn.CreateSessionTxn;
 import org.apache.zookeeper.txn.TxnDigest;
@@ -99,6 +100,10 @@ import org.apache.zookeeper.txn.TxnHeader;
 import org.apache.zookeeper.util.ServiceUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.apache.zookeeper.spiral.InternalStateKey.*;
+import static org.apache.zookeeper.spiral.SpiralBucket.*;
+
 
 /**
  * This class implements a simple standalone ZooKeeperServer. It sets up the
@@ -141,7 +146,6 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
 
     // Connection to spiralClient.
     private SpiralClient spiralClient;
-    private SpiralTxnSnapLog spiralTxnLog;
     private boolean spiralEnabled = false;
 
     static {
@@ -434,9 +438,8 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         this(txnLogFactory, tickTime, -1, -1, -1, new ZKDatabase(txnLogFactory), initialConfig, QuorumPeerConfig.isReconfigEnabled());
     }
 
-    public void setSpiralClient(SpiralClient spiralClient) throws IOException {
+    public void setSpiralClient(SpiralClient spiralClient) {
         this.spiralClient = spiralClient;
-        this.spiralTxnLog = new SpiralTxnSnapLog(spiralClient, txnLogFactory.getDataLogDir(),txnLogFactory.getSnapDir());
         spiralEnabled = true;
     }
 
@@ -707,6 +710,9 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     }
 
     long getNextZxid() {
+        if (spiralEnabled) {
+            return spiralClient.generateTransactionId();
+        }
         return hzxid.incrementAndGet();
     }
 
@@ -801,6 +807,9 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         //check to see if zkDb is not null
         if (zkDb == null) {
             zkDb = new ZKDatabase(this.txnLogFactory);
+            if (spiralEnabled) {
+                zkDb.enableSpiralFeatures(spiralClient);
+            }
         }
         if (!zkDb.isInitialized()) {
             loadData();
@@ -824,7 +833,10 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         if (sessionTracker == null) {
             createSessionTracker();
         }
+        setupStateFromSpiral();
+
         startSessionTracker();
+
         setupRequestProcessors();
 
         startRequestThrottler();
@@ -861,10 +873,51 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
 
     protected void setupRequestProcessors() {
         RequestProcessor finalProcessor = new FinalRequestProcessor(this);
-        RequestProcessor syncProcessor = new SyncRequestProcessor(this, finalProcessor);
-        ((SyncRequestProcessor) syncProcessor).start();
+        RequestProcessor syncProcessor;
+        if (spiralEnabled) {
+            SpiralTxnLogSyncer spiralTxnLogSyncer = new SpiralTxnLogSyncer(this, spiralClient);
+            syncProcessor = new SpiralSyncRequestProcessor(this, spiralClient, spiralTxnLogSyncer, finalProcessor);
+            ((SpiralSyncRequestProcessor) syncProcessor).start();
+        } else {
+            syncProcessor = new SyncRequestProcessor(this, finalProcessor);
+            ((SyncRequestProcessor) syncProcessor).start();
+        }
         firstProcessor = new PrepRequestProcessor(this, syncProcessor);
         ((PrepRequestProcessor) firstProcessor).start();
+    }
+
+    /**
+     * Restores the ZK DB to the state until the point of last processed zxid, using it as offset.
+     * This function is invoked before even the request processors are setup, so that we can hydrate
+     * the state before the server is ready to serve requests.
+     */
+    private void setupStateFromSpiral() {
+        if (!isSpiralEnabled()) {
+            return;
+        }
+
+        // case: if the server is getting started for the very first time and there is no recorded offset.
+        if (!spiralClient.containsKey(LAST_PROCESSED_OFFSET.getBucketName(), String.valueOf(getServerId()))) {
+            return;
+        }
+
+        byte[] bytes = spiralClient.get(LAST_PROCESSED_OFFSET.getBucketName(), String.valueOf(getServerId()));
+        Long lastProcessedZxid = Long.valueOf(new String(bytes));
+        SpiralTxnIterator txnIterator = null;
+        try {
+            txnIterator = new SpiralTxnIterator(spiralClient, 1, lastProcessedZxid);
+            while (txnIterator.next()) {
+                TxnHeader hdr = txnIterator.getHeader();
+                TxnDigest digest = txnIterator.getDigest();
+                Record txn = txnIterator.getTxn();
+
+                processTxnInDB(hdr, txn, digest);
+            }
+            LOG.info("Completed setting up state from Spiral. Last processed txn Id: {}", getLastProcessedZxid());
+        } catch (Exception e) {
+            throw new RuntimeException(
+                String.format("error while hydrating zkbridge server: %s while reading zxid: %s", getServerId(), txnIterator.getCurrZxid()), e);
+        }
     }
 
     public ZooKeeperServerListener getZooKeeperServerListener() {
@@ -1903,7 +1956,6 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         }
         synchronized (outstandingChanges) {
             ProcessTxnResult rc = processTxnInDB(hdr, request.getTxn(), request.getTxnDigest());
-            processRequestForSpiral(request);
             // request.hdr is set for write requests, which are the only ones
             // that add to outstandingChanges.
             if (writeRequest) {
@@ -1930,19 +1982,6 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
                 getZKDatabase().addCommittedProposal(request);
             }
             return rc;
-        }
-    }
-
-    private void processRequestForSpiral(Request request) {
-        if (!spiralEnabled) {
-            return;
-        }
-
-        try {
-            spiralTxnLog.append(request);
-        } catch (IOException e) {
-            LOG.error("unable persist the transaction to spiral changelog {}", request.getHdr().getZxid(), e);
-            throw new RuntimeException(e);
         }
     }
 
@@ -2461,6 +2500,14 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
             return;
         }
         ServerMetrics.getMetrics().QUOTA_EXCEEDED_ERROR_PER_NAMESPACE.add(namespace, 1);
+    }
+
+    public boolean isSpiralEnabled() {
+        return this.spiralEnabled;
+    }
+
+    public SpiralClient getSpiralClient() {
+        return spiralClient;
     }
 }
 

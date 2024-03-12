@@ -18,7 +18,6 @@
 
 package org.apache.zookeeper.server;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -40,7 +39,6 @@ import java.util.zip.CheckedInputStream;
 import org.apache.jute.InputArchive;
 import org.apache.jute.OutputArchive;
 import org.apache.jute.Record;
-import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.NoNodeException;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.Watcher.WatcherType;
@@ -53,15 +51,19 @@ import org.apache.zookeeper.server.persistence.FileSnap;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog.PlayBackListener;
 import org.apache.zookeeper.server.persistence.SnapStream;
+import org.apache.zookeeper.server.persistence.SpiralTxnLog;
 import org.apache.zookeeper.server.persistence.TxnLog.TxnIterator;
 import org.apache.zookeeper.server.quorum.Leader.Proposal;
 import org.apache.zookeeper.server.quorum.Leader.PureRequestProposal;
 import org.apache.zookeeper.server.quorum.flexible.QuorumVerifier;
 import org.apache.zookeeper.server.util.SerializeUtils;
+import org.apache.zookeeper.spiral.SpiralClient;
 import org.apache.zookeeper.txn.TxnDigest;
 import org.apache.zookeeper.txn.TxnHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static java.nio.charset.StandardCharsets.*;
 
 /**
  * This class maintains the in memory database of zookeeper
@@ -95,6 +97,8 @@ public class ZKDatabase {
     protected Queue<Proposal> committedLog = new ArrayDeque<>();
     protected ReentrantReadWriteLock logLock = new ReentrantReadWriteLock();
     private volatile boolean initialized = false;
+    protected SpiralTxnLog spiralTxnLog;
+    protected boolean spiralEnabled = false;
 
     /**
      * Number of txn since last snapshot;
@@ -297,6 +301,11 @@ public class ZKDatabase {
         LOG.info("Snapshot loaded in {} ms, highest zxid is 0x{}, digest is {}",
                 loadTime, Long.toHexString(zxid), dataTree.getTreeDigest());
         return zxid;
+    }
+
+    public void enableSpiralFeatures(SpiralClient spiralClient) throws IOException {
+        this.spiralTxnLog = new SpiralTxnLog(spiralClient);
+        this.spiralEnabled = true;
     }
 
     /**
@@ -667,6 +676,18 @@ public class ZKDatabase {
      */
     public void serializeSnapshot(OutputArchive oa) throws IOException, InterruptedException {
         SerializeUtils.serializeSnapshot(getDataTree(), oa, getSessionWithTimeOuts());
+    }
+
+    /**
+     * append to the underlying transaction log
+     * @param si the request to append
+     * @return true if the append was succesfull and false if not
+     */
+    public boolean append(Long serverId, Request si) throws IOException {
+        if (spiralEnabled) {
+            return spiralTxnLog.append(serverId, si);
+        }
+        return false;
     }
 
     /**

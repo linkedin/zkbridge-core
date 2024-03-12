@@ -190,6 +190,7 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements Req
                             new ZooKeeperThread("Snapshot Thread") {
                                 public void run() {
                                     try {
+                                        //TODO: Only one node should take the snapshot at a time. Others should wait for the snapshot to complete.
                                         zks.takeSnapshot();
                                     } catch (Exception e) {
                                         LOG.warn("Unexpected exception", e);

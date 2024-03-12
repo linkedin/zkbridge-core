@@ -34,6 +34,7 @@ import static org.apache.zookeeper.spiral.SpiralBucket.*;
 public class SpiralClient {
   private static final Logger LOGGER = LoggerFactory.getLogger(SpiralClient.class);
   private static final String DEFAULT_NAMESPACE = "zookeeper";
+  private static final String EMPTY_STRING = "EMPTY_VALUE";
 
   private final String _namespace;
   private final SpiralApiGrpc.SpiralApiBlockingStub _blockingStub;
@@ -241,6 +242,10 @@ public class SpiralClient {
       byte[] keyBytes = key.getBytes();
       //ByteString keyBytes = ByteString.copyFromUtf8(key);
       Key apiKey = Key.newBuilder().setMessage(ByteString.copyFrom(keyBytes)).build();
+      // TODO: dserialize this back to empty string in GET method.
+      if (value.length == 0) {
+        value = EMPTY_STRING.getBytes();
+      }
       Value apiValue = Value.newBuilder().setMessage(ByteString.copyFrom(value)).build();
       Put putValue = Put.newBuilder().setKey(apiKey).setValue(apiValue).build();
       PutRequest request = PutRequest.newBuilder()

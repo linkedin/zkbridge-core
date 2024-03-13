@@ -125,7 +125,7 @@ public class SpiralTxnLog {
         return true;
     }
 
-    public static class SpiralTxnIterator implements TxnLog.TxnIterator {
+    public static class SpiralTxnIterator {
         long startZxid;
         long currZxid;
         long endZxid;
@@ -139,18 +139,11 @@ public class SpiralTxnLog {
          * @param startZxid the zxid to start reading from
          * @param endZxid the zxid to end reading until
          */
-        public SpiralTxnIterator(SpiralClient spiralClient, long startZxid, long endZxid) throws IOException {
+        public SpiralTxnIterator(SpiralClient spiralClient, long startZxid, long endZxid) {
             this.startZxid = startZxid;
             this.endZxid = endZxid;
             this.currZxid = startZxid;
             this.spiralClient = spiralClient;
-        }
-
-        /**
-         * Return total storage size of txnlog that will return by this iterator.
-         */
-        public long getStorageSize() {
-            return -1;
         }
 
         /**
@@ -186,8 +179,8 @@ public class SpiralTxnLog {
          * @return the current header that
          * is read
          */
-        public TxnHeader getHeader() {
-            return new TxnHeader(hdr.getClientId(), hdr.getCxid(), hdr.getZxid(), hdr.getTime(), hdr.getType());
+        public ServerAwareTxnHeader getHeader() {
+            return hdr;
         }
 
         /**

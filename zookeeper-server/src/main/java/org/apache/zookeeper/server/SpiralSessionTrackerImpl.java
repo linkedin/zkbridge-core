@@ -18,17 +18,9 @@
 
 package org.apache.zookeeper.server;
 
-import java.io.ByteArrayInputStream;
 import java.util.concurrent.ConcurrentMap;
-
-import org.apache.jute.BinaryInputArchive;
-import org.apache.jute.InputArchive;
-import org.apache.jute.Record;
-import org.apache.zookeeper.ZooDefs.OpCode;
 import org.apache.zookeeper.spiral.SpiralBucket;
 import org.apache.zookeeper.spiral.SpiralClient;
-import org.apache.zookeeper.txn.CreateSessionTxn;
-import org.apache.zookeeper.txn.TxnHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,18 +30,18 @@ import org.slf4j.LoggerFactory;
 public class SpiralSessionTrackerImpl extends SessionTrackerImpl {
 
     private static final Logger LOG = LoggerFactory.getLogger(SpiralSessionTrackerImpl.class);
-    private static final String CreateSessionTxn = null;
+
     private final SpiralClient spiralClient;
 
     public SpiralSessionTrackerImpl(SessionExpirer expirer, ConcurrentMap<Long, Integer> sessionsWithTimeout, int tickTime, long serverId, ZooKeeperServerListener listener, SpiralClient spiralClient) {
         super(expirer, sessionsWithTimeout, tickTime, serverId, listener);
         this.spiralClient = spiralClient;
     }
-    
-    public long createSession(long sessionId, Request sessionReq) {
+
+    public long createSession(long sessionId, int timeout) {
         LOG.info("Creating spiral entry for session 0x{}", Long.toHexString(sessionId));
-        spiralClient.put(SpiralBucket.SESSIONS.getBucketName(), String.valueOf(sessionId), sessionReq.getSerializeData());
-        return 0;
+        spiralClient.put(SpiralBucket.SESSIONS.getBucketName(), String.valueOf(sessionId), String.valueOf(timeout).getBytes());
+        return sessionId;
     }
 
     public void closeSession(long sessionId) {
@@ -63,47 +55,19 @@ public class SpiralSessionTrackerImpl extends SessionTrackerImpl {
      * needs to be honored. Hence this method is used to fetch the session from Spiral.
      */
     public synchronized boolean touchSession(long sessionId, int timeout) {
-        SessionImpl s = sessionsById.get(sessionId);
-
-        if (s == null) {
-            try {
-                // Read from Spiral
-                TxnHeader hdr = new TxnHeader();
-                Record txn = new CreateSessionTxn();
-                long old_timeout;
-                LOG.debug("Checking session 0x{} from spiral", Long.toHexString(sessionId));
-                byte[] txn_bytes = spiralClient.get(SpiralBucket.SESSIONS.getBucketName(), String.valueOf(sessionId));
-                final ByteArrayInputStream bais = new ByteArrayInputStream(txn_bytes);
-                InputArchive ia = BinaryInputArchive.getArchive(bais);
-                hdr.deserialize(ia, "hdr");
-                if (hdr.getType() != OpCode.createSession) {
-                    logTraceTouchInvalidSession(sessionId, timeout);
-                    return false;
-                }
-                txn.deserialize(ia, "txn");
-                LOG.debug("RR: hdr = {}, txn = {}", hdr, txn);
-                
-                old_timeout = ((CreateSessionTxn) txn).getTimeOut();
-
-                // TODO: Need to add check for closing.
-                 // Update session entry in Spiral if new timeout is different. 
-                if (old_timeout != timeout) {
-                    ((CreateSessionTxn)txn).setTimeOut(timeout);
-                    // TODO: Need to check last zxid received in client request and update it here instead of reading stale zxid from Spiral.
-                    Request sessionReq = new Request(sessionId, 0, OpCode.createSession, hdr, txn, hdr.getZxid());
-                    spiralClient.put(SpiralBucket.SESSIONS.getBucketName(), String.valueOf(sessionId), sessionReq.getSerializeData());
-                }
-                return super.trackSession(sessionId, timeout);
-                
-            } catch (Exception e) {
-                LOG.error("Error while touchSession: {}", e);
-                logTraceTouchInvalidSession(sessionId, timeout);
-                return false;
-            }
-        }
-        else {
-            super.updateSessionExpiry(s, timeout);
+        if (sessionsById.containsKey(sessionId)) {
+            super.updateSessionExpiry(sessionsById.get(sessionId), timeout);
             return true;
-        }   
+        }
+
+        LOG.debug("Checking session 0x{} from spiral", Long.toHexString(sessionId));
+        byte[] txnBytes = spiralClient.get(SpiralBucket.SESSIONS.getBucketName(), String.valueOf(sessionId));
+        Integer oldTimeout = Integer.valueOf(new String(txnBytes));
+
+        if (oldTimeout < timeout) {
+            spiralClient.put(SpiralBucket.SESSIONS.getBucketName(), String.valueOf(sessionId), String.valueOf(timeout).getBytes());
+        }
+
+        return super.trackSession(sessionId, timeout);
     }
 }

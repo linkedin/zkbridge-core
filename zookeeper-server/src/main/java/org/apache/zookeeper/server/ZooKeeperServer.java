@@ -911,7 +911,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
                 TxnDigest digest = txnIterator.getDigest();
                 Record txn = txnIterator.getTxn();
 
-                processTxnInDB(hdr, txn, digest);
+                processTxn(hdr, txn);
             }
             LOG.info("Completed setting up state from Spiral. Last processed txn Id: {}", getLastProcessedZxid());
         } catch (Exception e) {
@@ -1183,8 +1183,8 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         return sessionId;
     }
 
-    void createSpiralSession(long sessionId, Request request) {
-        spiralSessionTracker.createSession(sessionId, request);
+    void createSpiralSession(long sessionId, int timeout) {
+        spiralSessionTracker.createSession(sessionId, timeout);
     }
 
     /**
@@ -1199,8 +1199,8 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
 
     protected void revalidateSession(ServerCnxn cnxn, long sessionId, int sessionTimeout) throws IOException {
         boolean rc = sessionTracker.touchSession(sessionId, sessionTimeout);
-        
-        // Rehydrate session map for session handover for spiral. 
+
+        // Rehydrate session map for session handover for spiral.
         // TODO: Needs to add last seen zxid check to provide read-after-write consistency
         rc = spiralSessionTracker.touchSession(sessionId, sessionTimeout);
         if (LOG.isTraceEnabled()) {
@@ -1994,7 +1994,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
                 CreateSessionTxn cst = (CreateSessionTxn) txn;
                 sessionTracker.commitSession(sessionId, cst.getTimeOut());
                 if (spiralEnabled) {
-                    createSpiralSession(sessionId, request);
+                    createSpiralSession(sessionId, cst.getTimeOut());
                 }
             } else if (request == null || !request.isLocalSession()) {
                 LOG.warn("*****>>>>> Got {} {}",  txn.getClass(), txn.toString());

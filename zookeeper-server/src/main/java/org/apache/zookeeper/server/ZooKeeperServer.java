@@ -84,6 +84,7 @@ import org.apache.zookeeper.server.SessionTracker.SessionExpirer;
 import org.apache.zookeeper.server.auth.ProviderRegistry;
 import org.apache.zookeeper.server.auth.ServerAuthenticationProvider;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
+import org.apache.zookeeper.server.persistence.SpiralSnapLog;
 import org.apache.zookeeper.server.persistence.SpiralTxnLog;
 import org.apache.zookeeper.server.persistence.SpiralTxnLog.SpiralTxnIterator;
 import org.apache.zookeeper.server.quorum.QuorumPeerConfig;
@@ -574,7 +575,11 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     }
 
     public File takeSnapshot(boolean syncSnap) throws IOException {
-        return takeSnapshot(syncSnap, true, false);
+        File file = takeSnapshot(syncSnap, true, false);
+        if (spiralEnabled) {
+            takeSnapShotOnSpiral();
+        }
+        return file;
     }
 
     /**
@@ -609,6 +614,14 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         LOG.info("Snapshot taken in {} ms", elapsed);
         ServerMetrics.getMetrics().SNAPSHOT_TIME.add(elapsed);
         return snapFile;
+    }
+
+    public synchronized void takeSnapShotOnSpiral() throws IOException {
+        LOG.info("Started taking a snapshot on Spiral");
+        long start = Time.currentElapsedTime();
+        boolean status = zkDb.takeSnapshotOnSpiral();
+        long elapsed = Time.currentElapsedTime() - start;
+        LOG.info("Snapshot taken [{}] on Spiral in {} ms", status, elapsed);
     }
 
     /**

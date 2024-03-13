@@ -18,6 +18,7 @@
 
 package org.apache.zookeeper.server;
 
+import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -66,6 +67,7 @@ import org.apache.zookeeper.server.watch.WatcherOrBitSet;
 import org.apache.zookeeper.server.watch.WatchesPathReport;
 import org.apache.zookeeper.server.watch.WatchesReport;
 import org.apache.zookeeper.server.watch.WatchesSummary;
+import org.apache.zookeeper.spiral.SpiralClient;
 import org.apache.zookeeper.txn.CheckVersionTxn;
 import org.apache.zookeeper.txn.CloseSessionTxn;
 import org.apache.zookeeper.txn.CreateContainerTxn;
@@ -1311,6 +1313,44 @@ public class DataTree {
         }
     }
 
+    /**
+     * this method uses a stringbuilder to create a new path for children. This
+     * is faster than string appends ( str1 + str2).
+     *
+     * @param oa OutputArchive to write to.
+     * @param path a string builder.
+     * @throws IOException
+     */
+    void serializeSpiralNode(SpiralClient spiralClient, StringBuilder path, String bucketName) throws IOException {
+        String pathString = path.toString();
+        DataNode node = getNode(pathString);
+        if (node == null) {
+            return;
+        }
+        String[] children;
+        DataNode nodeCopy;
+        synchronized (node) {
+            StatPersisted statCopy = new StatPersisted();
+            copyStatPersisted(node.stat, statCopy);
+            //we do not need to make a copy of node.data because the contents
+            //are never changed
+            nodeCopy = new DataNode(node.data, node.acl, statCopy);
+            children = node.getChildren().toArray(new String[0]);
+        }
+        // TODO: Write now only data of DataNode being stored but we have to serialize ACL and stats.
+        if (!path.toString().isEmpty()) {
+            spiralClient.put(bucketName, path.toString(), nodeCopy.getData());
+        }
+        path.append('/');
+        int off = path.length();
+        for (String child : children) {
+            // Since this is single buffer being reused, we need to truncate the previous bytes of string.
+            path.delete(off, Integer.MAX_VALUE);
+            path.append(child);
+            serializeSpiralNode(spiralClient, path, bucketName);
+        }
+    }
+
     // visible for test
     public void serializeNodeData(OutputArchive oa, String path, DataNode node) throws IOException {
         oa.writeString(path, "path");
@@ -1333,6 +1373,11 @@ public class DataTree {
     public void serialize(OutputArchive oa, String tag) throws IOException {
         serializeAcls(oa);
         serializeNodes(oa);
+    }
+
+    // TODO: Not storing ACLs for now in snapshot.
+    public void serializeOnSpiral(SpiralClient spiralClient, String bucketName) throws IOException {
+        serializeSpiralNode(spiralClient, new StringBuilder(), bucketName);
     }
 
     public void deserialize(InputArchive ia, String tag) throws IOException {

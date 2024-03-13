@@ -51,6 +51,7 @@ import org.apache.zookeeper.server.persistence.FileSnap;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog.PlayBackListener;
 import org.apache.zookeeper.server.persistence.SnapStream;
+import org.apache.zookeeper.server.persistence.SpiralSnapLog;
 import org.apache.zookeeper.server.persistence.SpiralTxnLog;
 import org.apache.zookeeper.server.persistence.TxnLog.TxnIterator;
 import org.apache.zookeeper.server.quorum.Leader.Proposal;
@@ -82,7 +83,8 @@ public class ZKDatabase {
     protected DataTree dataTree;
     protected ConcurrentHashMap<Long, Integer> sessionsWithTimeouts;
     protected FileTxnSnapLog snapLog;
-        protected long minCommittedLog, maxCommittedLog;
+    protected SpiralSnapLog spiralSnapLog = null;
+    protected long minCommittedLog, maxCommittedLog;
 
     /**
      * Default value is to use snapshot if txnlog size exceeds 1/3 the size of snapshot
@@ -305,7 +307,15 @@ public class ZKDatabase {
 
     public void enableSpiralFeatures(SpiralClient spiralClient) throws IOException {
         this.spiralTxnLog = new SpiralTxnLog(spiralClient);
+        this.spiralSnapLog = new SpiralSnapLog(spiralClient);
         this.spiralEnabled = true;
+    }
+
+    public boolean takeSnapshotOnSpiral() throws IOException {
+        if (spiralEnabled) {
+            return spiralSnapLog.save(dataTree, sessionsWithTimeouts);
+        }
+        return false;
     }
 
     /**

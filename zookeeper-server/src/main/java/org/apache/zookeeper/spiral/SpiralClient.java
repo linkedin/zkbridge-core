@@ -9,8 +9,6 @@ import io.grpc.netty.shaded.io.netty.handler.ssl.SslContext;
 import io.grpc.stub.StreamObserver;
 import java.io.File;
 import java.util.Objects;
-import java.util.function.Function;
-import java.util.function.UnaryOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import proto.com.linkedin.spiral.CompareAndSet;
@@ -37,6 +35,7 @@ import static org.apache.zookeeper.spiral.SpiralBucket.*;
 public class SpiralClient {
   private static final Logger LOGGER = LoggerFactory.getLogger(SpiralClient.class);
   private static final String DEFAULT_NAMESPACE = "zookeeper";
+  private static final String EMPTY_STRING = "EMPTY_VALUE";
   private static final Integer RETRY_ATTEMPTS = 10;
 
   private final String _namespace;
@@ -296,6 +295,10 @@ public class SpiralClient {
       byte[] keyBytes = key.getBytes();
 
       Key apiKey = Key.newBuilder().setMessage(ByteString.copyFrom(keyBytes)).build();
+      // TODO: dserialize this back to empty string in GET method.
+      if (value.length == 0) {
+        value = EMPTY_STRING.getBytes();
+      }
       Value apiValue = Value.newBuilder().setMessage(ByteString.copyFrom(value)).build();
       Put putValue = Put.newBuilder().setKey(apiKey).setValue(apiValue).build();
       PutRequest request = PutRequest.newBuilder()

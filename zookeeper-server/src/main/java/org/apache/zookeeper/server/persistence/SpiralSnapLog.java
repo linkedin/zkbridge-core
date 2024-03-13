@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 public class SpiralSnapLog {
     private static final Logger LOG = LoggerFactory.getLogger(SpiralSnapLog.class);
     private SpiralSnap snapLog = null;
+    private static final String SNAPSHOT_BUCKET_PREFIX = "snapshot_";
 
     public SpiralSnapLog(SpiralClient spiralClient) throws IOException {
         this.snapLog = new SpiralSnap(spiralClient);
@@ -30,9 +31,9 @@ public class SpiralSnapLog {
         DataTree dataTree,
         ConcurrentHashMap<Long, Integer> sessionsWithTimeouts) throws IOException {
             long lastZxid = dataTree.lastProcessedZxid;
-            String snapBucket = Util.makeSnapshotName(lastZxid);
+            String snapBucket = SNAPSHOT_BUCKET_PREFIX + Long.toHexString(lastZxid);
             LOG.info("Snapshotting: 0x{} to {}", Long.toHexString(lastZxid), snapBucket);
-            snapLog.serialize(dataTree, sessionsWithTimeouts);
+            snapLog.serialize(dataTree, sessionsWithTimeouts, snapBucket);
             return true;
         }
 }

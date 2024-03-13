@@ -18,9 +18,6 @@
 
 package org.apache.zookeeper.server;
 
-import static org.apache.zookeeper.spiral.SpiralBucket.SESSIONS;
-import static org.apache.zookeeper.spiral.SpiralBucket.SNAPSHOT;
-
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
@@ -1324,7 +1321,7 @@ public class DataTree {
      * @param path a string builder.
      * @throws IOException
      */
-    void serializeSpiralNode(SpiralClient spiralClient, StringBuilder path) throws IOException {
+    void serializeSpiralNode(SpiralClient spiralClient, StringBuilder path, String bucketName) throws IOException {
         String pathString = path.toString();
         DataNode node = getNode(pathString);
         if (node == null) {
@@ -1342,7 +1339,7 @@ public class DataTree {
         }
         // TODO: Write now only data of DataNode being stored but we have to serialize ACL and stats.
         if (!path.toString().isEmpty()) {
-            spiralClient.put(SNAPSHOT.getBucketName(), path.toString(), nodeCopy.getData());
+            spiralClient.put(bucketName, path.toString(), nodeCopy.getData());
         }
         path.append('/');
         int off = path.length();
@@ -1350,7 +1347,7 @@ public class DataTree {
             // Since this is single buffer being reused, we need to truncate the previous bytes of string.
             path.delete(off, Integer.MAX_VALUE);
             path.append(child);
-            serializeSpiralNode(spiralClient, path);
+            serializeSpiralNode(spiralClient, path, bucketName);
         }
     }
 
@@ -1379,8 +1376,8 @@ public class DataTree {
     }
 
     // TODO: Not storing ACLs for now in snapshot.
-    public void serializeOnSpiral(SpiralClient spiralClient) throws IOException {
-        serializeSpiralNode(spiralClient, new StringBuilder());
+    public void serializeOnSpiral(SpiralClient spiralClient, String bucketName) throws IOException {
+        serializeSpiralNode(spiralClient, new StringBuilder(), bucketName);
     }
 
     public void deserialize(InputArchive ia, String tag) throws IOException {

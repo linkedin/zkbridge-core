@@ -58,13 +58,14 @@ public class SpiralSnap {
      * @param fsync sync the file immediately after write
      */
     public synchronized void serialize(
-        DataTree dt, Map<Long, Integer> sessions) throws IOException {
+        DataTree dt, Map<Long, Integer> sessions, String bucketName) throws IOException {
         if (!close) {
             // TODO: Taking a snapshot could take some time, so we want to make sure that it's either taken fully or none, hence
             // will maintain another state in bucket "SNAPSHOT_STATUS" to indicate if the snapshot is in progress or not.
+            spiralClient.createBucket(bucketName);
             
             // TODO: have not added serialization of sessions yet. Add it later.
-            dt.serializeOnSpiral(spiralClient);
+            dt.serializeOnSpiral(spiralClient, bucketName);
 
             // TODO: Not serializing last processed zxid and digest for now, will add it later.
             

@@ -25,6 +25,7 @@ import org.apache.zookeeper.spiral.SpiralBucket;
 import org.apache.zookeeper.spiral.SpiralClient;
 import org.apache.zookeeper.txn.ServerAwareTxnHeader;
 import org.apache.zookeeper.txn.TxnHeader;
+import org.apache.zookeeper.util.MappingUtils;
 import org.apache.zookeeper.util.ServiceUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,14 +92,13 @@ public class SpiralTxnLogSyncer extends ZooKeeperCriticalThread {
 
             ServerAwareTxnHeader saTxnHdr = logEntry.getHeader();
             if (Long.valueOf(saTxnHdr.getServerId()) == serverId && nextTxnId >= zks.getLastProcessedZxid()) {
-                LOG.info("Cannot sync a future txn {} while ZKS at txn {} created by this server. Stopping sync here!",
+                LOG.info("Cannot sync a future txn {} while ZKS at txn {} created by this server.",
                     nextTxnId, zks.getLastProcessedZxid());
                 break;
             }
 
             LOG.info("Background Syncing current ZKB with txn: {}", nextTxnId);
-            TxnHeader txnHeader = new TxnHeader(
-                saTxnHdr.getClientId(), saTxnHdr.getCxid(), saTxnHdr.getZxid(), saTxnHdr.getTime(), saTxnHdr.getType());
+            TxnHeader txnHeader = MappingUtils.toTxnHeader(saTxnHdr);
             zks.processTxn(txnHeader, logEntry.getTxn());
 
             // update the last processed offset

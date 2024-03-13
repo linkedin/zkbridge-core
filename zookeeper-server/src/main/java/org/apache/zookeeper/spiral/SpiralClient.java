@@ -11,6 +11,7 @@ import java.io.File;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import proto.com.linkedin.spiral.CompareAndSet;
 import proto.com.linkedin.spiral.CreateBucketRequest;
 import proto.com.linkedin.spiral.CreateNamespaceRequest;
 import proto.com.linkedin.spiral.GetBucketRequest;
@@ -35,6 +36,7 @@ public class SpiralClient {
   private static final Logger LOGGER = LoggerFactory.getLogger(SpiralClient.class);
   private static final String DEFAULT_NAMESPACE = "zookeeper";
   private static final String EMPTY_STRING = "EMPTY_VALUE";
+  private static final Integer RETRY_ATTEMPTS = 10;
 
   private final String _namespace;
   private final SpiralApiGrpc.SpiralApiBlockingStub _blockingStub;
@@ -150,7 +152,7 @@ public class SpiralClient {
     try {
       return getResponse(bucketName, key).hasValue();
     } catch (Exception e) {
-      LOGGER.error("ContainsKey: RPC failed or bucket: {}, key: {}", bucketName, key, e);
+      LOGGER.error("ContainsKey: RPC failed or bucket: {}, key: {}", bucketName, key);
     }
     return false;
   }
@@ -225,11 +227,62 @@ public class SpiralClient {
       return 1L;
     }
 
-    byte[] lastZxidBuf = get(INTERNAL_STATE.getBucketName(), LATEST_TRANSACTION_ID.name());
-    Long nextZxid = Long.valueOf(new String(lastZxidBuf)) + 1;
-    put(INTERNAL_STATE.getBucketName(), LATEST_TRANSACTION_ID.name(), String.valueOf(nextZxid).getBytes());
+    int retries = 0;
+    Long nextZxid = null;
+    while (retries < RETRY_ATTEMPTS) {
+      byte[] lastZxidBuf = get(INTERNAL_STATE.getBucketName(), LATEST_TRANSACTION_ID.name());
+      nextZxid = Long.valueOf(new String(lastZxidBuf)) + 1;
+      PutResponse response = putWithCas(INTERNAL_STATE.getBucketName(), LATEST_TRANSACTION_ID.name(),
+          lastZxidBuf, String.valueOf(nextZxid).getBytes());
+
+      if (response.hasError()) {
+        if (response.getError().hasCas()) {
+          LOGGER.info("CAS error while generating the transaction id. Error: {}", response.getError());
+          retries ++;
+          continue;
+        }
+        throw new RuntimeException(String.format("Error while generating the transaction id. Error: %s", response.getError()));
+      }
+      break;
+    }
+
+    if (retries >= RETRY_ATTEMPTS) {
+      throw new RuntimeException(String.format("error while generating the transaction id. Last attempted txn Id: %s", nextZxid));
+    }
+
     LOGGER.info("Generated new Transaction Id using Spiral: {}", nextZxid);
     return nextZxid;
+  }
+
+  public PutResponse putWithCas(String bucketName, String key, byte[] prevValue, byte[] newValue) {
+    try {
+      SpiralContext spiralContext = SpiralContext.newBuilder()
+          .setNamespace(_namespace)
+          .setBucket(bucketName)
+          .build();
+
+      byte[] keyBytes = key.getBytes();
+
+      Key apiKey = Key.newBuilder().setMessage(ByteString.copyFrom(keyBytes)).build();
+      Value apiPrevValue = Value.newBuilder().setMessage(ByteString.copyFrom(prevValue)).build();
+      Value apiNewValue = Value.newBuilder().setMessage(ByteString.copyFrom(newValue)).build();
+
+      Put putValue = Put.newBuilder()
+          .setKey(apiKey)
+          .setValue(apiNewValue)
+          .setCas(CompareAndSet.newBuilder().setPreviousValue(apiPrevValue))
+          .build();
+
+      PutRequest request = PutRequest.newBuilder()
+          .setSpiralContext(spiralContext)
+          .setPut(putValue)
+          .build();
+
+      return _blockingStub.put(request);
+    } catch (Exception e) {
+      LOGGER.error("putWithCas: RPC failed for bucket: {}, key: {}", bucketName, key, e);
+      throw e;
+    }
   }
 
   public void put(String bucketName, String key, byte[] value) {
@@ -240,7 +293,7 @@ public class SpiralClient {
           .build();
 
       byte[] keyBytes = key.getBytes();
-      //ByteString keyBytes = ByteString.copyFromUtf8(key);
+
       Key apiKey = Key.newBuilder().setMessage(ByteString.copyFrom(keyBytes)).build();
       // TODO: dserialize this back to empty string in GET method.
       if (value.length == 0) {
@@ -253,7 +306,6 @@ public class SpiralClient {
           .setPut(putValue)
           .build();
 
-      // TODO - convert response to ZK response.
       PutResponse response = _blockingStub.put(request);
     } catch (Exception e) {
       LOGGER.error("Put: RPC failed for bucket: {}, key: {}", bucketName, key, e);
@@ -271,7 +323,7 @@ public class SpiralClient {
       ByteString keyBytes = ByteString.copyFromUtf8(key);
       Key apiKey = Key.newBuilder().setMessage(keyBytes).build();
       DeleteRequest request = DeleteRequest.newBuilder().setSpiralContext(spiralContext).setKey(apiKey).build();
-      
+
       // TODO: check for valid response
       DeleteResponse response = _blockingStub.delete(request);
       // LOGGER.info("Delete: RPC response for bucket: {}, key: {}", bucketName, key, response);

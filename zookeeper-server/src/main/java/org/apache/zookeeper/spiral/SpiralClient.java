@@ -19,9 +19,14 @@ import proto.com.linkedin.spiral.GetNamespaceRequest;
 import proto.com.linkedin.spiral.GetRequest;
 import proto.com.linkedin.spiral.GetResponse;
 import proto.com.linkedin.spiral.Key;
+import proto.com.linkedin.spiral.KeyRange;
+import proto.com.linkedin.spiral.PaginationContext;
 import proto.com.linkedin.spiral.Put;
 import proto.com.linkedin.spiral.PutRequest;
 import proto.com.linkedin.spiral.PutResponse;
+import proto.com.linkedin.spiral.ScanOrder;
+import proto.com.linkedin.spiral.ScanRequest;
+import proto.com.linkedin.spiral.ScanResponse;
 import proto.com.linkedin.spiral.DeleteRequest;
 import proto.com.linkedin.spiral.DeleteResponse;
 import proto.com.linkedin.spiral.SpiralApiGrpc;
@@ -30,12 +35,12 @@ import proto.com.linkedin.spiral.Value;
 
 import static org.apache.zookeeper.spiral.InternalStateKey.*;
 import static org.apache.zookeeper.spiral.SpiralBucket.*;
+import static org.apache.zookeeper.spiral.SpiralConstants.*;
 
 
 public class SpiralClient {
   private static final Logger LOGGER = LoggerFactory.getLogger(SpiralClient.class);
   private static final String DEFAULT_NAMESPACE = "zookeeper";
-  private static final String EMPTY_STRING = "EMPTY_VALUE";
   private static final Integer RETRY_ATTEMPTS = 10;
 
   private final String _namespace;
@@ -126,7 +131,7 @@ public class SpiralClient {
           .setNamespace(_namespace)
           .setName(bucketName)
           .build();
-      LOGGER.error("Creating bucket : {}", bucketName);
+      LOGGER.info("Creating bucket : {}", bucketName);
       _blockingStub.createBucket(request);
     } catch (Exception e) {
       LOGGER.error("Failed to create bucket : {}", bucketName, e);
@@ -291,14 +296,10 @@ public class SpiralClient {
           .setNamespace(_namespace)
           .setBucket(bucketName)
           .build();
-
+      // TODO: Add handling for empty value.
+      
       byte[] keyBytes = key.getBytes();
-
       Key apiKey = Key.newBuilder().setMessage(ByteString.copyFrom(keyBytes)).build();
-      // TODO: dserialize this back to empty string in GET method.
-      if (value.length == 0) {
-        value = EMPTY_STRING.getBytes();
-      }
       Value apiValue = Value.newBuilder().setMessage(ByteString.copyFrom(value)).build();
       Put putValue = Put.newBuilder().setKey(apiKey).setValue(apiValue).build();
       PutRequest request = PutRequest.newBuilder()
@@ -329,6 +330,24 @@ public class SpiralClient {
       // LOGGER.info("Delete: RPC response for bucket: {}, key: {}", bucketName, key, response);
     } catch (Exception e) {
       LOGGER.error("Delete: RPC failed for bucket: {}, key: {}", bucketName, key, e);
+      throw e;
+    }
+  }
+
+  public ScanResponse scanBucket(String bucketName, PaginationContext paginationContext) {
+    try {
+      SpiralContext spiralContext = SpiralContext.newBuilder()
+          .setNamespace(_namespace)
+          .setBucket(bucketName)
+          .build();
+
+      ScanRequest request = ScanRequest.newBuilder().setSpiralContext(spiralContext).setOrder(ScanOrder.ScanOrder_ASC).setPaginationContext(paginationContext).build();
+      
+      // TODO: check for valid response
+      ScanResponse response = _blockingStub.scan(request);
+      return response;
+    } catch (Exception e) {
+      LOGGER.error("Scan: RPC failed while scanning bucket: {}", bucketName, e);
       throw e;
     }
   }

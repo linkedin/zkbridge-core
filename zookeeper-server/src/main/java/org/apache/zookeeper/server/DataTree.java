@@ -84,6 +84,12 @@ import org.apache.zookeeper.txn.TxnHeader;
 import org.apache.zookeeper.util.ServiceUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.zookeeper.server.util.SerializeUtils;
+
+import proto.com.linkedin.spiral.KeyValue;
+import proto.com.linkedin.spiral.PaginationContext;
+import proto.com.linkedin.spiral.ScanResponse;
+import static org.apache.zookeeper.spiral.SpiralConstants.*;
 
 /**
  * This class maintains the tree data structure. It doesn't have any networking
@@ -286,6 +292,7 @@ public class DataTree {
         nodes = new NodeHashMapImpl(digestCalculator);
 
         // rather than fight it, let root have an alias
+        LOG.info("RR: putting root {} at empty string", root);
         nodes.put("", root);
         nodes.putWithoutDigest(rootZookeeper, root);
 
@@ -1313,44 +1320,6 @@ public class DataTree {
         }
     }
 
-    /**
-     * this method uses a stringbuilder to create a new path for children. This
-     * is faster than string appends ( str1 + str2).
-     *
-     * @param oa OutputArchive to write to.
-     * @param path a string builder.
-     * @throws IOException
-     */
-    void serializeSpiralNode(SpiralClient spiralClient, StringBuilder path, String bucketName) throws IOException {
-        String pathString = path.toString();
-        DataNode node = getNode(pathString);
-        if (node == null) {
-            return;
-        }
-        String[] children;
-        DataNode nodeCopy;
-        synchronized (node) {
-            StatPersisted statCopy = new StatPersisted();
-            copyStatPersisted(node.stat, statCopy);
-            //we do not need to make a copy of node.data because the contents
-            //are never changed
-            nodeCopy = new DataNode(node.data, node.acl, statCopy);
-            children = node.getChildren().toArray(new String[0]);
-        }
-        // TODO: Write now only data of DataNode being stored but we have to serialize ACL and stats.
-        if (!path.toString().isEmpty()) {
-            spiralClient.put(bucketName, path.toString(), nodeCopy.getData());
-        }
-        path.append('/');
-        int off = path.length();
-        for (String child : children) {
-            // Since this is single buffer being reused, we need to truncate the previous bytes of string.
-            path.delete(off, Integer.MAX_VALUE);
-            path.append(child);
-            serializeSpiralNode(spiralClient, path, bucketName);
-        }
-    }
-
     // visible for test
     public void serializeNodeData(OutputArchive oa, String path, DataNode node) throws IOException {
         oa.writeString(path, "path");
@@ -1375,7 +1344,46 @@ public class DataTree {
         serializeNodes(oa);
     }
 
-    // TODO: Not storing ACLs for now in snapshot.
+    /**
+     * this method uses a stringbuilder to create a new path for children. This
+     * is faster than string appends ( str1 + str2).
+     *
+     * @param oa OutputArchive to write to.
+     * @param path a string builder.
+     * @throws IOException
+     */
+    void serializeSpiralNode(SpiralClient spiralClient, StringBuilder path, String bucketName) throws IOException {
+        LOG.info("RR: ENTRY serializing path :[{}]", path.toString());
+        String pathString = path.toString();
+        DataNode node = getNode(pathString);
+        if (node == null) {
+            LOG.info("RR: no node found for path :[{}]", pathString);
+            return;
+        }
+        String[] children;
+        DataNode nodeCopy;
+        synchronized (node) {
+            StatPersisted statCopy = new StatPersisted();
+            copyStatPersisted(node.stat, statCopy);
+            //we do not need to make a copy of node.data because the contents
+            //are never changed
+            nodeCopy = new DataNode(node.data, node.acl, statCopy);
+            children = node.getChildren().toArray(new String[0]);
+        }
+        // TODO: Write now only data of DataNode being stored but we have to serialize ACL and stats.
+        LOG.info("RR: storing key :[{}] node:[{}]", pathString, nodeCopy);
+        byte[] data = SerializeUtils.serializeToByteArray(nodeCopy);
+        spiralClient.put(bucketName, path.toString(), data);
+        path.append('/');
+        int off = path.length();
+        for (String child : children) {
+            // Since this is single buffer being reused, we need to truncate the previous bytes of string.
+            path.delete(off, Integer.MAX_VALUE);
+            path.append(child);
+            serializeSpiralNode(spiralClient, path, bucketName);
+        }
+    }
+
     public void serializeOnSpiral(SpiralClient spiralClient, String bucketName) throws IOException {
         serializeSpiralNode(spiralClient, new StringBuilder(), bucketName);
     }
@@ -1429,6 +1437,50 @@ public class DataTree {
         setupQuota();
 
         aclCache.purgeUnused();
+    }
+
+    public void deserializeFromSpiral(SpiralClient spiralClient, String bucketName) throws IOException {
+        nodes.clear();
+        pTrie.clear();
+        nodeDataSize.set(0);
+        ScanResponse response = null;
+        String token = "";
+        do {
+            PaginationContext paginationContext = PaginationContext.newBuilder().setPageSize(1000).setToken(token).build();
+            response = spiralClient.scanBucket(bucketName, paginationContext);
+            List<KeyValue> key_values = response.getKeyValuesList();
+            for (KeyValue kv : key_values) {
+                String path = kv.getKey().getMessage().toStringUtf8();
+                byte[] data = kv.getValue().getMessage().toByteArray();
+                DataNode node = (DataNode) SerializeUtils.deserializeFromByteArray(data);
+                LOG.info("RR: restoring key :[{}] node:[{}]", path, node);
+                nodes.put(path, node);
+
+                int lastSlash = path.lastIndexOf('/');
+                if (lastSlash == -1) {
+                    root = node;
+                } else {
+                    String parentPath = path.substring(0, lastSlash);
+                    DataNode parent = nodes.get(parentPath);
+                    if (parent == null) {
+                        throw new IOException(
+                                "Invalid Datatree, unable to find parent [" + parentPath + "] of path [" + path + "]");
+                    }
+                    parent.addChild(path.substring(lastSlash + 1));
+                }
+            }
+            token = response.getNextPaginationToken();
+        } while(!token.isEmpty());
+        // have counted digest for root node with "", ignore here to avoid
+        // counting twice for root node
+        nodes.putWithoutDigest("/", root);
+
+        nodeDataSize.set(approximateDataSize());
+
+        // we are done with deserializing the datatree
+        // update the quotas - create path trie
+        // and also update the stat nodes
+        setupQuota();
     }
 
     /**

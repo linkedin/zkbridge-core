@@ -21,9 +21,14 @@ package org.apache.zookeeper.server.util;
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.jute.BinaryInputArchive;
 import org.apache.jute.InputArchive;
 import org.apache.jute.OutputArchive;
@@ -258,5 +263,27 @@ public class SerializeUtils {
             oa.writeInt(entry.getValue().intValue(), "timeout");
         }
         dt.serialize(oa, "tree");
+    }
+
+    public static byte[] serializeToByteArray(final Object obj) {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+
+        try (ObjectOutputStream out = new ObjectOutputStream(bos)) {
+            out.writeObject(obj);
+            out.flush();
+            return bos.toByteArray();
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    public static Object deserializeFromByteArray(byte[] bytes) {
+        ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+
+        try (ObjectInput in = new ObjectInputStream(bis)) {
+            return in.readObject();
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
     }
 }

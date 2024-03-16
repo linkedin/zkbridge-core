@@ -21,19 +21,18 @@ package org.apache.zookeeper.server.util;
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.jute.BinaryInputArchive;
+import org.apache.jute.BinaryOutputArchive;
 import org.apache.jute.InputArchive;
 import org.apache.jute.OutputArchive;
 import org.apache.jute.Record;
 import org.apache.zookeeper.ZooDefs.OpCode;
+import org.apache.zookeeper.server.DataNode;
 import org.apache.zookeeper.server.DataTree;
 import org.apache.zookeeper.server.SpiralTxnLogEntry;
 import org.apache.zookeeper.server.TxnLogEntry;
@@ -265,25 +264,41 @@ public class SerializeUtils {
         dt.serialize(oa, "tree");
     }
 
-    public static byte[] serializeToByteArray(final Object obj) {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+    // public static byte[] serializeToByteArray(final Object obj) {
+    //     ByteArrayOutputStream bos = new ByteArrayOutputStream();
 
-        try (ObjectOutputStream out = new ObjectOutputStream(bos)) {
-            out.writeObject(obj);
-            out.flush();
-            return bos.toByteArray();
-        } catch (Exception ex) {
-            throw new RuntimeException(ex);
-        }
+    //     try (ObjectOutputStream out = new ObjectOutputStream(bos)) {
+    //         out.writeObject(obj);
+    //         out.flush();
+    //         return bos.toByteArray();
+    //     } catch (Exception ex) {
+    //         throw new RuntimeException(ex);
+    //     }
+    // }
+
+    // public static Object deserializeFromByteArray(byte[] bytes) {
+    //     ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+
+    //     try (ObjectInput in = new ObjectInputStream(bis)) {
+    //         return in.readObject();
+    //     } catch (Exception ex) {
+    //         throw new RuntimeException(ex);
+    //     }
+    // }
+
+    public static byte[] serializeToByteArray(DataNode node) throws IOException {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        BinaryOutputArchive boa = BinaryOutputArchive.getArchive(bos);
+        node.serialize(boa, "node");
+        return bos.toByteArray();
     }
 
-    public static Object deserializeFromByteArray(byte[] bytes) {
-        ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+    public static DataNode deserializeFromByteArray(byte[] buff) throws IOException {
+        DataNode node = new DataNode();
+        ByteArrayInputStream bis = new ByteArrayInputStream(buff);
+        BinaryInputArchive binArchive = BinaryInputArchive.getArchive(bis);
+        node.deserialize(binArchive, "node");
 
-        try (ObjectInput in = new ObjectInputStream(bis)) {
-            return in.readObject();
-        } catch (Exception ex) {
-            throw new RuntimeException(ex);
-        }
+        return node;
     }
 }

@@ -296,7 +296,14 @@ public class SpiralClient {
           .setNamespace(_namespace)
           .setBucket(bucketName)
           .build();
-      // TODO: Add handling for empty value.
+
+      // TODO: dserialize this back to empty string in GET method. 
+      if (key.isEmpty()) {
+        key = EMPTY_KEY_STRING;
+      }
+      if (value.length == 0) {
+        value = EMPTY_DATA_VALUE.getBytes();
+      }
       
       byte[] keyBytes = key.getBytes();
       Key apiKey = Key.newBuilder().setMessage(ByteString.copyFrom(keyBytes)).build();

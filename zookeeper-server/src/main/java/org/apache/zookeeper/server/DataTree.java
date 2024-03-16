@@ -292,7 +292,6 @@ public class DataTree {
         nodes = new NodeHashMapImpl(digestCalculator);
 
         // rather than fight it, let root have an alias
-        LOG.info("RR: putting root {} at empty string", root);
         nodes.put("", root);
         nodes.putWithoutDigest(rootZookeeper, root);
 
@@ -1397,6 +1396,7 @@ public class DataTree {
         while (!"/".equals(path)) {
             DataNode node = new DataNode();
             ia.readRecord(node, "node");
+            LOG.info("RR: restoring from orig snap key :[{}] node:[{}]", path, node);
             nodes.put(path, node);
             synchronized (node) {
                 aclCache.addUsage(node.acl);
@@ -1451,8 +1451,14 @@ public class DataTree {
             List<KeyValue> key_values = response.getKeyValuesList();
             for (KeyValue kv : key_values) {
                 String path = kv.getKey().getMessage().toStringUtf8();
+                if (path.equals(EMPTY_KEY_STRING)) {
+                    path = "";
+                }
                 byte[] data = kv.getValue().getMessage().toByteArray();
-                DataNode node = (DataNode) SerializeUtils.deserializeFromByteArray(data);
+                if (data.equals(EMPTY_DATA_VALUE.getBytes())) {
+                    data = new byte[0];
+                }
+                DataNode node = SerializeUtils.deserializeFromByteArray(data);
                 LOG.info("RR: restoring key :[{}] node:[{}]", path, node);
                 nodes.put(path, node);
 

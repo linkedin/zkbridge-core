@@ -298,9 +298,6 @@ public class SpiralClient {
           .build();
 
       // TODO: dserialize this back to empty string in GET method. 
-      if (key.isEmpty()) {
-        key = EMPTY_KEY_STRING;
-      }
       if (value.length == 0) {
         value = EMPTY_DATA_VALUE.getBytes();
       }

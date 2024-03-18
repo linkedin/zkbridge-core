@@ -1352,11 +1352,9 @@ public class DataTree {
      * @throws IOException
      */
     void serializeSpiralNode(SpiralClient spiralClient, StringBuilder path, String bucketName) throws IOException {
-        LOG.info("RR: ENTRY serializing path :[{}]", path.toString());
         String pathString = path.toString();
         DataNode node = getNode(pathString);
         if (node == null) {
-            LOG.info("RR: no node found for path :[{}]", pathString);
             return;
         }
         String[] children;
@@ -1370,9 +1368,13 @@ public class DataTree {
             children = node.getChildren().toArray(new String[0]);
         }
         // TODO: Write now only data of DataNode being stored but we have to serialize ACL and stats.
-        LOG.info("RR: storing key :[{}] node:[{}]", pathString, nodeCopy);
         byte[] data = SerializeUtils.serializeToByteArray(nodeCopy);
-        spiralClient.put(bucketName, path.toString(), data);
+        if (path.toString().equals("")) {
+            // Currently root of the tree is stored as empty string, so we need to handle it separately.
+            spiralClient.put(bucketName, "/", data);
+        } else {
+            spiralClient.put(bucketName, path.toString(), data);
+        }
         path.append('/');
         int off = path.length();
         for (String child : children) {
@@ -1396,7 +1398,6 @@ public class DataTree {
         while (!"/".equals(path)) {
             DataNode node = new DataNode();
             ia.readRecord(node, "node");
-            LOG.info("RR: restoring from orig snap key :[{}] node:[{}]", path, node);
             nodes.put(path, node);
             synchronized (node) {
                 aclCache.addUsage(node.acl);
@@ -1451,7 +1452,8 @@ public class DataTree {
             List<KeyValue> key_values = response.getKeyValuesList();
             for (KeyValue kv : key_values) {
                 String path = kv.getKey().getMessage().toStringUtf8();
-                if (path.equals(EMPTY_KEY_STRING)) {
+                // Root node is stored as empty string in internal hashmap, so we need to handle it separately.
+                if (path.equals("/")) {
                     path = "";
                 }
                 byte[] data = kv.getValue().getMessage().toByteArray();
@@ -1459,7 +1461,6 @@ public class DataTree {
                     data = new byte[0];
                 }
                 DataNode node = SerializeUtils.deserializeFromByteArray(data);
-                LOG.info("RR: restoring key :[{}] node:[{}]", path, node);
                 nodes.put(path, node);
 
                 int lastSlash = path.lastIndexOf('/');

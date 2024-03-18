@@ -558,10 +558,11 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         if (zkDb.isInitialized()) {
             setZxid(zkDb.getDataTreeLastProcessedZxid());
         } else {
-            setZxid(zkDb.loadDataBase());
             if (spiralEnabled) {
-                LOG.info("Restoring snapshot from Spiral");
+                LOG.info("Restoring snapshot from Spiral instead of local disk");
                 zkDb.loadDataBaseFromSpiral(getServerId());
+            } else {
+                setZxid(zkDb.loadDataBase());
             }
         }
 

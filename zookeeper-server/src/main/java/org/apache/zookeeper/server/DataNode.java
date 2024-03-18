@@ -71,7 +71,7 @@ public class DataNode implements Record {
     /**
      * default constructor for the datanode
      */
-    DataNode() {
+    public DataNode() {
         // default constructor
     }
 

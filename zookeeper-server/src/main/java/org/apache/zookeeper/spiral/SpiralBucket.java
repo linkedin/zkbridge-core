@@ -6,9 +6,10 @@ package org.apache.zookeeper.spiral;
 public enum SpiralBucket {
 
   SHARED_TRANSACTION_LOG ("shared_transaction_log"),
-SESSIONS("sessions"),
+  SESSIONS("sessions"),
   INTERNAL_STATE("internal_state"),
-  LAST_PROCESSED_OFFSET("last_processed_offset");
+  LAST_PROCESSED_OFFSET("last_processed_offset"),
+  SNAPSHOT_STATUS("snapshot_status");
 
 
   private final String name;

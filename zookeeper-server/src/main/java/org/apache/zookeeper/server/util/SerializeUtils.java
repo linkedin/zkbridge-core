@@ -24,11 +24,15 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.jute.BinaryInputArchive;
+import org.apache.jute.BinaryOutputArchive;
 import org.apache.jute.InputArchive;
 import org.apache.jute.OutputArchive;
 import org.apache.jute.Record;
 import org.apache.zookeeper.ZooDefs.OpCode;
+import org.apache.zookeeper.server.DataNode;
 import org.apache.zookeeper.server.DataTree;
 import org.apache.zookeeper.server.SpiralTxnLogEntry;
 import org.apache.zookeeper.server.TxnLogEntry;
@@ -258,5 +262,21 @@ public class SerializeUtils {
             oa.writeInt(entry.getValue().intValue(), "timeout");
         }
         dt.serialize(oa, "tree");
+    }
+
+    public static byte[] serializeToByteArray(DataNode node) throws IOException {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        BinaryOutputArchive boa = BinaryOutputArchive.getArchive(bos);
+        node.serialize(boa, "node");
+        return bos.toByteArray();
+    }
+
+    public static DataNode deserializeFromByteArray(byte[] buff) throws IOException {
+        DataNode node = new DataNode();
+        ByteArrayInputStream bis = new ByteArrayInputStream(buff);
+        BinaryInputArchive binArchive = BinaryInputArchive.getArchive(bis);
+        node.deserialize(binArchive, "node");
+
+        return node;
     }
 }

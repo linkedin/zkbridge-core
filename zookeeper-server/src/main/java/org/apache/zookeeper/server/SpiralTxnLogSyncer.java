@@ -70,6 +70,7 @@ public class SpiralTxnLogSyncer extends ZooKeeperCriticalThread {
     public synchronized void syncDeltaUntilLatest() {
         try {
             long startProcessTime = Time.currentElapsedTime();
+            // TODO: Here instead of reading from internal_state read from snapshot_status
             byte[] lastZxidBuf = spiralClient.get(INTERNAL_STATE.getBucketName(), LATEST_TRANSACTION_ID.name());
             syncUntilZxid(Long.valueOf(new String(lastZxidBuf)));
             ServerMetrics.getMetrics().SPIRAL_BACKGROUND_SYNC_PROCESS_TIME.add(Time.currentElapsedTime() - startProcessTime);
@@ -99,7 +100,8 @@ public class SpiralTxnLogSyncer extends ZooKeeperCriticalThread {
 
             LOG.info("Background Syncing current ZKB with txn: {}", nextTxnId);
             TxnHeader txnHeader = MappingUtils.toTxnHeader(saTxnHdr);
-            zks.processTxn(txnHeader, logEntry.getTxn());
+            // Don't process session related txns here, as they are processed by the session tracker
+            zks.processTxnInDB(txnHeader, logEntry.getTxn(), null);
 
             // update the last processed offset
             spiralClient.updateLastProcessedTxn(zks.getServerId(), zks.getLastProcessedZxid());

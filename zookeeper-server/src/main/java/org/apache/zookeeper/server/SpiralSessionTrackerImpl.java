@@ -19,6 +19,8 @@
 package org.apache.zookeeper.server;
 
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.zookeeper.spiral.SpiralBucket;
 import org.apache.zookeeper.spiral.SpiralClient;
 import org.slf4j.Logger;
@@ -32,21 +34,27 @@ public class SpiralSessionTrackerImpl extends SessionTrackerImpl {
     private static final Logger LOG = LoggerFactory.getLogger(SpiralSessionTrackerImpl.class);
 
     private final SpiralClient spiralClient;
+    private final AtomicLong nextSessionId = new AtomicLong();
 
     public SpiralSessionTrackerImpl(SessionExpirer expirer, ConcurrentMap<Long, Integer> sessionsWithTimeout, int tickTime, long serverId, ZooKeeperServerListener listener, SpiralClient spiralClient) {
         super(expirer, sessionsWithTimeout, tickTime, serverId, listener);
+        this.nextSessionId.set(initializeNextSessionId(serverId));
         this.spiralClient = spiralClient;
     }
 
-    public long createSession(long sessionId, int timeout) {
+    public long createSession(int timeout) {
+        // TODO: Create unique monotincally increasing session id and assign it to sessionId
+        long sessionId = nextSessionId.getAndIncrement();
         LOG.info("Creating spiral entry for session 0x{}", Long.toHexString(sessionId));
         spiralClient.put(SpiralBucket.SESSIONS.getBucketName(), String.valueOf(sessionId), String.valueOf(timeout).getBytes());
+        super.trackSession(sessionId, timeout);
         return sessionId;
     }
 
     public void closeSession(long sessionId) {
         LOG.info("Removing spiral entry for session 0x{}", Long.toHexString(sessionId));
         spiralClient.delete(SpiralBucket.SESSIONS.getBucketName(), String.valueOf(sessionId));
+        super.removeSession(sessionId);
     }
 
     /*
@@ -68,6 +76,6 @@ public class SpiralSessionTrackerImpl extends SessionTrackerImpl {
             spiralClient.put(SpiralBucket.SESSIONS.getBucketName(), String.valueOf(sessionId), String.valueOf(timeout).getBytes());
         }
 
-        return super.trackSession(sessionId, timeout);
+        return super.trackSession(sessionId, timeout) && super.commitSession(sessionId, timeout);
     }
 }

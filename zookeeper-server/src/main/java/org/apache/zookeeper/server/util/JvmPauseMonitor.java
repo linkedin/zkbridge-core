@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.zookeeper.server.ServerConfig;
 import org.apache.zookeeper.server.ServerMetrics;
+import org.apache.zookeeper.server.ZKBServerConfig;
 import org.apache.zookeeper.server.quorum.QuorumPeerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,6 +79,12 @@ public class JvmPauseMonitor {
     }
 
     public JvmPauseMonitor(ServerConfig config) {
+        this.warnThresholdMs = config.getJvmPauseWarnThresholdMs();
+        this.infoThresholdMs = config.getJvmPauseInfoThresholdMs();
+        this.sleepTimeMs = config.getJvmPauseSleepTimeMs();
+    }
+
+    public JvmPauseMonitor(ZKBServerConfig config) {
         this.warnThresholdMs = config.getJvmPauseWarnThresholdMs();
         this.infoThresholdMs = config.getJvmPauseInfoThresholdMs();
         this.sleepTimeMs = config.getJvmPauseSleepTimeMs();

@@ -558,7 +558,12 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         if (zkDb.isInitialized()) {
             setZxid(zkDb.getDataTreeLastProcessedZxid());
         } else {
-            setZxid(zkDb.loadDataBase());
+            if (spiralEnabled) {
+                LOG.info("Restoring snapshot from Spiral instead of local disk");
+                zkDb.loadDataBaseFromSpiral(getServerId());
+            } else {
+                setZxid(zkDb.loadDataBase());
+            }
         }
 
         // Clean up dead sessions
@@ -619,7 +624,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     public synchronized void takeSnapShotOnSpiral() throws IOException {
         LOG.info("Started taking a snapshot on Spiral");
         long start = Time.currentElapsedTime();
-        boolean status = zkDb.takeSnapshotOnSpiral();
+        boolean status = zkDb.takeSnapshotOnSpiral(getServerId());
         long elapsed = Time.currentElapsedTime() - start;
         LOG.info("Snapshot taken [{}] on Spiral in {} ms", status, elapsed);
     }

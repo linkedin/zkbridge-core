@@ -1,5 +1,9 @@
 package org.apache.zookeeper.spiral;
 
+import proto.com.linkedin.spiral.PaginationContext;
+import proto.com.linkedin.spiral.ScanResponse;
+
+
 public interface SpiralClient {
 
   void initialize();
@@ -19,6 +23,8 @@ public interface SpiralClient {
   Long generateTransactionId();
 
   void put(String bucketName, String key, byte[] value);
+
+  ScanResponse scanBucket(String bucketName, PaginationContext paginationContext);
 
   void delete(String bucketName, String key);
 }

@@ -84,6 +84,12 @@ import org.apache.zookeeper.txn.TxnHeader;
 import org.apache.zookeeper.util.ServiceUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.zookeeper.server.util.SerializeUtils;
+
+import proto.com.linkedin.spiral.KeyValue;
+import proto.com.linkedin.spiral.PaginationContext;
+import proto.com.linkedin.spiral.ScanResponse;
+import static org.apache.zookeeper.spiral.SpiralConstants.*;
 
 /**
  * This class maintains the tree data structure. It doesn't have any networking
@@ -1313,6 +1319,30 @@ public class DataTree {
         }
     }
 
+    // visible for test
+    public void serializeNodeData(OutputArchive oa, String path, DataNode node) throws IOException {
+        oa.writeString(path, "path");
+        oa.writeRecord(node, "node");
+    }
+
+    public void serializeAcls(OutputArchive oa) throws IOException {
+        aclCache.serialize(oa);
+    }
+
+    public void serializeNodes(OutputArchive oa) throws IOException {
+        serializeNode(oa, new StringBuilder());
+        // / marks end of stream
+        // we need to check if clear had been called in between the snapshot.
+        if (root != null) {
+            oa.writeString("/", "path");
+        }
+    }
+
+    public void serialize(OutputArchive oa, String tag) throws IOException {
+        serializeAcls(oa);
+        serializeNodes(oa);
+    }
+
     /**
      * this method uses a stringbuilder to create a new path for children. This
      * is faster than string appends ( str1 + str2).
@@ -1338,8 +1368,12 @@ public class DataTree {
             children = node.getChildren().toArray(new String[0]);
         }
         // TODO: Write now only data of DataNode being stored but we have to serialize ACL and stats.
-        if (!path.toString().isEmpty()) {
-            spiralClient.put(bucketName, path.toString(), nodeCopy.getData());
+        byte[] data = SerializeUtils.serializeToByteArray(nodeCopy);
+        if (path.toString().equals("")) {
+            // Currently root of the tree is stored as empty string, so we need to handle it separately.
+            spiralClient.put(bucketName, "/", data);
+        } else {
+            spiralClient.put(bucketName, path.toString(), data);
         }
         path.append('/');
         int off = path.length();
@@ -1351,31 +1385,6 @@ public class DataTree {
         }
     }
 
-    // visible for test
-    public void serializeNodeData(OutputArchive oa, String path, DataNode node) throws IOException {
-        oa.writeString(path, "path");
-        oa.writeRecord(node, "node");
-    }
-
-    public void serializeAcls(OutputArchive oa) throws IOException {
-        aclCache.serialize(oa);
-    }
-
-    public void serializeNodes(OutputArchive oa) throws IOException {
-        serializeNode(oa, new StringBuilder());
-        // / marks end of stream
-        // we need to check if clear had been called in between the snapshot.
-        if (root != null) {
-            oa.writeString("/", "path");
-        }
-    }
-
-    public void serialize(OutputArchive oa, String tag) throws IOException {
-        serializeAcls(oa);
-        serializeNodes(oa);
-    }
-
-    // TODO: Not storing ACLs for now in snapshot.
     public void serializeOnSpiral(SpiralClient spiralClient, String bucketName) throws IOException {
         serializeSpiralNode(spiralClient, new StringBuilder(), bucketName);
     }
@@ -1429,6 +1438,56 @@ public class DataTree {
         setupQuota();
 
         aclCache.purgeUnused();
+    }
+
+    public void deserializeFromSpiral(SpiralClient spiralClient, String bucketName) throws IOException {
+        nodes.clear();
+        pTrie.clear();
+        nodeDataSize.set(0);
+        ScanResponse response = null;
+        String token = "";
+        do {
+            PaginationContext paginationContext = PaginationContext.newBuilder().setPageSize(1000).setToken(token).build();
+            response = spiralClient.scanBucket(bucketName, paginationContext);
+            List<KeyValue> key_values = response.getKeyValuesList();
+            for (KeyValue kv : key_values) {
+                String path = kv.getKey().getMessage().toStringUtf8();
+                // Root node is stored as empty string in internal hashmap, so we need to handle it separately.
+                if (path.equals("/")) {
+                    path = "";
+                }
+                byte[] data = kv.getValue().getMessage().toByteArray();
+                if (data.equals(EMPTY_DATA_VALUE.getBytes())) {
+                    data = new byte[0];
+                }
+                DataNode node = SerializeUtils.deserializeFromByteArray(data);
+                nodes.put(path, node);
+
+                int lastSlash = path.lastIndexOf('/');
+                if (lastSlash == -1) {
+                    root = node;
+                } else {
+                    String parentPath = path.substring(0, lastSlash);
+                    DataNode parent = nodes.get(parentPath);
+                    if (parent == null) {
+                        throw new IOException(
+                                "Invalid Datatree, unable to find parent [" + parentPath + "] of path [" + path + "]");
+                    }
+                    parent.addChild(path.substring(lastSlash + 1));
+                }
+            }
+            token = response.getNextPaginationToken();
+        } while(!token.isEmpty());
+        // have counted digest for root node with "", ignore here to avoid
+        // counting twice for root node
+        nodes.putWithoutDigest("/", root);
+
+        nodeDataSize.set(approximateDataSize());
+
+        // we are done with deserializing the datatree
+        // update the quotas - create path trie
+        // and also update the stat nodes
+        setupQuota();
     }
 
     /**

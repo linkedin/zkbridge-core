@@ -292,11 +292,6 @@ public class ZKDatabase {
         long startTime = Time.currentElapsedTime();
         long zxid = snapLog.restore(dataTree, sessionsWithTimeouts, commitProposalPlaybackListener);
 
-        // TODO: Now here normally sessions are restored from transaction logs and snapshots. So we would depend on sessions to be
-        // restored from transaction logs through SpiralSyncProcessor and for session handover request, we would do lazy loading for that
-        // sesion and allow session handover to different node if session is valid and that node has atLeast LastZxid synced with last
-        // server to provide read-after-write consistency.
-
         initialized = true;
         long loadTime = Time.currentElapsedTime() - startTime;
         ServerMetrics.getMetrics().DB_INIT_TIME.add(loadTime);
@@ -311,9 +306,21 @@ public class ZKDatabase {
         this.spiralEnabled = true;
     }
 
-    public boolean takeSnapshotOnSpiral() throws IOException {
+    public void loadDataBaseFromSpiral(long serverId) throws IOException {
+        // TODO: Now here normally sessions are restored from transaction logs and snapshots. So we would depend on sessions to be
+        // restored from transaction logs through SpiralSyncProcessor and for session handover request, we would do lazy loading for that
+        // sesion and allow session handover to different node if session is valid and that node has atLeast LastZxid synced with last
+        // server to provide read-after-write consistency.
+        long startTime = Time.currentElapsedTime();
+        long zxid = spiralSnapLog.restore(dataTree, sessionsWithTimeouts, serverId);
+        long loadTime = Time.currentElapsedTime() - startTime;
+        LOG.info("Snapshot loaded in {} ms, highest zxid is 0x{}, digest is {}",
+                loadTime, Long.toHexString(zxid), dataTree.getTreeDigest());
+    }
+
+    public boolean takeSnapshotOnSpiral(long serverId) throws IOException {
         if (spiralEnabled) {
-            return spiralSnapLog.save(dataTree, sessionsWithTimeouts);
+            return spiralSnapLog.save(dataTree, sessionsWithTimeouts, serverId);
         }
         return false;
     }

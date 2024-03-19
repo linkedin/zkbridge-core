@@ -5,6 +5,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.zookeeper.spiral.SpiralBucket;
 import org.apache.zookeeper.spiral.SpiralClient;
+import proto.com.linkedin.spiral.PaginationContext;
+import proto.com.linkedin.spiral.ScanResponse;
 
 
 public class SpiralEmbeddedClient implements SpiralClient {
@@ -12,8 +14,6 @@ public class SpiralEmbeddedClient implements SpiralClient {
   private static final String DEFAULT_NAMESPACE = "zookeeper";
   private static final AtomicLong TXN_ID = new AtomicLong(0);
   private static Map<String, HashMap<String, byte[]>> spiralContent = new HashMap<>();
-
-
   @Override
   public void initialize() {
     createNamespace(DEFAULT_NAMESPACE);
@@ -68,4 +68,8 @@ public class SpiralEmbeddedClient implements SpiralClient {
     spiralContent.get(bucketName).remove(key);
   }
 
+  @Override
+  public ScanResponse scanBucket(String bucketName, PaginationContext paginationContext) {
+    return null;
+  }
 }

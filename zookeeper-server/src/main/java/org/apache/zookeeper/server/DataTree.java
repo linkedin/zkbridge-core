@@ -1474,6 +1474,16 @@ public class DataTree {
                                 "Invalid Datatree, unable to find parent [" + parentPath + "] of path [" + path + "]");
                     }
                     parent.addChild(path.substring(lastSlash + 1));
+                    long owner = node.stat.getEphemeralOwner();
+                    EphemeralType ephemeralType = EphemeralType.get(owner);
+                    if (ephemeralType == EphemeralType.CONTAINER) {
+                        containers.add(path);
+                    } else if (ephemeralType == EphemeralType.TTL) {
+                        ttls.add(path);
+                    } else if (owner != 0) {
+                        HashSet<String> list = ephemerals.computeIfAbsent(owner, k -> new HashSet<>());
+                        list.add(path);
+                    }
                 }
             }
             token = response.getNextPaginationToken();
@@ -1488,6 +1498,8 @@ public class DataTree {
         // update the quotas - create path trie
         // and also update the stat nodes
         setupQuota();
+
+        aclCache.purgeUnused();
     }
 
     /**

@@ -178,7 +178,7 @@ public class SessionTrackerImpl extends ZooKeeperCriticalThread implements Sessi
 
     public synchronized boolean touchSession(long sessionId, int timeout) {
         SessionImpl s = sessionsById.get(sessionId);
-
+        
         if (s == null) {
             logTraceTouchInvalidSession(sessionId, timeout);
             return false;

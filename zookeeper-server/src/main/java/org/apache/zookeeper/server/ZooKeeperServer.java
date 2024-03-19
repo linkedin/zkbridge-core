@@ -575,16 +575,16 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         takeSnapshot();
     }
 
-    public File takeSnapshot() throws IOException {
-        return takeSnapshot(false);
+    public void takeSnapshot() throws IOException {
+        takeSnapshot(false);
     }
 
-    public File takeSnapshot(boolean syncSnap) throws IOException {
-        File file = takeSnapshot(syncSnap, true, false);
+    public void takeSnapshot(boolean syncSnap) throws IOException {
         if (spiralEnabled) {
             takeSnapShotOnSpiral();
+        } else {
+            takeSnapshot(syncSnap, true, false);
         }
-        return file;
     }
 
     /**
@@ -726,7 +726,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     }
 
     public SessionTracker getSessionTracker() {
-        return sessionTracker;
+        return spiralEnabled ? spiralSessionTracker: sessionTracker;
     }
 
     long getNextZxid() {
@@ -761,7 +761,11 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
                 ZooTrace.SESSION_TRACE_MASK,
                 "ZooKeeperServer --- killSession: 0x" + Long.toHexString(sessionId));
         }
-        if (sessionTracker != null) {
+        if (spiralEnabled) {
+            if (spiralSessionTracker != null) {
+                spiralSessionTracker.closeSession(sessionId);
+            }
+        } else if (sessionTracker != null) {
             sessionTracker.removeSession(sessionId);
         }
     }
@@ -797,7 +801,13 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         }
         long id = cnxn.getSessionId();
         int to = cnxn.getSessionTimeout();
-        if (!sessionTracker.touchSession(id, to)) {
+        boolean rc = false;
+        if (spiralEnabled) {
+            rc = spiralSessionTracker.touchSession(id, to);
+        } else {
+            rc = sessionTracker.touchSession(id, to);
+        }
+        if (!rc) {
             throw new MissingSessionException("No session with sessionid 0x"
                                               + Long.toHexString(id)
                                               + " exists, probably expired and removed");
@@ -871,7 +881,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
 
         requestPathMetricsCollector.start();
 
-        localSessionEnabled = sessionTracker.isLocalSessionsEnabled();
+        localSessionEnabled = spiralEnabled ? spiralSessionTracker.isLocalSessionsEnabled() : sessionTracker.isLocalSessionsEnabled();
 
         notifyAll();
     }
@@ -912,6 +922,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
      * the state before the server is ready to serve requests.
      */
     private void setupStateFromSpiral() {
+        // TODO: Call this method from loadData after DT and sessions are restored from snapshot and sessions bucket. 
         if (!isSpiralEnabled()) {
             return;
         }
@@ -925,12 +936,13 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         Long lastProcessedZxid = Long.valueOf(new String(bytes));
         SpiralTxnIterator txnIterator = null;
         try {
+            // TODO: Don't start from zxid 1 but start from lastProcessedZxid which will be received from last restored snapshot.
             txnIterator = new SpiralTxnIterator(spiralClient, 1, lastProcessedZxid);
             while (txnIterator.next()) {
                 ServerAwareTxnHeader hdr = txnIterator.getHeader();
                 Record txn = txnIterator.getTxn();
 
-                processTxn(hdr, txn);
+                processTxnInDB(MappingUtils.toTxnHeader(hdr), txn, null);
             }
             LOG.info("Completed setting up state from Spiral. Last processed txn Id: {}", getLastProcessedZxid());
         } catch (Exception e) {
@@ -954,14 +966,19 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     }
 
     protected void createSessionTracker() {
-        sessionTracker = new SessionTrackerImpl(this, zkDb.getSessionWithTimeOuts(), tickTime, createSessionTrackerServerId, getZooKeeperServerListener());
         if (spiralEnabled) {
             spiralSessionTracker = new SpiralSessionTrackerImpl(this, zkDb.getSessionWithTimeOuts(), tickTime, createSessionTrackerServerId, getZooKeeperServerListener(), spiralClient);
+        } else {
+            sessionTracker = new SessionTrackerImpl(this, zkDb.getSessionWithTimeOuts(), tickTime, createSessionTrackerServerId, getZooKeeperServerListener());
         }
     }
 
     protected void startSessionTracker() {
-        ((SessionTrackerImpl) sessionTracker).start();
+        if (spiralEnabled) {
+            ((SessionTrackerImpl)spiralSessionTracker).start();
+        } else {    
+            ((SessionTrackerImpl) sessionTracker).start();
+        }   
     }
 
     /**
@@ -1046,7 +1063,11 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         // Since sessionTracker and syncThreads poll we just have to
         // set running to false and they will detect it during the poll
         // interval.
-        if (sessionTracker != null) {
+        if (spiralEnabled) {
+            if (spiralSessionTracker != null) {
+                spiralSessionTracker.shutdown();
+            }
+        } else if (sessionTracker != null) {
             sessionTracker.shutdown();
         }
         if (firstProcessor != null) {
@@ -1192,7 +1213,12 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
             // Possible since it's just deserialized from a packet on the wire.
             passwd = new byte[0];
         }
-        long sessionId = sessionTracker.createSession(timeout);
+        long sessionId = -1;
+        if (spiralEnabled) {
+            sessionId= spiralSessionTracker.createSession(timeout);
+        } else {
+            sessionId = sessionTracker.createSession(timeout);
+        }
         Random r = new Random(sessionId ^ superSecret);
         r.nextBytes(passwd);
         CreateSessionTxn txn = new CreateSessionTxn(timeout);
@@ -1202,10 +1228,6 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         return sessionId;
     }
 
-    void createSpiralSession(long sessionId, int timeout) {
-        spiralSessionTracker.createSession(sessionId, timeout);
-    }
-
     /**
      * set the owner of this session as owner
      * @param id the session id
@@ -1213,15 +1235,24 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
      * @throws SessionExpiredException
      */
     public void setOwner(long id, Object owner) throws SessionExpiredException {
-        sessionTracker.setOwner(id, owner);
+        if (spiralEnabled) {
+            spiralSessionTracker.setOwner(id, owner);
+        } else {
+            sessionTracker.setOwner(id, owner);
+        }
     }
 
     protected void revalidateSession(ServerCnxn cnxn, long sessionId, int sessionTimeout) throws IOException {
-        boolean rc = sessionTracker.touchSession(sessionId, sessionTimeout);
+        boolean rc = false;
+        if (spiralEnabled) {
+            // Rehydrate session map for session handover for spiral.
+            // TODO: Needs to add last seen zxid check to provide read-after-write consistency
+            rc = spiralSessionTracker.touchSession(sessionId, sessionTimeout);
+        } else {
+            rc = sessionTracker.touchSession(sessionId, sessionTimeout);
+        }
+        LOG.info("Session 0x{} is re-validated: {}", Long.toHexString(sessionId), rc);
 
-        // Rehydrate session map for session handover for spiral.
-        // TODO: Needs to add last seen zxid check to provide read-after-write consistency
-        rc = spiralSessionTracker.touchSession(sessionId, sessionTimeout);
         if (LOG.isTraceEnabled()) {
             ZooTrace.logTraceMessage(
                 LOG,
@@ -1961,12 +1992,6 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         return processTxnInDB(hdr, txn, null);
     }
 
-    // entry point for Spiral based rehydration mechanism
-    public ProcessTxnResult processTxn(ServerAwareTxnHeader hdr, Record txn) {
-        processTxnForSessionEventsUsingSpiral(null, hdr, txn);
-        return processTxnInDB(MappingUtils.toTxnHeader(hdr), txn, null);
-    }
-
     // entry point for FinalRequestProcessor.java
     public ProcessTxnResult processTxn(Request request) {
         TxnHeader hdr = request.getHdr();
@@ -2010,53 +2035,31 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         }
     }
 
-    private void processTxnForSessionEventsUsingSpiral(Request request, ServerAwareTxnHeader saHdr, Record txn) {
-        if (Integer.valueOf(saHdr.getServerId()) != getServerId()) {
-            return;
-        }
-
-        long sessionId = (request == null) ? saHdr.getClientId() : request.sessionId;
-        LOG.info("processing session 0x{} previously created and owned by the server {}", Long.toHexString(sessionId), getServerId());
-        TxnHeader hdr = MappingUtils.toTxnHeader(saHdr);
-
-        if (!spiralEnabled) {
-            processTxnForSessionEvents(request, hdr, txn);
-            return;
-        }
-
-        int opCode = (request == null) ? hdr.getType() : request.type;
-        if (opCode == OpCode.createSession) {
-            if (hdr != null && txn instanceof CreateSessionTxn) {
-                CreateSessionTxn cst = (CreateSessionTxn) txn;
-                sessionTracker.trackSession(sessionId, cst.getTimeOut());
-                sessionTracker.commitSession(sessionId, cst.getTimeOut());
-                createSpiralSession(sessionId, cst.getTimeOut());
-            } else if (request == null || !request.isLocalSession()) {
-                LOG.warn("*****>>>>> Got {} {}",  txn.getClass(), txn.toString());
-            }
-        } else if (opCode == OpCode.closeSession) {
-            sessionTracker.removeSession(sessionId);
-            spiralSessionTracker.closeSession(sessionId);
-        }
-    }
-
     private void processTxnForSessionEvents(Request request, TxnHeader hdr, Record txn) {
         int opCode = (request == null) ? hdr.getType() : request.type;
         long sessionId = (request == null) ? hdr.getClientId() : request.sessionId;
 
         if (opCode == OpCode.createSession) {
             if (hdr != null && txn instanceof CreateSessionTxn) {
-                CreateSessionTxn cst = (CreateSessionTxn) txn;
-                sessionTracker.commitSession(sessionId, cst.getTimeOut());
+                CreateSessionTxn cst = (CreateSessionTxn) txn;    
+                if (spiralEnabled) {
+                    spiralSessionTracker.commitSession(sessionId, cst.getTimeOut());
+                } else {
+                    sessionTracker.commitSession(sessionId, cst.getTimeOut());
+                }
             } else if (request == null || !request.isLocalSession()) {
                 LOG.warn("*****>>>>> Got {} {}",  txn.getClass(), txn.toString());
             }
-        } else if (opCode == OpCode.closeSession) {
-            sessionTracker.removeSession(sessionId);
+        } else if (opCode == OpCode.closeSession) {          
+            if (spiralEnabled) {
+                spiralSessionTracker.closeSession(sessionId);
+            } else {
+                sessionTracker.removeSession(sessionId);
+            }
         }
     }
 
-    private ProcessTxnResult processTxnInDB(TxnHeader hdr, Record txn, TxnDigest digest) {
+    public ProcessTxnResult processTxnInDB(TxnHeader hdr, Record txn, TxnDigest digest) {
         if (hdr == null) {
             return new ProcessTxnResult();
         } else {

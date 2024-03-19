@@ -354,7 +354,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
             break;
         }
         case OpCode.delete:
-            zks.sessionTracker.checkSession(request.sessionId, request.getOwner());
+            zks.getSessionTracker().checkSession(request.sessionId, request.getOwner());
             DeleteRequest deleteRequest = (DeleteRequest) record;
             String path = deleteRequest.getPath();
             String parentPath = getParentPathAndValidate(path);
@@ -379,7 +379,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
             addChangeRecord(nodeRecord);
             break;
         case OpCode.setData:
-            zks.sessionTracker.checkSession(request.sessionId, request.getOwner());
+            zks.getSessionTracker().checkSession(request.sessionId, request.getOwner());
             SetDataRequest setDataRequest = (SetDataRequest) record;
             path = setDataRequest.getPath();
             validatePath(path, request.sessionId);
@@ -408,7 +408,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
                 LOG.warn("skipACL is set, reconfig operation will skip ACL checks!");
             }
 
-            zks.sessionTracker.checkSession(request.sessionId, request.getOwner());
+            zks.getSessionTracker().checkSession(request.sessionId, request.getOwner());
             LeaderZooKeeperServer lzks;
             try {
                 lzks = (LeaderZooKeeperServer) zks;
@@ -548,7 +548,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
 
             break;
         case OpCode.setACL:
-            zks.sessionTracker.checkSession(request.sessionId, request.getOwner());
+            zks.getSessionTracker().checkSession(request.sessionId, request.getOwner());
             SetACLRequest setAclRequest = (SetACLRequest) record;
             path = setAclRequest.getPath();
             validatePath(path, request.sessionId);
@@ -568,7 +568,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
             CreateSessionTxn createSessionTxn = request.readRequestRecord(CreateSessionTxn::new);
             request.setTxn(createSessionTxn);
             // only add the global session tracker but not to ZKDb
-            zks.sessionTracker.trackSession(request.sessionId, createSessionTxn.getTimeOut());
+            zks.getSessionTracker().trackSession(request.sessionId, createSessionTxn.getTimeOut());
             zks.setOwner(request.sessionId, request.getOwner());
             break;
         case OpCode.closeSession:
@@ -610,12 +610,12 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
                 if (ZooKeeperServer.isCloseSessionTxnEnabled()) {
                     request.setTxn(new CloseSessionTxn(new ArrayList<String>(es)));
                 }
-                zks.sessionTracker.setSessionClosing(request.sessionId);
+                zks.getSessionTracker().setSessionClosing(request.sessionId);
             }
             ServerMetrics.getMetrics().CLOSE_SESSION_PREP_TIME.add(Time.currentElapsedTime() - startTime);
             break;
         case OpCode.check:
-            zks.sessionTracker.checkSession(request.sessionId, request.getOwner());
+            zks.getSessionTracker().checkSession(request.sessionId, request.getOwner());
             CheckVersionRequest checkVersionRequest = (CheckVersionRequest) record;
             path = checkVersionRequest.getPath();
             validatePath(path, request.sessionId);
@@ -909,7 +909,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
             case OpCode.multiRead:
             case OpCode.addWatch:
             case OpCode.whoAmI:
-                zks.sessionTracker.checkSession(request.sessionId, request.getOwner());
+                zks.getSessionTracker().checkSession(request.sessionId, request.getOwner());
                 break;
             default:
                 LOG.warn("unknown type {}", request.type);
@@ -975,9 +975,9 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
             if (request.getException() != null) {
                 throw request.getException();
             }
-            zks.sessionTracker.checkGlobalSession(request.sessionId, request.getOwner());
+            zks.getSessionTracker().checkGlobalSession(request.sessionId, request.getOwner());
         } else {
-            zks.sessionTracker.checkSession(request.sessionId, request.getOwner());
+            zks.getSessionTracker().checkSession(request.sessionId, request.getOwner());
         }
     }
 

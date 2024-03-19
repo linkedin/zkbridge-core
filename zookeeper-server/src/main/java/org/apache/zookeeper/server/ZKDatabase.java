@@ -306,11 +306,12 @@ public class ZKDatabase {
         this.spiralEnabled = true;
     }
 
+    /*
+     * The dataTree will be restored from snapshot and iterating over transaction logs. We don't restore sessions intentionally here
+     * since they will be lazy loaded whenever session handover happens.
+     */
     public void loadDataBaseFromSpiral(long serverId) throws IOException {
-        // TODO: Now here normally sessions are restored from transaction logs and snapshots. So we would depend on sessions to be
-        // restored from transaction logs through SpiralSyncProcessor and for session handover request, we would do lazy loading for that
-        // sesion and allow session handover to different node if session is valid and that node has atLeast LastZxid synced with last
-        // server to provide read-after-write consistency.
+        // TODO: Ensure that node has atLeast LastZxid synced with last server to provide read-after-write consistency.
         long startTime = Time.currentElapsedTime();
         long zxid = spiralSnapLog.restore(dataTree, sessionsWithTimeouts, serverId);
         long loadTime = Time.currentElapsedTime() - startTime;

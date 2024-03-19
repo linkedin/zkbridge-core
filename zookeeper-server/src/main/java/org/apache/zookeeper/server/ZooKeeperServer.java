@@ -1992,12 +1992,6 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         return processTxnInDB(hdr, txn, null);
     }
 
-    // // entry point for Spiral based rehydration mechanism
-    // public ProcessTxnResult processTxn(ServerAwareTxnHeader hdr, Record txn) {
-    //     processTxnForSessionEventsUsingSpiral(null, hdr, txn);
-    //     return processTxnInDB(MappingUtils.toTxnHeader(hdr), txn, null);
-    // }
-
     // entry point for FinalRequestProcessor.java
     public ProcessTxnResult processTxn(Request request) {
         TxnHeader hdr = request.getHdr();
@@ -2040,36 +2034,6 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
             return rc;
         }
     }
-
-    // private void processTxnForSessionEventsUsingSpiral(Request request, ServerAwareTxnHeader saHdr, Record txn) {
-    //     if (Integer.valueOf(saHdr.getServerId()) != getServerId()) {
-    //         return;
-    //     }
-
-    //     long sessionId = (request == null) ? saHdr.getClientId() : request.sessionId;
-    //     LOG.info("processing session 0x{} previously created and owned by the server {}", Long.toHexString(sessionId), getServerId());
-    //     TxnHeader hdr = MappingUtils.toTxnHeader(saHdr);
-
-    //     if (!spiralEnabled) {
-    //         processTxnForSessionEvents(request, hdr, txn);
-    //         return;
-    //     }
-
-    //     int opCode = (request == null) ? hdr.getType() : request.type;
-    //     if (opCode == OpCode.createSession) {
-    //         if (hdr != null && txn instanceof CreateSessionTxn) {
-    //             CreateSessionTxn cst = (CreateSessionTxn) txn;
-    //             sessionTracker.trackSession(sessionId, cst.getTimeOut());
-    //             sessionTracker.commitSession(sessionId, cst.getTimeOut());
-    //             createSpiralSession(sessionId, cst.getTimeOut());
-    //         } else if (request == null || !request.isLocalSession()) {
-    //             LOG.warn("*****>>>>> Got {} {}",  txn.getClass(), txn.toString());
-    //         }
-    //     } else if (opCode == OpCode.closeSession) {
-    //         sessionTracker.removeSession(sessionId);
-    //         spiralSessionTracker.closeSession(sessionId);
-    //     }
-    // }
 
     private void processTxnForSessionEvents(Request request, TxnHeader hdr, Record txn) {
         int opCode = (request == null) ? hdr.getType() : request.type;

@@ -43,9 +43,12 @@ public class SpiralSessionTrackerImpl extends SessionTrackerImpl {
     }
 
     public long createSession(int timeout) {
-        // TODO: Create unique monotincally increasing session id and assign it to sessionId
+        // TODO: Check if we need to create unique monotincally increasing session id and assign it to sessionId
         long sessionId = nextSessionId.getAndIncrement();
         LOG.info("Creating spiral entry for session 0x{}", Long.toHexString(sessionId));
+        if (spiralClient.containsKey(SpiralBucket.SESSIONS.getBucketName(), String.valueOf(sessionId))) {
+            throw new RuntimeException("Session [" + String.valueOf(sessionId) + "] already exists in spiral");
+        }
         spiralClient.put(SpiralBucket.SESSIONS.getBucketName(), String.valueOf(sessionId), String.valueOf(timeout).getBytes());
         super.trackSession(sessionId, timeout);
         return sessionId;

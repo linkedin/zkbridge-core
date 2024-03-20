@@ -62,7 +62,7 @@ public class SpiralSnap {
      * @param fsync sync the file immediately after write
      */
     public synchronized void serialize(
-        DataTree dt, Map<Long, Integer> sessions, String bucketName, long serverId) throws IOException {
+        DataTree dt, String bucketName, long serverId) throws IOException {
         if (!close) {
             // TODO: Taking a snapshot could take some time, so we want to make sure that it's either taken fully or none, hence
             // will maintain another state in bucket "SNAPSHOT_STATUS" to indicate if the snapshot is in progress or not.
@@ -88,10 +88,8 @@ public class SpiralSnap {
         close = true;
     }
 
-    public long deserialize(DataTree dt, Map<Long, Integer> sessions, String bucketName) throws IOException {
+    public void deserialize(DataTree dt, String bucketName) throws IOException {
         dt.deserializeFromSpiral(spiralClient, bucketName);
-        // TODO: find heighest zxid from the datatree and return it
-        return 0;
     }
 
     public File findMostRecentSnapshot() throws IOException {

@@ -560,7 +560,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         } else {
             if (spiralEnabled) {
                 LOG.info("Restoring snapshot from Spiral instead of local disk");
-                zkDb.loadDataBaseFromSpiral(getServerId());
+                setZxid(zkDb.loadDataBaseFromSpiral(getServerId()));
             } else {
                 setZxid(zkDb.loadDataBase());
             }
@@ -863,7 +863,6 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         if (sessionTracker == null) {
             createSessionTracker();
         }
-        setupStateFromSpiral();
 
         startSessionTracker();
 
@@ -916,41 +915,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         ((PrepRequestProcessor) firstProcessor).start();
     }
 
-    /**
-     * Restores the ZK DB to the state until the point of last processed zxid, using it as offset.
-     * This function is invoked before even the request processors are setup, so that we can hydrate
-     * the state before the server is ready to serve requests.
-     */
-    private void setupStateFromSpiral() {
-        // TODO: Call this method from loadData after DT and sessions are restored from snapshot and sessions bucket. 
-        if (!isSpiralEnabled()) {
-            return;
-        }
-
-        // case: if the server is getting started for the very first time and there is no recorded offset.
-        if (!spiralClient.containsKey(LAST_PROCESSED_OFFSET.getBucketName(), String.valueOf(getServerId()))) {
-            return;
-        }
-
-        byte[] bytes = spiralClient.get(LAST_PROCESSED_OFFSET.getBucketName(), String.valueOf(getServerId()));
-        Long lastProcessedZxid = Long.valueOf(new String(bytes));
-        SpiralTxnIterator txnIterator = null;
-        try {
-            // TODO: Don't start from zxid 1 but start from lastProcessedZxid which will be received from last restored snapshot.
-            txnIterator = new SpiralTxnIterator(spiralClient, 1, lastProcessedZxid);
-            while (txnIterator.next()) {
-                ServerAwareTxnHeader hdr = txnIterator.getHeader();
-                Record txn = txnIterator.getTxn();
-
-                processTxnInDB(MappingUtils.toTxnHeader(hdr), txn, null);
-            }
-            LOG.info("Completed setting up state from Spiral. Last processed txn Id: {}", getLastProcessedZxid());
-        } catch (Exception e) {
-            throw new RuntimeException(
-                String.format("error while hydrating zkbridge server: %s while reading zxid: %s", getServerId(), txnIterator.getCurrZxid()), e);
-        }
-    }
-
+    
     public ZooKeeperServerListener getZooKeeperServerListener() {
         return listener;
     }

@@ -307,21 +307,22 @@ public class ZKDatabase {
     }
 
     /*
-     * The dataTree will be restored from snapshot and iterating over transaction logs. We don't restore sessions intentionally here
+     * The dataTree will be restored from snapshot and iterating over transaction logs. We don't 
+     * restore sessions from transaction logs intentionally here
      * since they will be lazy loaded whenever session handover happens.
      */
-    public void loadDataBaseFromSpiral(long serverId) throws IOException {
-        // TODO: Ensure that node has atLeast LastZxid synced with last server to provide read-after-write consistency.
+    public long loadDataBaseFromSpiral(long serverId) throws IOException {
         long startTime = Time.currentElapsedTime();
-        long zxid = spiralSnapLog.restore(dataTree, sessionsWithTimeouts, serverId);
+        long zxid = spiralSnapLog.restore(dataTree, serverId);
         long loadTime = Time.currentElapsedTime() - startTime;
         LOG.info("Snapshot loaded in {} ms, highest zxid is 0x{}, digest is {}",
                 loadTime, Long.toHexString(zxid), dataTree.getTreeDigest());
+        return zxid;
     }
 
     public boolean takeSnapshotOnSpiral(long serverId) throws IOException {
         if (spiralEnabled) {
-            return spiralSnapLog.save(dataTree, sessionsWithTimeouts, serverId);
+            return spiralSnapLog.save(dataTree, serverId);
         }
         return false;
     }

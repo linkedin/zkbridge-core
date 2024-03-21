@@ -223,6 +223,10 @@ public class ZKBServerConfig {
         return overrideAuthority;
     }
 
+    public void setSpiralEnabled(boolean spiralEnabled) {
+        this.spiralEnabled = spiralEnabled;
+    }
+
     public boolean isSpiralEnabled() {
         return spiralEnabled;
     }
@@ -233,6 +237,10 @@ public class ZKBServerConfig {
 
     public long getServerId() {
         return serverId;
+    }
+
+    public void setServerId(long serverId) {
+        this.serverId = serverId;
     }
 
     void setupIdentityConfig() throws IOException {

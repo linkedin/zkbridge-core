@@ -19,6 +19,7 @@
 package org.apache.zookeeper.server;
 
 import java.io.IOException;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import javax.management.JMException;
@@ -125,6 +126,16 @@ public class ZKBridgeServerMain {
      * @throws AdminServerException
      */
     public void runFromConfig(ZKBServerConfig config) throws IOException, AdminServerException {
+        runFromConfig(config, null);
+    }
+
+    /**
+     * Run from a ServerConfig.
+     * @param config ServerConfig to use.
+     * @throws IOException
+     * @throws AdminServerException
+     */
+    public void runFromConfig(ZKBServerConfig config, SpiralClient spiralClient) throws IOException, AdminServerException {
         LOG.info("Starting server");
         FileTxnSnapLog txnLog = null;
         try {
@@ -152,14 +163,16 @@ public class ZKBridgeServerMain {
             // Set ZKBridge Specific configuration, if ZKBridge is enabled.
             LOG.info("Spiral enabled: {}", config.isSpiralEnabled());
             if (config.isSpiralEnabled()) {
-                SpiralClient spiralClient = new SpiralClientImpl.SpiralClientBuilder()
-                    .setSpiralEndpoint(config.getSpiralEndpoint())
-                    .setIdentityCert(config.getIdentityCert())
-                    .setIdentityKey(config.getIdentityKey())
-                    .setCaBundle(config.getCaBundle())
-                    .setOverrideAuthority(config.getOverrideAuthority())
-                    .setNamespace(config.getSpiralNamespace())
-                    .build();
+                if (Objects.isNull(spiralClient)) {
+                    spiralClient = new SpiralClientImpl.SpiralClientBuilder()
+                        .setSpiralEndpoint(config.getSpiralEndpoint())
+                        .setIdentityCert(config.getIdentityCert())
+                        .setIdentityKey(config.getIdentityKey())
+                        .setCaBundle(config.getCaBundle())
+                        .setOverrideAuthority(config.getOverrideAuthority())
+                        .setNamespace(config.getSpiralNamespace())
+                        .build();
+                }
                 zkServer.setSpiralClient(spiralClient);
             }
 

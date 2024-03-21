@@ -24,6 +24,8 @@ import java.util.Properties;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
 import org.apache.zookeeper.spiral.SpiralClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -41,12 +43,16 @@ import org.apache.zookeeper.spiral.SpiralClient;
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
 public interface ZKBridgeServerEmbedded extends AutoCloseable {
+
+    Logger LOG = LoggerFactory.getLogger(ZKBridgeServerEmbeddedImpl.class);
+
     /**
      * Builder for ZooKeeperServerEmbedded.
      */
     class ZKBridgeServerEmbeddedBuilder {
 
         private Path baseDir;
+        private Integer serverId;
         private SpiralClient spiralClient;
         private Properties configuration;
         private ExitHandler exitHandler = ExitHandler.EXIT;
@@ -63,6 +69,16 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
         public ZKBridgeServerEmbeddedBuilder baseDir(Path baseDir) {
             this.baseDir = Objects.requireNonNull(baseDir);
             return this;
+        }
+
+        /**
+         * Server Id of the ZKBridge Server
+         * <p>
+         * @param serverId
+         * @return the builder
+         */
+        public void setServerId(Integer serverId) {
+            this.serverId = serverId;
         }
 
         /**
@@ -103,14 +119,49 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
          * @see #start()
          */
         public ZKBridgeServerEmbedded build() throws Exception {
+            if (serverId == null) {
+                throw new IllegalStateException("serverId is null");
+            }
+
+            configuration = decorateConfiguration(configuration);
+
             if (spiralClient == null) {
-                throw new IllegalStateException("spiralClient is null");
+                LOG.info("No spiralClient is supplied, will use embedded one.");
+                spiralClient = new SpiralEmbeddedClient();
             }
-            if (configuration == null) {
-                throw new IllegalStateException("configuration is null");
-            }
-            return new ZKBridgeServerEmbeddedImpl(configuration, baseDir, spiralClient, exitHandler);
+            return new ZKBridgeServerEmbeddedImpl(configuration, baseDir, serverId, spiralClient, exitHandler);
         }
+    }
+
+    static Properties decorateConfiguration(Properties configuration) {
+        Properties outputConfig = (configuration == null) ? new Properties() : configuration;
+
+        if (!outputConfig.containsKey("tickTime")) {
+            outputConfig.setProperty("tickTime", String.valueOf(2000));
+        }
+        if (!outputConfig.containsKey("spiral.enabled")) {
+            outputConfig.setProperty("spiral.enabled", String.valueOf(true));
+        }
+        if (!outputConfig.containsKey("spiral.namespace")) {
+            outputConfig.setProperty("spiral.namespace", "zookeeper");
+        }
+        if (!outputConfig.containsKey("standaloneEnabled")) {
+            outputConfig.setProperty("standaloneEnabled", String.valueOf(true));
+        }
+        if (!outputConfig.containsKey("reconfigEnabled")) {
+            outputConfig.setProperty("reconfigEnabled", String.valueOf(false));
+        }
+        if (!outputConfig.containsKey("initLimit")) {
+            outputConfig.setProperty("initLimit", String.valueOf(10));
+        }
+        if (!outputConfig.containsKey("minSessionTimeout")) {
+            outputConfig.setProperty("minSessionTimeout", String.valueOf(-1));
+        }
+        if (!outputConfig.containsKey("maxSessionTimeout")) {
+            outputConfig.setProperty("maxSessionTimeout", String.valueOf(-1));
+        }
+
+        return outputConfig;
     }
 
     static ZKBridgeServerEmbeddedBuilder builder() {

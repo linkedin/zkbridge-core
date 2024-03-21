@@ -43,6 +43,7 @@ class ZKBridgeServerEmbeddedImpl implements ZKBridgeServerEmbedded {
     private static final Logger LOG = LoggerFactory.getLogger(ZKBridgeServerEmbeddedImpl.class);
 
     private final ZKBServerConfig config;
+    private final Integer serverId;
     private final SpiralClient spiralClient;
     private ZKBridgeServerMain zkBridgeServerMain;
     private Thread thread;
@@ -52,7 +53,8 @@ class ZKBridgeServerEmbeddedImpl implements ZKBridgeServerEmbedded {
     private int boundClientPort;
     private int boundSecureClientPort;
 
-    ZKBridgeServerEmbeddedImpl(Properties p, Path baseDir, SpiralClient spiralClient, ExitHandler exitHandler) throws Exception {
+    ZKBridgeServerEmbeddedImpl(Properties p, Path baseDir, Integer serverId, SpiralClient spiralClient, ExitHandler exitHandler) throws Exception {
+        this.serverId = serverId;
         this.spiralClient = spiralClient;
 
         if (!p.containsKey("dataDir")) {
@@ -66,8 +68,11 @@ class ZKBridgeServerEmbeddedImpl implements ZKBridgeServerEmbedded {
         LOG.info("Current configuration is at {}", configFile.toAbsolutePath());
         config = new ZKBServerConfig();
         config.parse(configFile.toAbsolutePath().toString());
+        config.setServerId(serverId);
+
         LOG.info("ServerID:" + config.getServerId());
         LOG.info("DataDir:" + config.getDataDir());
+        LOG.info("Spiral Enabled:" + config.isSpiralEnabled());
         LOG.info("MetricsProviderClassName:" + config.getMetricsProviderClassName());
     }
 
@@ -106,7 +111,7 @@ class ZKBridgeServerEmbeddedImpl implements ZKBridgeServerEmbedded {
             public void run() {
                 try {
                     LOG.info("ZK server starting");
-                    zkBridgeServerMain.runFromConfig(config);
+                    zkBridgeServerMain.runFromConfig(config, spiralClient);
 
                     LOG.info("ZK server died. Requesting stop on JVM");
                     if (!stopping) {

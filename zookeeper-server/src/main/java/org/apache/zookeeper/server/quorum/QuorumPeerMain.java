@@ -31,6 +31,8 @@ import org.apache.zookeeper.server.DatadirCleanupManager;
 import org.apache.zookeeper.server.ExitCode;
 import org.apache.zookeeper.server.ServerCnxnFactory;
 import org.apache.zookeeper.server.ServerMetrics;
+import org.apache.zookeeper.server.ZKBServerConfig;
+import org.apache.zookeeper.server.ZKBridgeServerMain;
 import org.apache.zookeeper.server.ZKDatabase;
 import org.apache.zookeeper.server.ZooKeeperServerMain;
 import org.apache.zookeeper.server.admin.AdminServer.AdminServerException;
@@ -135,6 +137,8 @@ public class QuorumPeerMain {
 
         if (args.length == 1 && config.isDistributed()) {
             runFromConfig(config);
+        } else if (config.isSpiralEnabled()) {
+            ZKBridgeServerMain.main(args);
         } else {
             LOG.warn("Either no config or no quorum defined in config, running in standalone mode");
             // there is only server in the quorum -- run as standalone

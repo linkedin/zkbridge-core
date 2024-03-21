@@ -19,6 +19,7 @@
 package org.apache.zookeeper.server;
 
 import java.io.IOException;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import javax.management.JMException;
@@ -36,17 +37,20 @@ import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog.DatadirException;
 import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
 import org.apache.zookeeper.server.util.JvmPauseMonitor;
+import org.apache.zookeeper.spiral.SpiralClient;
+import org.apache.zookeeper.spiral.SpiralClientImpl;
 import org.apache.zookeeper.util.ServiceUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 /**
- * This class starts and runs a standalone ZooKeeperServer.
+ * This class starts and runs a ZKBridge server node.
  */
 @InterfaceAudience.Public
-public class ZooKeeperServerMain {
+public class ZKBridgeServerMain {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperServerMain.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ZKBridgeServerMain.class);
 
     private static final String USAGE = "Usage: ZooKeeperServerMain configfile | port datadir [ticktime] [maxcnxns]";
 
@@ -64,8 +68,9 @@ public class ZooKeeperServerMain {
      */
     public static void main(String[] args) {
         LOG.info("---ZKBridge: Starting");
-        ZooKeeperServerMain main = new ZooKeeperServerMain();
+        ZKBridgeServerMain main = new ZKBridgeServerMain();
         try {
+            Thread.currentThread().sleep(10000);
             main.initializeAndRun(args);
         } catch (IllegalArgumentException e) {
             LOG.error("Invalid arguments, exiting abnormally", e);
@@ -104,7 +109,7 @@ public class ZooKeeperServerMain {
             LOG.warn("Unable to register log4j JMX control", e);
         }
 
-        ServerConfig config = new ServerConfig();
+        ZKBServerConfig config = new ZKBServerConfig();
         if (args.length == 1) {
             config.parse(args[0]);
         } else {
@@ -120,7 +125,17 @@ public class ZooKeeperServerMain {
      * @throws IOException
      * @throws AdminServerException
      */
-    public void runFromConfig(ServerConfig config) throws IOException, AdminServerException {
+    public void runFromConfig(ZKBServerConfig config) throws IOException, AdminServerException {
+        runFromConfig(config, null);
+    }
+
+    /**
+     * Run from a ServerConfig.
+     * @param config ServerConfig to use.
+     * @throws IOException
+     * @throws AdminServerException
+     */
+    public void runFromConfig(ZKBServerConfig config, SpiralClient spiralClient) throws IOException, AdminServerException {
         LOG.info("Starting server");
         FileTxnSnapLog txnLog = null;
         try {
@@ -144,6 +159,22 @@ public class ZooKeeperServerMain {
             }
             final ZooKeeperServer zkServer = new ZooKeeperServer(jvmPauseMonitor, txnLog, config.tickTime, config.minSessionTimeout, config.maxSessionTimeout, config.listenBacklog, null, config.initialConfig);
             txnLog.setServerStats(zkServer.serverStats());
+
+            // Set ZKBridge Specific configuration, if ZKBridge is enabled.
+            LOG.info("Spiral enabled: {}", config.isSpiralEnabled());
+            if (config.isSpiralEnabled()) {
+                if (Objects.isNull(spiralClient)) {
+                    spiralClient = new SpiralClientImpl.SpiralClientBuilder()
+                        .setSpiralEndpoint(config.getSpiralEndpoint())
+                        .setIdentityCert(config.getIdentityCert())
+                        .setIdentityKey(config.getIdentityKey())
+                        .setCaBundle(config.getCaBundle())
+                        .setOverrideAuthority(config.getOverrideAuthority())
+                        .setNamespace(config.getSpiralNamespace())
+                        .build();
+                }
+                zkServer.setSpiralClient(spiralClient);
+            }
 
             // Registers shutdown handler which will be used to know the
             // server error or shutdown state changes.

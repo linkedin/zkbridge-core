@@ -24,17 +24,18 @@ import java.util.Properties;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
 import org.apache.zookeeper.spiral.SpiralClient;
+import org.apache.zookeeper.spiral.SpiralClientImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
 /**
- * This API allows you to start a ZooKeeper server node from Java code <p>
+ * This API allows you to start a ZKBridge server node from Java code <p>
  * The server will run inside the same process.<p>
  * Typical usecases are:
  * <ul>
  * <li>Running automated tests</li>
- * <li>Launch ZooKeeper server with a Java based service management system</li>
+ * <li>Launch ZKBridge server with a Java based service management system</li>
  * </ul>
  * <p>
  * Please take into consideration that in production usually it is better to not run the client
@@ -53,8 +54,48 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
 
         private Path baseDir;
         private Integer serverId;
-        private SpiralClient spiralClient;
         private Properties configuration;
+        private String identityCert;
+        private String identityKey;
+        private String spiralEndpoint;
+        private String overrideAuthority;
+        private String spiralNamespace;
+        private boolean useEmbeddedSpiral = true;
+        private String caBundle = "/etc/riddler/ca-bundle.crt";
+
+        public ZKBridgeServerEmbeddedBuilder setIdentityCert(String identityCert) {
+            useEmbeddedSpiral = false;
+            this.identityCert = identityCert;
+            return this;
+        }
+
+        public ZKBridgeServerEmbeddedBuilder setIdentityKey(String identityKey) {
+            useEmbeddedSpiral = false;
+            this.identityKey = identityKey;
+            return this;
+        }
+
+        public ZKBridgeServerEmbeddedBuilder setSpiralEndpoint(String spiralEndpoint) {
+            useEmbeddedSpiral = false;
+            this.spiralEndpoint = spiralEndpoint;
+            return this;
+        }
+
+        public ZKBridgeServerEmbeddedBuilder setOverrideAuthority(String overrideAuthority) {
+            useEmbeddedSpiral = false;
+            this.overrideAuthority = overrideAuthority;
+            return this;
+        }
+
+        public ZKBridgeServerEmbeddedBuilder setSpiralNamespace(String spiralNamespace) {
+            this.spiralNamespace = spiralNamespace;
+            return this;
+        }
+
+        public ZKBridgeServerEmbeddedBuilder setUseEmbeddedSpiral(boolean useEmbeddedSpiral) {
+            this.useEmbeddedSpiral = useEmbeddedSpiral;
+            return this;
+        }
         private ExitHandler exitHandler = ExitHandler.EXIT;
 
         /**
@@ -77,18 +118,8 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
          * @param serverId
          * @return the builder
          */
-        public void setServerId(Integer serverId) {
+        public ZKBridgeServerEmbeddedBuilder setServerId(Integer serverId) {
             this.serverId = serverId;
-        }
-
-        /**
-         * Spiral Client connected with the ZKBridge Server
-         * <p>
-         * @param spiralClient
-         * @return the builder
-         */
-        public ZKBridgeServerEmbeddedBuilder spiralClient(SpiralClient spiralClient) {
-            this.spiralClient = Objects.requireNonNull(spiralClient);
             return this;
         }
 
@@ -125,10 +156,21 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
 
             configuration = decorateConfiguration(configuration);
 
-            if (spiralClient == null) {
+            SpiralClient spiralClient;
+            if (useEmbeddedSpiral) {
                 LOG.info("No spiralClient is supplied, will use embedded one.");
                 spiralClient = new SpiralEmbeddedClient();
+            } else {
+                spiralClient = new SpiralClientImpl.SpiralClientBuilder()
+                    .setSpiralEndpoint(spiralEndpoint)
+                    .setIdentityCert(identityCert)
+                    .setIdentityKey(identityKey)
+                    .setCaBundle(caBundle)
+                    .setOverrideAuthority(overrideAuthority)
+                    .setNamespace(spiralNamespace)
+                    .build();
             }
+
             return new ZKBridgeServerEmbeddedImpl(configuration, baseDir, serverId, spiralClient, exitHandler);
         }
     }

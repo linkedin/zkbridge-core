@@ -1,5 +1,6 @@
 package org.apache.zookeeper.spiral;
 
+import java.util.List;
 import proto.com.linkedin.spiral.PaginationContext;
 import proto.com.linkedin.spiral.ScanResponse;
 
@@ -27,4 +28,6 @@ public interface SpiralClient {
   ScanResponse scanBucket(String bucketName, PaginationContext paginationContext);
 
   void delete(String bucketName, String key);
+
+  List<String> listBuckets();
 }

@@ -1,5 +1,6 @@
 package org.apache.zookeeper.spiral;
 
+import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
 import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts;
@@ -8,9 +9,11 @@ import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
 import io.grpc.netty.shaded.io.netty.handler.ssl.SslContext;
 import io.grpc.stub.StreamObserver;
 import java.io.File;
+import java.util.List;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import proto.com.linkedin.spiral.Bucket;
 import proto.com.linkedin.spiral.CompareAndSet;
 import proto.com.linkedin.spiral.CreateBucketRequest;
 import proto.com.linkedin.spiral.CreateNamespaceRequest;
@@ -21,6 +24,8 @@ import proto.com.linkedin.spiral.GetNamespaceRequest;
 import proto.com.linkedin.spiral.GetRequest;
 import proto.com.linkedin.spiral.GetResponse;
 import proto.com.linkedin.spiral.Key;
+import proto.com.linkedin.spiral.ListBucketsRequest;
+import proto.com.linkedin.spiral.ListBucketsResponse;
 import proto.com.linkedin.spiral.PaginationContext;
 import proto.com.linkedin.spiral.Put;
 import proto.com.linkedin.spiral.PutRequest;
@@ -360,6 +365,22 @@ public class SpiralClientImpl implements SpiralClient {
       return response;
     } catch (Exception e) {
       LOGGER.error("Scan: RPC failed while scanning bucket: {}", bucketName, e);
+      throw e;
+    }
+  }
+
+  @Override
+  public List<String> listBuckets() {
+    try {
+      ListBucketsRequest request = ListBucketsRequest.newBuilder().setNamespace(_namespace).build();
+      ListBucketsResponse response = _blockingStub.listBuckets(request);
+      ImmutableList.Builder<String> bucketListBuilder = ImmutableList.builder();
+      for (Bucket bucket: response.getBucketsList()) {
+        bucketListBuilder.add(bucket.getName());
+      }
+      return bucketListBuilder.build();
+    } catch (Exception e) {
+      LOGGER.error("Scan: RPC failed while listing buckets for namespace: {}", _namespace, e);
       throw e;
     }
   }

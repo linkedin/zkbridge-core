@@ -18,11 +18,7 @@
 
 package org.apache.zookeeper.server;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import java.io.File;
 import java.io.IOException;
@@ -30,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.zookeeper.PortAssignment;
+import org.apache.zookeeper.ZKBridgeEnabledTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.metrics.MetricsUtils;
 import org.apache.zookeeper.proto.ConnectRequest;
@@ -39,21 +36,20 @@ import org.apache.zookeeper.server.persistence.SnapStream;
 import org.apache.zookeeper.server.persistence.Util;
 import org.apache.zookeeper.server.util.QuotaMetricsUtils;
 import org.apache.zookeeper.test.ClientBase;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+
 
 public class ZooKeeperServerTest extends ZKTestCase {
 
-    @Test
-    public void testDirSize() throws Exception {
-        ZooKeeperServer zks = null;
+    @ZKBridgeEnabledTest
+    public void testDirSize(ZooKeeperServer zks) throws Exception {
         ServerCnxnFactory cnxnFactory = null;
 
+        assertNotNull(zks);
         try {
-            final File dataDir = ClientBase.createTmpDir();
-            final File logDir = ClientBase.createTmpDir();
-
-            zks = new ZooKeeperServer(dataDir, logDir, 3000);
-
             // validate dir size before server starts
             assertEquals(0, zks.getDataDirSize());
             assertEquals(0, zks.getLogDirSize());

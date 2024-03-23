@@ -28,6 +28,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
 import org.apache.zookeeper.common.StringUtils;
+import org.apache.zookeeper.server.ZooKeeperServer;
 import org.apache.zookeeper.spiral.SpiralClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,11 +50,17 @@ import org.slf4j.LoggerFactory;
 @InterfaceStability.Evolving
 public class ZKBridgeClusterEmbedded implements AutoCloseable {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ZKBridgeServerEmbeddedImpl.class);
-    private final List<ZKBridgeServerEmbedded> servers;
+    private static final Logger LOG = LoggerFactory.getLogger(ZKBridgeClusterEmbedded.class);
+    private final List<ZooKeeperServer> servers;
+    private final InMemoryFS inMemoryFS;
 
-    public ZKBridgeClusterEmbedded(List<ZKBridgeServerEmbedded> servers) {
+    public ZKBridgeClusterEmbedded(List<ZooKeeperServer> servers, InMemoryFS inMemoryFS) {
         this.servers = servers;
+        this.inMemoryFS = inMemoryFS;
+    }
+
+    public InMemoryFS getInMemoryFS() {
+        return inMemoryFS;
     }
 
     /**
@@ -62,6 +69,7 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
     public static class ZKBridgeClusterEmbeddedBuilder {
 
         private Integer numServers;
+        private InMemoryFS inMemoryFS;
         private String identityCert;
         private String identityKey;
         private String spiralEndpoint;
@@ -119,18 +127,12 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
                 throw new IllegalStateException("number of servers should be more than 1");
             }
 
-            List<ZKBridgeServerEmbedded> servers = new ArrayList<>();
+            List<ZooKeeperServer> servers = new ArrayList<>();
+            inMemoryFS = new InMemoryFS();
             for (int idx = 0; idx < numServers; idx ++) {
-                String zkDir = String.format("zkb-server-%s", idx);
-                final String baseDir = "/tmp/" + zkDir;
-                final String logDir = baseDir + "/logs";
-                final String dataDir = baseDir + "/dataDir";
-
-                FileUtils.deleteDirectory(new File(dataDir));
-                FileUtils.deleteDirectory(new File(logDir));
-
-                servers.add(new ZKBridgeServerEmbedded.ZKBridgeServerEmbeddedBuilder().setServerId(idx)
-                    .baseDir(new File(baseDir).toPath())
+                servers.add(new ZKBridgeServerEmbedded.ZKBridgeServerEmbeddedBuilder()
+                    .setServerId(idx)
+                    .setInMemoryFS(inMemoryFS)
                     .setSpiralEndpoint(spiralEndpoint)
                     .setIdentityCert(identityCert)
                     .setIdentityKey(identityKey)
@@ -140,7 +142,7 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
                     .build());
             }
 
-            return new ZKBridgeClusterEmbedded(servers);
+            return new ZKBridgeClusterEmbedded(servers, inMemoryFS);
         }
 
     }
@@ -154,8 +156,8 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
      * @throws Exception
      */
     public void start() throws Exception {
-        for (ZKBridgeServerEmbedded server: servers) {
-            server.start();
+        for (ZooKeeperServer server: servers) {
+            server.startup();
         }
     }
 
@@ -165,8 +167,8 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
      * @throws Exception
      */
     public void start(long startupTimeout) throws Exception {
-        for (ZKBridgeServerEmbedded server: servers) {
-            server.start(startupTimeout);
+        for (ZooKeeperServer server: servers) {
+            server.startup();
         }
     }
 
@@ -175,8 +177,8 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
      */
     @Override
     public void close() {
-        for (ZKBridgeServerEmbedded server: servers) {
-            server.close();
+        for (ZooKeeperServer server: servers) {
+            server.shutdown(true);
         }
     }
 

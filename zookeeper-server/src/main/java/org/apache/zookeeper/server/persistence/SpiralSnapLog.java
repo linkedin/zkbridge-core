@@ -5,6 +5,7 @@ import static org.apache.zookeeper.spiral.SpiralBucket.SNAPSHOT_STATUS;
 
 import java.io.IOException;
 
+import java.util.List;
 import org.apache.jute.Record;
 import org.apache.zookeeper.server.DataTree;
 import org.apache.zookeeper.server.persistence.SpiralTxnLog.SpiralTxnIterator;
@@ -29,9 +30,7 @@ public class SpiralSnapLog {
     /**
      * save the datatree and the sessions into a snapshot
      * @param dataTree the datatree to be serialized onto disk
-     * @param sessionsWithTimeouts the session timeouts to be
      * serialized onto disk
-     * @param syncSnap sync the snapshot immediately after write
      * @return the snapshot file
      * @throws IOException
      */
@@ -78,17 +77,13 @@ public class SpiralSnapLog {
      * transactions in it.  This is the same as restore, but only reads from
      * the transaction logs and not restores from a snapshot. This will restore
      * from shared transaction log until it reaches the last processed txid. Rest
-     * of the rehydration of datatree from shared transaction log will be done 
+     * of the rehydration of datatree from shared transaction log will be done
      * using SpiralSyncProcessor.
      * @param dt the datatree to write transactions to.
-     * @param listener the playback listener to run on the
-     * database transactions.
      * @return the highest zxid restored.
      * @throws IOException
      */
-    public long fastForwardFromEdits(
-        DataTree dt,
-        long serverId) throws IOException {
+    public long fastForwardFromEdits(DataTree dt, long serverId) {
         // case: if the server is getting started for the very first time and there is no recorded offset.
         if (!spiralClient.containsKey(LAST_PROCESSED_OFFSET.getBucketName(), String.valueOf(serverId))) {
             return -1;
@@ -112,5 +107,16 @@ public class SpiralSnapLog {
             throw new RuntimeException(
                 String.format("error while hydrating zkbridge server: %s while reading zxid: %s", serverId, txnIterator.getCurrZxid()), e);
         }
+    }
+
+    public int snapshotCount() {
+        int count = 0;
+        List<String> buckets = spiralClient.listBuckets();
+        for (String bucketName: buckets) {
+            if (bucketName.startsWith(SNAPSHOT_BUCKET_PREFIX)) {
+                count ++;
+            }
+        }
+        return count;
     }
 }

@@ -18,6 +18,7 @@
 
 package org.apache.zookeeper.server;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
@@ -35,6 +36,9 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+
+import org.apache.jute.BinaryInputArchive;
+import org.apache.jute.BinaryOutputArchive;
 import org.apache.jute.InputArchive;
 import org.apache.jute.OutputArchive;
 import org.apache.jute.Record;
@@ -1351,7 +1355,7 @@ public class DataTree {
      * @param path a string builder.
      * @throws IOException
      */
-    void serializeSpiralNode(SpiralClient spiralClient, StringBuilder path, String bucketName) throws IOException {
+    void serializeSpiralNode(SpiralClient spiralClient, StringBuilder path, String nodeDataBucket) throws IOException {
         String pathString = path.toString();
         DataNode node = getNode(pathString);
         if (node == null) {
@@ -1371,9 +1375,9 @@ public class DataTree {
         byte[] data = SerializeUtils.serializeToByteArray(nodeCopy);
         if (path.toString().equals("")) {
             // Currently root of the tree is stored as empty string, so we need to handle it separately.
-            spiralClient.put(bucketName, "/", data);
+            spiralClient.put(nodeDataBucket, "/", data);
         } else {
-            spiralClient.put(bucketName, path.toString(), data);
+            spiralClient.put(nodeDataBucket, path.toString(), data);
         }
         path.append('/');
         int off = path.length();
@@ -1381,12 +1385,19 @@ public class DataTree {
             // Since this is single buffer being reused, we need to truncate the previous bytes of string.
             path.delete(off, Integer.MAX_VALUE);
             path.append(child);
-            serializeSpiralNode(spiralClient, path, bucketName);
+            serializeSpiralNode(spiralClient, path, nodeDataBucket);
         }
     }
 
-    public void serializeOnSpiral(SpiralClient spiralClient, String bucketName) throws IOException {
-        serializeSpiralNode(spiralClient, new StringBuilder(), bucketName);
+    public void serializeOnSpiral(SpiralClient spiralClient, String nodeDataBucket, String aclCacheBucket) throws IOException {
+        // Serialize and store aclCache on spiral
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        BinaryOutputArchive boa = BinaryOutputArchive.getArchive(bos);
+        aclCache.serialize(boa);
+        spiralClient.put(aclCacheBucket, "aclCache", bos.toByteArray());
+        
+        // Serialize whole dataTree and store on spiral
+        serializeSpiralNode(spiralClient, new StringBuilder(), nodeDataBucket);
     }
 
     public void deserialize(InputArchive ia, String tag) throws IOException {
@@ -1440,7 +1451,11 @@ public class DataTree {
         aclCache.purgeUnused();
     }
 
-    public void deserializeFromSpiral(SpiralClient spiralClient, String bucketName) throws IOException {
+    public void deserializeFromSpiral(SpiralClient spiralClient, String nodeDataBucket, String aclCacheBucket) throws IOException {
+        byte[] aclCacheBuff = spiralClient.get(aclCacheBucket, "aclCache");
+        ByteArrayInputStream bis = new ByteArrayInputStream(aclCacheBuff);
+        BinaryInputArchive binArchive = BinaryInputArchive.getArchive(bis);
+        aclCache.deserialize(binArchive);
         nodes.clear();
         pTrie.clear();
         nodeDataSize.set(0);
@@ -1448,7 +1463,7 @@ public class DataTree {
         String token = "";
         do {
             PaginationContext paginationContext = PaginationContext.newBuilder().setPageSize(1000).setToken(token).build();
-            response = spiralClient.scanBucket(bucketName, paginationContext);
+            response = spiralClient.scanBucket(nodeDataBucket, paginationContext);
             List<KeyValue> key_values = response.getKeyValuesList();
             for (KeyValue kv : key_values) {
                 String path = kv.getKey().getMessage().toStringUtf8();
@@ -1462,6 +1477,9 @@ public class DataTree {
                 }
                 DataNode node = SerializeUtils.deserializeFromByteArray(data);
                 nodes.put(path, node);
+                synchronized (node) {
+                    aclCache.addUsage(node.acl);
+                }
 
                 int lastSlash = path.lastIndexOf('/');
                 if (lastSlash == -1) {

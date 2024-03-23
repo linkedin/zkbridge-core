@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
  */
 public class SpiralSnap {
 
-    SnapshotInfo lastSnapshotInfo = null;
+    SpiralSnapshotInfo lastSnapshotInfo = null;
     private volatile boolean close = false;
     private static final Logger LOG = LoggerFactory.getLogger(FileSnap.class);
     private final SpiralClient spiralClient;
@@ -51,29 +51,28 @@ public class SpiralSnap {
      * get information of the last saved/restored snapshot
      * @return info of last snapshot
      */
-    public SnapshotInfo getLastSnapshotInfo() {
+    public SpiralSnapshotInfo getLastSnapshotInfo() {
         return this.lastSnapshotInfo;
     }
 
     /**
-     * serialize the datatree and session into the file snapshot
+     * serialize the datatree into the snapshot
      * @param dt the datatree to be serialized
      * @param sessions the sessions to be serialized
      * @param fsync sync the file immediately after write
      */
     public synchronized void serialize(
-        DataTree dt, String bucketName, long serverId) throws IOException {
+        DataTree dt, long serverId) throws IOException {
         if (!close) {
-            // TODO: Taking a snapshot could take some time, so we want to make sure that it's either taken fully or none, hence
-            // will maintain another state in bucket "SNAPSHOT_STATUS" to indicate if the snapshot is in progress or not.
-            spiralClient.createBucket(bucketName);
             
-            // TODO: have not added serialization of sessions yet. Add it later.
-            dt.serializeOnSpiral(spiralClient, bucketName);
-
             // Once snapshot bucket is created, seal/commit the process of snapshotting by creating a new entry in SNAPSHOT_STATUS bucket under given serverId.
-            lastSnapshotInfo = new SnapshotInfo(dt.lastProcessedZxid, Time.currentElapsedTime());
-            spiralClient.put(SNAPSHOT_STATUS.getBucketName(), String.valueOf(serverId), String.valueOf(dt.lastProcessedZxid).getBytes());
+            lastSnapshotInfo = new SpiralSnapshotInfo(dt.lastProcessedZxid, Time.currentElapsedTime());
+            spiralClient.createBucket(lastSnapshotInfo.getNodeDataBucketName());
+            spiralClient.createBucket(lastSnapshotInfo.getAclCacheBucketName());
+
+            dt.serializeOnSpiral(spiralClient, lastSnapshotInfo.getNodeDataBucketName(), lastSnapshotInfo.getAclCacheBucketName());
+
+            spiralClient.put(SNAPSHOT_STATUS.getBucketName(), String.valueOf(serverId), lastSnapshotInfo.serialize());
         } else {
             throw new IOException("FileSnap has already been closed");
         }
@@ -88,8 +87,8 @@ public class SpiralSnap {
         close = true;
     }
 
-    public void deserialize(DataTree dt, String bucketName) throws IOException {
-        dt.deserializeFromSpiral(spiralClient, bucketName);
+    public void deserialize(DataTree dt, String nodaDataBucket, String aclCacheBucket) throws IOException {
+        dt.deserializeFromSpiral(spiralClient, nodaDataBucket, aclCacheBucket);
     }
 
     public File findMostRecentSnapshot() throws IOException {

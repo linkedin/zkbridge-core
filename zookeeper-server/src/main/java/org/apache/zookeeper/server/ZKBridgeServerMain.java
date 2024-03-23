@@ -60,6 +60,7 @@ public class ZKBridgeServerMain {
     private ContainerManager containerManager;
     private MetricsProvider metricsProvider;
     private AdminServer adminServer;
+    private ZooKeeperServer zkServer;
 
     /*
      * Start up the ZooKeeper server.
@@ -157,7 +158,7 @@ public class ZKBridgeServerMain {
             if (config.jvmPauseMonitorToRun) {
                 jvmPauseMonitor = new JvmPauseMonitor(config);
             }
-            final ZooKeeperServer zkServer = new ZooKeeperServer(jvmPauseMonitor, txnLog, config.tickTime, config.minSessionTimeout, config.maxSessionTimeout, config.listenBacklog, null, config.initialConfig);
+            zkServer = new ZooKeeperServer(jvmPauseMonitor, txnLog, config.tickTime, config.minSessionTimeout, config.maxSessionTimeout, config.listenBacklog, null, config.initialConfig);
             txnLog.setServerStats(zkServer.serverStats());
 
             // Set ZKBridge Specific configuration, if ZKBridge is enabled.
@@ -292,6 +293,9 @@ public class ZKBridgeServerMain {
         return 0;
     }
 
+    public ZooKeeperServer getZkServer() {
+        return zkServer;
+    }
 
     /**
      * Shutdowns properly the service, this method is not a public API.

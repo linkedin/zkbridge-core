@@ -84,28 +84,19 @@ import org.apache.zookeeper.server.SessionTracker.SessionExpirer;
 import org.apache.zookeeper.server.auth.ProviderRegistry;
 import org.apache.zookeeper.server.auth.ServerAuthenticationProvider;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
-import org.apache.zookeeper.server.persistence.SpiralSnapLog;
-import org.apache.zookeeper.server.persistence.SpiralTxnLog;
-import org.apache.zookeeper.server.persistence.SpiralTxnLog.SpiralTxnIterator;
 import org.apache.zookeeper.server.quorum.QuorumPeerConfig;
 import org.apache.zookeeper.server.quorum.ReadOnlyZooKeeperServer;
 import org.apache.zookeeper.server.util.JvmPauseMonitor;
 import org.apache.zookeeper.server.util.OSMXBean;
 import org.apache.zookeeper.server.util.QuotaMetricsUtils;
 import org.apache.zookeeper.server.util.RequestPathMetricsCollector;
-import org.apache.zookeeper.spiral.SpiralBucket;
 import org.apache.zookeeper.spiral.SpiralClient;
 import org.apache.zookeeper.txn.CreateSessionTxn;
-import org.apache.zookeeper.txn.ServerAwareTxnHeader;
 import org.apache.zookeeper.txn.TxnDigest;
 import org.apache.zookeeper.txn.TxnHeader;
-import org.apache.zookeeper.util.MappingUtils;
 import org.apache.zookeeper.util.ServiceUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.apache.zookeeper.spiral.InternalStateKey.*;
-import static org.apache.zookeeper.spiral.SpiralBucket.*;
 
 
 /**
@@ -150,6 +141,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     // Connection to spiralClient.
     private SpiralClient spiralClient;
     private boolean spiralEnabled = false;
+    private long serverId = 0;
 
     static {
         LOG = LoggerFactory.getLogger(ZooKeeperServer.class);
@@ -446,6 +438,10 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         spiralEnabled = true;
     }
 
+    public void setServerId(long serverId) {
+        this.serverId = serverId;
+    }
+
     public ServerStats serverStats() {
         return serverStats;
     }
@@ -693,13 +689,17 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         if (zkDb == null) {
             return 0L;
         }
-        File path = zkDb.snapLog.getSnapDir();
-        return getDirSize(path);
+        if (spiralEnabled) {
+         return zkDb.spiralSnapLog.snapshotCount();
+        } else {
+            File path = zkDb.snapLog.getSnapDir();
+            return getDirSize(path);
+        }
     }
 
     @Override
     public long getLogDirSize() {
-        if (zkDb == null) {
+        if (zkDb == null || spiralEnabled) {
             return 0L;
         }
         File path = zkDb.snapLog.getDataLogDir();
@@ -915,7 +915,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         ((PrepRequestProcessor) firstProcessor).start();
     }
 
-    
+
     public ZooKeeperServerListener getZooKeeperServerListener() {
         return listener;
     }
@@ -941,9 +941,9 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     protected void startSessionTracker() {
         if (spiralEnabled) {
             ((SessionTrackerImpl)spiralSessionTracker).start();
-        } else {    
+        } else {
             ((SessionTrackerImpl) sessionTracker).start();
-        }   
+        }
     }
 
     /**
@@ -1297,7 +1297,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     }
 
     public long getServerId() {
-        return 0;
+        return serverId;
     }
 
     /**
@@ -2006,7 +2006,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
 
         if (opCode == OpCode.createSession) {
             if (hdr != null && txn instanceof CreateSessionTxn) {
-                CreateSessionTxn cst = (CreateSessionTxn) txn;    
+                CreateSessionTxn cst = (CreateSessionTxn) txn;
                 if (spiralEnabled) {
                     spiralSessionTracker.commitSession(sessionId, cst.getTimeOut());
                 } else {
@@ -2015,7 +2015,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
             } else if (request == null || !request.isLocalSession()) {
                 LOG.warn("*****>>>>> Got {} {}",  txn.getClass(), txn.toString());
             }
-        } else if (opCode == OpCode.closeSession) {          
+        } else if (opCode == OpCode.closeSession) {
             if (spiralEnabled) {
                 spiralSessionTracker.closeSession(sessionId);
             } else {
@@ -2044,7 +2044,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
      *
      * @param zkShutdownHandler shutdown handler
      */
-    void registerServerShutdownHandler(ZooKeeperServerShutdownHandler zkShutdownHandler) {
+    public void registerServerShutdownHandler(ZooKeeperServerShutdownHandler zkShutdownHandler) {
         this.zkShutdownHandler = zkShutdownHandler;
     }
 

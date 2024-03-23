@@ -18,11 +18,13 @@
 
 package org.apache.zookeeper;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 import java.io.File;
 import java.time.Instant;
+import java.util.stream.Stream;
 import org.apache.zookeeper.metrics.MetricsUtils;
+import org.apache.zookeeper.server.ZooKeeperServer;
+import org.apache.zookeeper.server.embedded.ZKBridgeServerEmbedded;
+import org.apache.zookeeper.test.ClientBase;
 import org.apache.zookeeper.util.ServiceUtils;
 import org.hamcrest.CustomMatcher;
 import org.hamcrest.Description;
@@ -32,8 +34,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Base class for a non-parameterized ZK test.
@@ -152,4 +157,17 @@ public class ZKTestCase {
             }
         };
     }
+
+    @MethodSource("zkServerProvider")
+    public static Stream<ZooKeeperServer> zkServerProvider() throws Exception {
+        return Stream.of(
+            // standard ZKS
+            new ZooKeeperServer(ClientBase.createTmpDir(), ClientBase.createTmpDir(), 3000),
+            // ZKB with embedded spiral
+            ZKBridgeServerEmbedded.builder()
+                .setServerId(0)
+                .setUseEmbeddedSpiral(true)
+                .build());
+    }
+
 }

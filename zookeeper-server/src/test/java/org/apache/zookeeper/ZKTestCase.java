@@ -19,6 +19,7 @@
 package org.apache.zookeeper;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.stream.Stream;
 import org.apache.zookeeper.metrics.MetricsUtils;
@@ -107,7 +108,7 @@ public class ZKTestCase {
     }
 
     /**
-     * Wait for condition to be true; otherwise fail the test if it exceed
+     * Wait for condition to be true; otherwise fail the test if it exceeds
      * timeout
      * @param msg       error message to print when fail
      * @param condition condition to evaluate
@@ -162,12 +163,40 @@ public class ZKTestCase {
     public static Stream<ZooKeeperServer> zkServerProvider() throws Exception {
         return Stream.of(
             // standard ZKS
-            new ZooKeeperServer(ClientBase.createTmpDir(), ClientBase.createTmpDir(), 3000),
+            getZooKeeperServer(false),
             // ZKB with embedded spiral
-            ZKBridgeServerEmbedded.builder()
-                .setServerId(0)
+            getZooKeeperServer(true));
+    }
+
+
+    public static ZooKeeperServer getZooKeeperServer(boolean spiralEnabled) throws Exception {
+        if (spiralEnabled) {
+            // ZKB with embedded spiral
+            return ZKBridgeServerEmbedded.builder()
+                .setServerId(0L)
                 .setUseEmbeddedSpiral(true)
-                .build());
+                .build();
+        } else {
+            return new ZooKeeperServer(ClientBase.createTmpDir(), ClientBase.createTmpDir(), 3000);
+        }
+    }
+
+    public static ZooKeeperServer cloneZooKeeperServer(ZooKeeperServer zks) throws Exception {
+        if (zks.isSpiralEnabled()) {
+            Path baseDirPath = new File(zks.getConf().getDataLogDir()).getParentFile().getParentFile().toPath();
+
+            // ZKB with embedded spiral
+            return ZKBridgeServerEmbedded.builder()
+                .setServerId(zks.getServerId())
+                .setSpiralClient(zks.getSpiralClient())
+                .setBaseDir(baseDirPath)
+                .build();
+        } else {
+            return new ZooKeeperServer(
+                new File(zks.getConf().getDataLogDir()).getParentFile(),
+                new File(zks.getConf().getDataDir()).getParentFile(),
+                zks.getTickTime());
+        }
     }
 
 }

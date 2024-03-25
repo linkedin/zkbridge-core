@@ -1,10 +1,15 @@
 package org.apache.zookeeper.server.embedded;
 
+import com.google.protobuf.ByteString;
 import java.util.List;
+import java.util.Map;
 import org.apache.zookeeper.spiral.SpiralBucket;
 import org.apache.zookeeper.spiral.SpiralClient;
+import proto.com.linkedin.spiral.Key;
+import proto.com.linkedin.spiral.KeyValue;
 import proto.com.linkedin.spiral.PaginationContext;
 import proto.com.linkedin.spiral.ScanResponse;
+import proto.com.linkedin.spiral.Value;
 
 
 public class InMemorySpiralClient implements SpiralClient {
@@ -72,7 +77,17 @@ public class InMemorySpiralClient implements SpiralClient {
 
   @Override
   public ScanResponse scanBucket(String bucketName, PaginationContext paginationContext) {
-    return null;
+    Map<String, byte[]> listContent = fs.list(bucketName);
+    ScanResponse.Builder responseBuilder = ScanResponse.newBuilder();
+
+    for (String keyStr: listContent.keySet()) {
+      responseBuilder
+          .addKeyValues(KeyValue.newBuilder()
+          .setKey(Key.newBuilder().setMessage(ByteString.copyFromUtf8(keyStr)).build())
+          .setValue(Value.newBuilder().setMessage(ByteString.copyFrom(listContent.get(keyStr))).build())
+          .build());
+    }
+    return responseBuilder.build();
   }
 
   @Override

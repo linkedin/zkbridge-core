@@ -66,7 +66,7 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
     class ZKBridgeServerEmbeddedBuilder {
 
         private Path baseDir;
-        private Integer serverId;
+        private Long serverId;
         private InMemoryFS inMemoryFS;
         private Properties configuration;
         private String identityCert;
@@ -74,6 +74,7 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
         private String spiralEndpoint;
         private String overrideAuthority;
         private String spiralNamespace;
+        private SpiralClient spiralClient;
         private boolean useEmbeddedSpiral = true;
         private String caBundle = "/etc/riddler/ca-bundle.crt";
 
@@ -97,7 +98,7 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
          * @param serverId
          * @return the builder
          */
-        public ZKBridgeServerEmbeddedBuilder setServerId(Integer serverId) {
+        public ZKBridgeServerEmbeddedBuilder setServerId(Long serverId) {
             this.serverId = serverId;
             return this;
         }
@@ -140,6 +141,12 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
             this.useEmbeddedSpiral = useEmbeddedSpiral;
             return this;
         }
+
+        public ZKBridgeServerEmbeddedBuilder setSpiralClient(SpiralClient spiralClient) {
+            this.spiralClient = spiralClient;
+            return this;
+        }
+
         private ExitHandler exitHandler = ExitHandler.EXIT;
 
         /**
@@ -189,12 +196,11 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
             configuration = decorateConfiguration(configuration);
             configuration.putIfAbsent("dataDir", dataDir.getAbsolutePath());
 
-            SpiralClient spiralClient;
             if (useEmbeddedSpiral) {
                 LOG.info("No spiralClient is supplied, will use embedded one.");
                 inMemoryFS = inMemoryFS == null ? new InMemoryFS() : inMemoryFS;
                 spiralClient = new InMemorySpiralClient(inMemoryFS);
-            } else {
+            } else if (spiralClient == null) {
                 spiralClient = new SpiralClientImpl.SpiralClientBuilder()
                     .setSpiralEndpoint(spiralEndpoint)
                     .setIdentityCert(identityCert)

@@ -131,7 +131,7 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
             inMemoryFS = new InMemoryFS();
             for (int idx = 0; idx < numServers; idx ++) {
                 servers.add(new ZKBridgeServerEmbedded.ZKBridgeServerEmbeddedBuilder()
-                    .setServerId(idx)
+                    .setServerId(Long.valueOf(idx))
                     .setInMemoryFS(inMemoryFS)
                     .setSpiralEndpoint(spiralEndpoint)
                     .setIdentityCert(identityCert)

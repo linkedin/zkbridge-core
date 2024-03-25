@@ -837,9 +837,9 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         //check to see if zkDb is not null
         if (zkDb == null) {
             zkDb = new ZKDatabase(this.txnLogFactory);
-            if (spiralEnabled) {
-                zkDb.enableSpiralFeatures(spiralClient);
-            }
+        }
+        if (spiralEnabled) {
+            zkDb.enableSpiralFeatures(spiralClient);
         }
         if (!zkDb.isInitialized()) {
             loadData();
@@ -940,7 +940,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
 
     protected void startSessionTracker() {
         if (spiralEnabled) {
-            ((SessionTrackerImpl)spiralSessionTracker).start();
+            ((SessionTrackerImpl) spiralSessionTracker).start();
         } else {
             ((SessionTrackerImpl) sessionTracker).start();
         }

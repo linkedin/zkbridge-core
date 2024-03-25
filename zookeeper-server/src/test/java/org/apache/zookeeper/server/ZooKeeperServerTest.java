@@ -18,15 +18,13 @@
 
 package org.apache.zookeeper.server;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.mock;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.zookeeper.PortAssignment;
-import org.apache.zookeeper.ZKBridgeEnabledTest;
+import org.apache.zookeeper.ZKBServerParameterizedTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.metrics.MetricsUtils;
 import org.apache.zookeeper.proto.ConnectRequest;
@@ -36,15 +34,15 @@ import org.apache.zookeeper.server.persistence.SnapStream;
 import org.apache.zookeeper.server.persistence.Util;
 import org.apache.zookeeper.server.util.QuotaMetricsUtils;
 import org.apache.zookeeper.test.ClientBase;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 
 public class ZooKeeperServerTest extends ZKTestCase {
 
-    @ZKBridgeEnabledTest
+    @ZKBServerParameterizedTest
     public void testDirSize(ZooKeeperServer zks) throws Exception {
         ServerCnxnFactory cnxnFactory = null;
 
@@ -180,11 +178,10 @@ public class ZooKeeperServerTest extends ZKTestCase {
         }
     }
 
-    @Test
-    public void testClientZxidAhead() {
-        ZooKeeperServer zooKeeperServer = new ZooKeeperServer();
+    @ZKBServerParameterizedTest
+    public void testClientZxidAhead(ZooKeeperServer zks) {
         final ZKDatabase zkDatabase = new ZKDatabase(mock(FileTxnSnapLog.class));
-        zooKeeperServer.setZKDatabase(zkDatabase);
+        zks.setZKDatabase(zkDatabase);
 
         final ConnectRequest request = new ConnectRequest();
         request.setProtocolVersion(1);
@@ -196,7 +193,7 @@ public class ZooKeeperServerTest extends ZKTestCase {
 
         ServerCnxn.CloseRequestException e = assertThrows(
                 ServerCnxn.CloseRequestException.class,
-                () -> zooKeeperServer.processConnectRequest(new MockServerCnxn(), request));
+                () -> zks.processConnectRequest(new MockServerCnxn(), request));
         assertEquals(e.getReason(), ServerCnxn.DisconnectReason.CLIENT_ZXID_AHEAD);
     }
 

@@ -25,8 +25,7 @@ package org.apache.zookeeper.test;
 import static org.apache.zookeeper.test.ClientBase.CONNECTION_TIMEOUT;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import io.netty.handler.ssl.SslProvider;
 import java.io.IOException;
@@ -267,10 +266,9 @@ public class ClientSSLTest extends QuorumPeerTestBase {
             MainThread mt = new MainThread(MainThread.UNSET_MYID, "", secureClientPort, false);
             mt.start();
 
-            AssertionError ex = assertThrows("Client should not able to connect when authentication fails", AssertionError.class,
-                () -> {
-                    ClientBase.createZKClient("localhost:" + secureClientPort, TIMEOUT, 3000);
-                });
+            AssertionError ex = assertThrows(AssertionError.class,
+                () -> ClientBase.createZKClient("localhost:" + secureClientPort, TIMEOUT, 3000),
+                "Client should not able to connect when authentication fails");
             assertThat("Exception message does not match (different exception caught?)",
                 ex.getMessage(), startsWith("ZooKeeper client can not connect to"));
         } finally {

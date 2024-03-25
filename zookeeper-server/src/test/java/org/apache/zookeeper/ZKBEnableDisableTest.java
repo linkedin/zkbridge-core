@@ -8,13 +8,14 @@ import java.lang.annotation.Target;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+
 
 @Inherited
 @Target({ElementType.ANNOTATION_TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 @Tag("zkbridge-tests")
 @ParameterizedTest
-@MethodSource("org.apache.zookeeper.ZKTestCase#zkServerProvider")
-public @interface ZKBridgeEnabledTest {
+@ValueSource(booleans = { false, true })
+public @interface ZKBEnableDisableTest {
 }

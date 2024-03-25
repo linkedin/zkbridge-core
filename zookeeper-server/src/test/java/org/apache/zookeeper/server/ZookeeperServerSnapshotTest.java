@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.File;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.PortAssignment;
+import org.apache.zookeeper.ZKBServerParameterizedTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
@@ -37,15 +38,8 @@ public class ZookeeperServerSnapshotTest extends ZKTestCase {
     private static final int NODE_COUNT = 10;
     private static final String HOST_PORT = "127.0.0.1:" + PortAssignment.unique();
 
-    @TempDir
-    static File dataDir;
-
-    @TempDir
-    static File logDir;
-
-    @Test
-    public void testTakeSnapshot() throws Exception {
-        ZooKeeperServer zks = new ZooKeeperServer(dataDir, logDir, 3000);
+    @ZKBServerParameterizedTest
+    public void testTakeSnapshot(ZooKeeperServer zks) throws Exception {
         ZooKeeperServer.setSerializeLastProcessedZxidEnabled(true);
 
         final int port = Integer.parseInt(HOST_PORT.split(":")[1]);
@@ -69,7 +63,7 @@ public class ZookeeperServerSnapshotTest extends ZKTestCase {
             zks.shutdown();
 
             // restart server and assert the data restored from snapshot
-            zks = new ZooKeeperServer(dataDir, logDir, 3000);
+            zks = cloneZooKeeperServer(zks);
             ZooKeeperServer.setSerializeLastProcessedZxidEnabled(false);
 
             serverCnxnFactory.startup(zks);

@@ -22,9 +22,8 @@ import static org.apache.zookeeper.ZooDefs.Ids.OPEN_ACL_UNSAFE;
 import static org.apache.zookeeper.server.admin.Commands.AUTH_INFO_SEPARATOR;
 import static org.apache.zookeeper.server.admin.Commands.ROOT_PATH;
 import static org.apache.zookeeper.server.admin.JettyAdminServerTest.HTTPS_URL_FORMAT;
-import static org.junit.Assert.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
+
 import java.io.File;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -187,9 +186,9 @@ public class CommandAuthTest extends ZKTestCase {
 
     @Test
     public void testAuthCheck_invalidServerRequiredConfig() {
-        assertThrows("An active server is required for auth check",
-        IllegalArgumentException.class,
-        () -> new AuthTestCommand(false, ZooDefs.Perms.ALL, ROOT_PATH));
+        assertThrows(IllegalArgumentException.class,
+        () -> new AuthTestCommand(false, ZooDefs.Perms.ALL, ROOT_PATH),
+            "An active server is required for auth check");
     }
 
     @Test

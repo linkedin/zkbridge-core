@@ -28,9 +28,12 @@ import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.apache.zookeeper.PortAssignment;
+import org.apache.zookeeper.ZKBEnableDisableTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.common.X509Exception.SSLContextException;
+import org.apache.zookeeper.server.embedded.InMemoryFS;
+import org.apache.zookeeper.server.embedded.InMemorySpiralClient;
 import org.apache.zookeeper.test.ClientBase;
 import org.apache.zookeeper.test.ClientBase.CountdownWatcher;
 import org.junit.jupiter.api.AfterEach;
@@ -76,13 +79,13 @@ public class ZooKeeperServerStartupTest extends ZKTestCase {
      * Test case for
      * https://issues.apache.org/jira/browse/ZOOKEEPER-2383
      */
-    @Test
+    @ZKBEnableDisableTest
     @Timeout(value = 30)
-    public void testClientConnectionRequestDuringStartupWithNIOServerCnxn() throws Exception {
+    public void testClientConnectionRequestDuringStartupWithNIOServerCnxn(boolean zkbEnabled) throws Exception {
         tmpDir = ClientBase.createTmpDir();
         ClientBase.setupTestEnv();
 
-        startSimpleZKServer(startupDelayLatch);
+        startSimpleZKServer(startupDelayLatch, zkbEnabled);
         SimpleZooKeeperServer simplezks = (SimpleZooKeeperServer) zks;
         assertTrue(simplezks.waitForStartupInvocation(10), "Failed to invoke zks#startup() method during server startup");
 
@@ -107,16 +110,16 @@ public class ZooKeeperServerStartupTest extends ZKTestCase {
      * Test case for
      * https://issues.apache.org/jira/browse/ZOOKEEPER-2383
      */
-    @Test
+    @ZKBEnableDisableTest
     @Timeout(value = 30)
-    public void testClientConnectionRequestDuringStartupWithNettyServerCnxn() throws Exception {
+    public void testClientConnectionRequestDuringStartupWithNettyServerCnxn(boolean zkbEnabled) throws Exception {
         tmpDir = ClientBase.createTmpDir();
         ClientBase.setupTestEnv();
 
         String originalServerCnxnFactory = System.getProperty(ServerCnxnFactory.ZOOKEEPER_SERVER_CNXN_FACTORY);
         try {
             System.setProperty(ServerCnxnFactory.ZOOKEEPER_SERVER_CNXN_FACTORY, NettyServerCnxnFactory.class.getName());
-            startSimpleZKServer(startupDelayLatch);
+            startSimpleZKServer(startupDelayLatch, zkbEnabled);
             SimpleZooKeeperServer simplezks = (SimpleZooKeeperServer) zks;
             assertTrue(simplezks.waitForStartupInvocation(10), "Failed to invoke zks#startup() method during server startup");
 
@@ -147,10 +150,10 @@ public class ZooKeeperServerStartupTest extends ZKTestCase {
      * Test case for
      * https://issues.apache.org/jira/browse/ZOOKEEPER-2383
      */
-    @Test
+    @ZKBEnableDisableTest
     @Timeout(value = 30)
-    public void testFourLetterWords() throws Exception {
-        startSimpleZKServer(startupDelayLatch);
+    public void testFourLetterWords(boolean zkbEnabled) throws Exception {
+        startSimpleZKServer(startupDelayLatch, zkbEnabled);
         verify("conf", ZK_NOT_SERVING);
         verify("crst", ZK_NOT_SERVING);
         verify("cons", ZK_NOT_SERVING);
@@ -175,8 +178,11 @@ public class ZooKeeperServerStartupTest extends ZKTestCase {
         return send4LetterWord(HOST, PORT, cmd);
     }
 
-    private void startSimpleZKServer(CountDownLatch startupDelayLatch) throws IOException {
+    private void startSimpleZKServer(CountDownLatch startupDelayLatch, boolean zkbEnabled) throws IOException {
         zks = new SimpleZooKeeperServer(tmpDir, tmpDir, 3000, startupDelayLatch);
+        if (zkbEnabled) {
+            zks.setSpiralClient(new InMemorySpiralClient(new InMemoryFS()));
+        }
         SyncRequestProcessor.setSnapCount(100);
         final int PORT = Integer.parseInt(HOSTPORT.split(":")[1]);
 
@@ -241,7 +247,6 @@ public class ZooKeeperServerStartupTest extends ZKTestCase {
         boolean waitForSessionCreation(long timeout) throws InterruptedException {
             return createSessionInvokedLatch.await(timeout, TimeUnit.SECONDS);
         }
-
     }
 
 }

@@ -1029,6 +1029,7 @@ public class ClientCnxn {
                             record = new SetWatches(setWatchesLastZxid, dataWatchesBatch, existWatchesBatch, childWatchesBatch);
                             opcode = OpCode.setWatches;
                         } else {
+                            // RR: This is where watches are re-registered with the server.
                             record = new SetWatches2(setWatchesLastZxid, dataWatchesBatch, existWatchesBatch,
                                     childWatchesBatch, persistentWatchesBatch, persistentRecursiveWatchesBatch);
                             opcode = OpCode.setWatches2;

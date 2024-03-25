@@ -39,9 +39,8 @@ public class SpiralSnapLog {
             // Creating a new spiral bucket by name "snapshot_<lastZxid>" to store the snapshot.
             // The lastZxid represents datatree's zxid when snapshot was started.
             long lastZxid = dataTree.lastProcessedZxid;
-            String snapBucket = SNAPSHOT_BUCKET_PREFIX + Long.toHexString(lastZxid);
-            LOG.info("Snapshotting at: 0x{} to {}", Long.toHexString(lastZxid), snapBucket);
-            snapLog.serialize(dataTree, snapBucket, serverId);
+            LOG.info("Snapshotting at: 0x{} on spiral", Long.toHexString(lastZxid));
+            snapLog.serialize(dataTree, serverId);
             return true;
         }
 
@@ -52,17 +51,16 @@ public class SpiralSnapLog {
                 LOG.info("No snapshot to restore found for serverId: {}", serverId);
                 return -1;
             }
-            byte[] lastZxid_buff = spiralClient.get(SNAPSHOT_STATUS.getBucketName(), String.valueOf(serverId));
-            long lastProcessedZxid = Long.valueOf(new String(lastZxid_buff));
-            String snapBucket = SNAPSHOT_BUCKET_PREFIX + Long.toHexString(lastProcessedZxid);
-            LOG.info("Restoring from 0x{} from spiral bucket :{}", Long.toHexString(lastProcessedZxid), snapBucket);
-            snapLog.deserialize(dataTree, snapBucket);
-            dataTree.lastProcessedZxid = lastProcessedZxid;
+            byte[] snapshotInfo_buff = spiralClient.get(SNAPSHOT_STATUS.getBucketName(), String.valueOf(serverId));
+            SpiralSnapshotInfo snapshotInfo = SpiralSnapshotInfo.deserialize(snapshotInfo_buff);
+            LOG.info("Restoring from 0x{} from spiral bucket :{}", snapshotInfo.getZxid(), snapshotInfo.getNodeDataBucketName());
+            snapLog.deserialize(dataTree, snapshotInfo.getNodeDataBucketName(), snapshotInfo.getAclCacheBucketName());
+            dataTree.lastProcessedZxid = snapshotInfo.getZxid();
 
             // Now read delta from transaction log and apply it to the datatree.
             long highestProcessedZxid = fastForwardFromEdits(dataTree, serverId);
             if (highestProcessedZxid == -1) {
-                return lastProcessedZxid;
+                return snapshotInfo.getZxid();
             } else {
                 return highestProcessedZxid;
             }

@@ -158,6 +158,7 @@ public class ZKBridgeServerMain {
             if (config.jvmPauseMonitorToRun) {
                 jvmPauseMonitor = new JvmPauseMonitor(config);
             }
+            
             zkServer = new ZooKeeperServer(jvmPauseMonitor, txnLog, config.tickTime, config.minSessionTimeout, config.maxSessionTimeout, config.listenBacklog, null, config.initialConfig);
             txnLog.setServerStats(zkServer.serverStats());
 
@@ -176,6 +177,8 @@ public class ZKBridgeServerMain {
                 }
                 zkServer.setSpiralClient(spiralClient);
             }
+            zkServer.setServerId(config.getServerId());
+            zkServer.setSnapLeaderEnabled(config.isSnapLeaderEnabled());
 
             // Registers shutdown handler which will be used to know the
             // server error or shutdown state changes.

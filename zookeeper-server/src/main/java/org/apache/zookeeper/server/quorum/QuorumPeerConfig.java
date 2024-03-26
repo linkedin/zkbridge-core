@@ -121,6 +121,7 @@ public class QuorumPeerConfig {
     protected String caBundle = null;
     protected String overrideAuthority = null;
     protected String spiralNamespace = null;
+    protected boolean snapLeaderEnabled = false;
 
     /**
      * Configurations for the quorumpeer-to-quorumpeer sasl authentication
@@ -398,6 +399,8 @@ public class QuorumPeerConfig {
                 oraclePath = value;
             } else if (key.equals("spiral.enabled")) {
                 spiralEnabled = parseBoolean(key, value);
+            } else if (key.equals("spiral.isSnapLeaderEnabled")) {
+                snapLeaderEnabled = parseBoolean(key, value);
             } else if (key.equals("spiral.server")) {
                 spiralServer = value;
             } else if (key.equals("spiral.port")) {
@@ -1022,5 +1025,9 @@ public class QuorumPeerConfig {
 
     public String getSpiralNamespace() {
         return spiralNamespace;
+    }
+
+    public boolean isSnapLeaderEnabled() {
+        return snapLeaderEnabled;
     }
 }

@@ -141,6 +141,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     // Connection to spiralClient.
     private SpiralClient spiralClient;
     private boolean spiralEnabled = false;
+    private boolean snapLeaderEnabled = false;
     private long serverId = 0;
 
     static {
@@ -438,6 +439,10 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         spiralEnabled = true;
     }
 
+    public void setSnapLeaderEnabled(boolean snapLeaderEnabled) {
+        this.snapLeaderEnabled = snapLeaderEnabled;
+    }
+
     public void setServerId(long serverId) {
         this.serverId = serverId;
     }
@@ -576,9 +581,10 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     }
 
     public void takeSnapshot(boolean syncSnap) throws IOException {
-        if (spiralEnabled) {
+        if (spiralEnabled && snapLeaderEnabled) {
             takeSnapShotOnSpiral();
         } else {
+            LOG.info("Taking a snapshot locally");
             takeSnapshot(syncSnap, true, false);
         }
     }

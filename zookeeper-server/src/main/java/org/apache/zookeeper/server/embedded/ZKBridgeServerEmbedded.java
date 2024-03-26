@@ -35,9 +35,10 @@ import org.apache.zookeeper.server.ServerMetrics;
 import org.apache.zookeeper.server.ZKBServerConfig;
 import org.apache.zookeeper.server.ZooKeeperServer;
 import org.apache.zookeeper.server.auth.ProviderRegistry;
+import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategy;
+import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategy.InMemorySpiralClientStrategy;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
 import org.apache.zookeeper.spiral.SpiralClient;
-import org.apache.zookeeper.spiral.SpiralClientImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,16 +68,8 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
 
         private Path baseDir;
         private Long serverId;
-        private InMemoryFS inMemoryFS;
+        private SpiralClientStrategy spiralClientStrategy = new InMemorySpiralClientStrategy();
         private Properties configuration;
-        private String identityCert;
-        private String identityKey;
-        private String spiralEndpoint;
-        private String overrideAuthority;
-        private String spiralNamespace;
-        private SpiralClient spiralClient;
-        private boolean useEmbeddedSpiral = true;
-        private String caBundle = "/etc/riddler/ca-bundle.crt";
 
         /**
          * Base directory of the server.
@@ -103,51 +96,10 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
             return this;
         }
 
-        public ZKBridgeServerEmbeddedBuilder setInMemoryFS(InMemoryFS inMemoryFS) {
-            this.inMemoryFS = inMemoryFS;
+        public ZKBridgeServerEmbeddedBuilder setSpiralClientStrategy(SpiralClientStrategy spiralClientStrategy) {
+            this.spiralClientStrategy = spiralClientStrategy;
             return this;
         }
-
-        public ZKBridgeServerEmbeddedBuilder setIdentityCert(String identityCert) {
-            useEmbeddedSpiral = false;
-            this.identityCert = identityCert;
-            return this;
-        }
-
-        public ZKBridgeServerEmbeddedBuilder setIdentityKey(String identityKey) {
-            useEmbeddedSpiral = false;
-            this.identityKey = identityKey;
-            return this;
-        }
-
-        public ZKBridgeServerEmbeddedBuilder setSpiralEndpoint(String spiralEndpoint) {
-            useEmbeddedSpiral = false;
-            this.spiralEndpoint = spiralEndpoint;
-            return this;
-        }
-
-        public ZKBridgeServerEmbeddedBuilder setOverrideAuthority(String overrideAuthority) {
-            useEmbeddedSpiral = false;
-            this.overrideAuthority = overrideAuthority;
-            return this;
-        }
-
-        public ZKBridgeServerEmbeddedBuilder setSpiralNamespace(String spiralNamespace) {
-            this.spiralNamespace = spiralNamespace;
-            return this;
-        }
-
-        public ZKBridgeServerEmbeddedBuilder setUseEmbeddedSpiral(boolean useEmbeddedSpiral) {
-            this.useEmbeddedSpiral = useEmbeddedSpiral;
-            return this;
-        }
-
-        public ZKBridgeServerEmbeddedBuilder setSpiralClient(SpiralClient spiralClient) {
-            this.spiralClient = spiralClient;
-            return this;
-        }
-
-        private ExitHandler exitHandler = ExitHandler.EXIT;
 
         /**
          * Set the contents of the main configuration as it would be in zk_server.conf file.
@@ -156,16 +108,6 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
          */
         public ZKBridgeServerEmbeddedBuilder configuration(Properties configuration) {
             this.configuration = Objects.requireNonNull(configuration);
-            return this;
-        }
-
-        /**
-         * Set the behaviour in case of hard system errors, see {@link ExitHandler}.
-         * @param exitHandler the handler
-         * @return the builder
-         */
-        public ZKBridgeServerEmbeddedBuilder exitHandler(ExitHandler exitHandler) {
-            this.exitHandler = Objects.requireNonNull(exitHandler);
             return this;
         }
 
@@ -196,33 +138,18 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
             configuration = decorateConfiguration(configuration);
             configuration.putIfAbsent("dataDir", dataDir.getAbsolutePath());
 
-            if (useEmbeddedSpiral) {
-                LOG.info("No spiralClient is supplied, will use embedded one.");
-                inMemoryFS = inMemoryFS == null ? new InMemoryFS() : inMemoryFS;
-                spiralClient = new InMemorySpiralClient(inMemoryFS);
-            } else if (spiralClient == null) {
-                spiralClient = new SpiralClientImpl.SpiralClientBuilder()
-                    .setSpiralEndpoint(spiralEndpoint)
-                    .setIdentityCert(identityCert)
-                    .setIdentityKey(identityKey)
-                    .setCaBundle(caBundle)
-                    .setOverrideAuthority(overrideAuthority)
-                    .setNamespace(spiralNamespace)
-                    .build();
-            }
-
             Path configFile = Files.createTempFile(baseDir, "zookeeper.configuration", ".properties");
             try (OutputStream oo = Files.newOutputStream(configFile)) {
                 configuration.store(oo, "Automatically generated at every-boot");
             }
 
-            this.exitHandler = exitHandler;
             LOG.info("Current configuration is at {}", configFile.toAbsolutePath());
             final ZKBServerConfig config = new ZKBServerConfig();
             config.parse(configFile.toAbsolutePath().toString());
             config.setServerId(serverId);
-            return buildServerFromConfig(config, spiralClient);
+            return buildServerFromConfig(config, spiralClientStrategy.buildSpiralClient());
         }
+
     }
 
     static ZooKeeperServer buildServerFromConfig(ZKBServerConfig config, SpiralClient spiralClient) throws IOException {

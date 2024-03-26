@@ -1,4 +1,4 @@
-package org.apache.zookeeper.server.embedded;
+package org.apache.zookeeper.server.embedded.spiral;
 
 import com.google.protobuf.ByteString;
 import java.util.List;

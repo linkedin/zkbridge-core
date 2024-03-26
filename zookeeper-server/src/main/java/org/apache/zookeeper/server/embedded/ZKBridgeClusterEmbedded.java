@@ -18,18 +18,14 @@ package org.apache.zookeeper.server.embedded;
  * limitations under the License.
  */
 
-import java.io.File;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.Properties;
-import org.apache.commons.io.FileUtils;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
-import org.apache.zookeeper.common.StringUtils;
 import org.apache.zookeeper.server.ZooKeeperServer;
-import org.apache.zookeeper.spiral.SpiralClient;
+import org.apache.zookeeper.server.embedded.spiral.InMemoryFS;
+import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategy;
+import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategy.InMemorySpiralClientStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,15 +48,9 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
 
     private static final Logger LOG = LoggerFactory.getLogger(ZKBridgeClusterEmbedded.class);
     private final List<ZooKeeperServer> servers;
-    private final InMemoryFS inMemoryFS;
 
-    public ZKBridgeClusterEmbedded(List<ZooKeeperServer> servers, InMemoryFS inMemoryFS) {
+    public ZKBridgeClusterEmbedded(List<ZooKeeperServer> servers) {
         this.servers = servers;
-        this.inMemoryFS = inMemoryFS;
-    }
-
-    public InMemoryFS getInMemoryFS() {
-        return inMemoryFS;
     }
 
     /**
@@ -69,50 +59,15 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
     public static class ZKBridgeClusterEmbeddedBuilder {
 
         private Integer numServers;
-        private InMemoryFS inMemoryFS;
-        private String identityCert;
-        private String identityKey;
-        private String spiralEndpoint;
-        private String overrideAuthority;
-        private String spiralNamespace;
-        private boolean useEmbeddedSpiral = true;
+        private SpiralClientStrategy spiralClientStrategy = new InMemorySpiralClientStrategy();
 
         public ZKBridgeClusterEmbeddedBuilder setNumServers(Integer numServers) {
             this.numServers = numServers;
             return this;
         }
 
-        public ZKBridgeClusterEmbeddedBuilder setIdentityCert(String identityCert) {
-            useEmbeddedSpiral = false;
-            this.identityCert = identityCert;
-            return this;
-        }
-
-        public ZKBridgeClusterEmbeddedBuilder setIdentityKey(String identityKey) {
-            useEmbeddedSpiral = false;
-            this.identityKey = identityKey;
-            return this;
-        }
-
-        public ZKBridgeClusterEmbeddedBuilder setSpiralEndpoint(String spiralEndpoint) {
-            useEmbeddedSpiral = false;
-            this.spiralEndpoint = spiralEndpoint;
-            return this;
-        }
-
-        public ZKBridgeClusterEmbeddedBuilder setOverrideAuthority(String overrideAuthority) {
-            useEmbeddedSpiral = false;
-            this.overrideAuthority = overrideAuthority;
-            return this;
-        }
-
-        public ZKBridgeClusterEmbeddedBuilder setSpiralNamespace(String spiralNamespace) {
-            this.spiralNamespace = spiralNamespace;
-            return this;
-        }
-
-        public ZKBridgeClusterEmbeddedBuilder setUseEmbeddedSpiral() {
-            this.useEmbeddedSpiral = true;
+        public ZKBridgeClusterEmbeddedBuilder setSpiralClientStrategy(SpiralClientStrategy spiralClientStrategy) {
+            this.spiralClientStrategy = spiralClientStrategy;
             return this;
         }
 
@@ -128,23 +83,21 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
             }
 
             List<ZooKeeperServer> servers = new ArrayList<>();
-            inMemoryFS = new InMemoryFS();
+
+            InMemoryFS inMemoryFS = new InMemoryFS();
+            if (spiralClientStrategy instanceof InMemorySpiralClientStrategy) {
+                InMemorySpiralClientStrategy inMemStrategy = (InMemorySpiralClientStrategy) spiralClientStrategy;
+                inMemStrategy.inMemoryFS(inMemoryFS);
+            }
+
             for (int idx = 0; idx < numServers; idx ++) {
                 servers.add(new ZKBridgeServerEmbedded.ZKBridgeServerEmbeddedBuilder()
                     .setServerId(Long.valueOf(idx))
-                    .setInMemoryFS(inMemoryFS)
-                    .setSpiralEndpoint(spiralEndpoint)
-                    .setIdentityCert(identityCert)
-                    .setIdentityKey(identityKey)
-                    .setOverrideAuthority(overrideAuthority)
-                    .setUseEmbeddedSpiral(useEmbeddedSpiral)
-                    .setSpiralNamespace(spiralNamespace)
+                    .setSpiralClientStrategy(spiralClientStrategy)
                     .build());
             }
-
-            return new ZKBridgeClusterEmbedded(servers, inMemoryFS);
+            return new ZKBridgeClusterEmbedded(servers);
         }
-
     }
 
     static ZKBridgeClusterEmbeddedBuilder builder() {

@@ -62,7 +62,7 @@ public class SpiralTxnLogSyncer extends ZooKeeperCriticalThread {
                 break;
             }
             syncDeltaUntilLatest();
-            sleepQuietly(1000);
+            sleepQuietly(5000);
         }
         LOG.info("SpiralTxnLogSyncer shutdown. Stopped processing requests!ø");
     }
@@ -86,18 +86,32 @@ public class SpiralTxnLogSyncer extends ZooKeeperCriticalThread {
      * is actively getting processed via the RequestProcessor and we dont want sync processor to process the same
      * transaction.
      */
-    private synchronized void syncUntilZxid(long zxid) throws IOException {
+    public synchronized void syncUntilZxid(long zxid) throws IOException {
+        LOG.info("RR: current data tress latest zxid : {} and shared txn log zxid: {}", zks.getLastProcessedZxid(), zxid);
         while (zks.getLastProcessedZxid() < zxid) {
             long nextTxnId = zks.getLastProcessedZxid() + 1;
+
+            // It is possible that a monotonically increasing txn id is created for in-flight request but the actual transaction is not
+            // yet written to shared txn log. For such cases, we should wait until the txn is written to shared txn log.
+            if (!spiralClient.containsKey(SpiralBucket.SHARED_TRANSACTION_LOG.getBucketName(), String.valueOf(nextTxnId))) {
+                LOG.info("Skipping processing of txn {} as it is not yet available in shared txn log.", nextTxnId);
+                break;
+            }
+
             byte[] txnBuf = spiralClient.get(SpiralBucket.SHARED_TRANSACTION_LOG.getBucketName(), String.valueOf(nextTxnId));
             SpiralTxnLogEntry logEntry = SerializeUtils.deserializeSpiralTxn(txnBuf);
 
             ServerAwareTxnHeader saTxnHdr = logEntry.getHeader();
-            if (Long.valueOf(saTxnHdr.getServerId()) == serverId && nextTxnId >= zks.getLastProcessedZxid()) {
-                LOG.info("Cannot sync a future txn {} while ZKS at txn {} created by this server.",
-                    nextTxnId, zks.getLastProcessedZxid());
-                break;
-            }
+            // RR: I don't think we should have any special handling for transactions created by same server because all
+            // transactions are supposed to be idempotent and as long as all transactions are applied "in-order" it should
+            // not matter if the same transaction is applied multiple times. 
+            // if (Long.valueOf(saTxnHdr.getServerId()) == serverId) { // && nextTxnId == zks.getLastProcessedZxid()) {
+            //     // LOG.info("Cannot sync a future txn {} while ZKS at txn {} created by this server.",
+            //     //    nextTxnId, zks.getLastProcessedZxid());
+            //     // break;
+            //     LOG.info("Skipping processing of txn {} as it was created by this server[{}].", nextTxnId, serverId);
+            //     continue;
+            // }
 
             LOG.info("Background Syncing current ZKB with txn: {}", nextTxnId);
             TxnHeader txnHeader = MappingUtils.toTxnHeader(saTxnHdr);
@@ -106,8 +120,6 @@ public class SpiralTxnLogSyncer extends ZooKeeperCriticalThread {
 
             // update the last processed offset
             spiralClient.updateLastProcessedTxn(zks.getServerId(), zks.getLastProcessedZxid());
-            spiralClient.put(LAST_PROCESSED_OFFSET.getBucketName(),
-                String.valueOf(zks.getServerId()), String.valueOf(zks.getLastProcessedZxid()).getBytes());
         }
     }
 

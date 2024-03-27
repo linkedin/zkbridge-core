@@ -84,9 +84,18 @@ public class SpiralSyncRequestProcessor extends ZooKeeperCriticalThread implemen
                     continue;
                 }
 
+                // Before applying to shared txn log or internal datatree, the current state of data tree should be atleast upto the current zxid. 
+                // And background syncing thread will take care of syncing until latest of shared txn log.
+                spiralTxnLogSyncer.syncUntilZxid(si.getHdr().getZxid() - 1);
+
+
                 // append write requests to the spiral change-log
                 zks.getZKDatabase().append(zks.getServerId(), si);
-                spiralTxnLogSyncer.syncDeltaUntilLatest();
+                // RR: why do we need this?
+                // spiralTxnLogSyncer.syncDeltaUntilLatest();
+
+                //TODO: Also we should add snapshot taking code here based on snapCount.
+
                 nextProcessor.processRequest(si);
                 ServerMetrics.getMetrics().SPIRAL_SYNC_PROCESS_TIME.add(Time.currentElapsedTime() - startProcessTime);
             }

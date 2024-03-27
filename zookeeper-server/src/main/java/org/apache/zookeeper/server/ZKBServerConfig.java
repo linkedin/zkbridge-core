@@ -90,7 +90,7 @@ public class ZKBServerConfig {
     protected long jvmPauseSleepTimeMs;
     // This is TEMPORAY config added for any node to be leader for zkbridge node. 
     // Eventually it will more smarter and done in fault-tolerant way.
-    protected boolean snapLeaderEnabled = false;
+    protected long snapLeaderId = -1;
 
     /**
      * Parse arguments for server configuration
@@ -157,7 +157,7 @@ public class ZKBServerConfig {
         caBundle = config.getCaBundle();
         overrideAuthority = config.getOverrideAuthority();
         spiralNamespace = config.getSpiralNamespace();
-        snapLeaderEnabled = config.isSnapLeaderEnabled();
+        snapLeaderId = config.getSnapLeaderId();
     }
 
     public InetSocketAddress getClientPortAddress() {
@@ -236,12 +236,12 @@ public class ZKBServerConfig {
         return spiralEnabled;
     }
 
-    public void setSnapLeaderEnabled(boolean snapLeaderEnabled) {
-        this.snapLeaderEnabled = snapLeaderEnabled;
+    public void setSnapLeaderId(long snapLeaderId) {
+        this.snapLeaderId = snapLeaderId;
     }
 
-    public boolean isSnapLeaderEnabled() {
-        return snapLeaderEnabled;
+    public long getSnapLeaderId() {
+        return snapLeaderId;
     }
 
     public String getSpiralNamespace() {

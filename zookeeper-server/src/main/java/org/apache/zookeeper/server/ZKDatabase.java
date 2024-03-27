@@ -311,9 +311,9 @@ public class ZKDatabase {
      * restore sessions from transaction logs intentionally here
      * since they will be lazy loaded whenever session handover happens.
      */
-    public long loadDataBaseFromSpiral(long serverId) throws IOException {
+    public long loadDataBaseFromSpiral(long snapLeaderId,long serverId) throws IOException {
         long startTime = Time.currentElapsedTime();
-        long zxid = spiralSnapLog.restore(dataTree, serverId);
+        long zxid = spiralSnapLog.restore(dataTree, snapLeaderId, serverId);
         long loadTime = Time.currentElapsedTime() - startTime;
         LOG.info("Snapshot loaded in {} ms, highest zxid is 0x{}, digest is {}",
                 loadTime, Long.toHexString(zxid), dataTree.getTreeDigest());

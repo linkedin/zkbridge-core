@@ -44,18 +44,20 @@ public class SpiralSnapLog {
             return true;
         }
 
-    public long restore(DataTree dataTree, long serverId) throws IOException {
+    public long restore(DataTree dataTree, long snapLeaderId, long serverId) throws IOException {
         try {
             // Decide from which snapshot to restore
-            if (!spiralClient.containsKey(SNAPSHOT_STATUS.getBucketName(), String.valueOf(serverId))) {
-                LOG.info("No snapshot to restore found for serverId: {}", serverId);
+            if (!spiralClient.containsKey(SNAPSHOT_STATUS.getBucketName(), String.valueOf(snapLeaderId))) {
+                LOG.info("No snapshot to restore found for serverId: {}", snapLeaderId);
                 return -1;
             }
-            byte[] snapshotInfo_buff = spiralClient.get(SNAPSHOT_STATUS.getBucketName(), String.valueOf(serverId));
+            byte[] snapshotInfo_buff = spiralClient.get(SNAPSHOT_STATUS.getBucketName(), String.valueOf(snapLeaderId));
             SpiralSnapshotInfo snapshotInfo = SpiralSnapshotInfo.deserialize(snapshotInfo_buff);
             LOG.info("Restoring from 0x{} from spiral bucket :{}", snapshotInfo.getZxid(), snapshotInfo.getNodeDataBucketName());
             snapLog.deserialize(dataTree, snapshotInfo.getNodeDataBucketName(), snapshotInfo.getAclCacheBucketName());
             dataTree.lastProcessedZxid = snapshotInfo.getZxid();
+            // update the last processed offset
+            spiralClient.updateLastProcessedTxn(serverId, dataTree.lastProcessedZxid);
 
             // Now read delta from transaction log and apply it to the datatree.
             long highestProcessedZxid = fastForwardFromEdits(dataTree, serverId);
@@ -98,6 +100,8 @@ public class SpiralSnapLog {
                 Record txn = txnIterator.getTxn();
 
                 dt.processTxn(MappingUtils.toTxnHeader(hdr), txn, null);
+                // update the last processed offset
+                spiralClient.updateLastProcessedTxn(serverId, dt.lastProcessedZxid);
             }
             LOG.info("Fast forwarded datatree from Spiral. Last processed txn Id: {}", dt.lastProcessedZxid);
             return dt.lastProcessedZxid;

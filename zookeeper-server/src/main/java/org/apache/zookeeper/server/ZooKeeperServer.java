@@ -141,7 +141,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     // Connection to spiralClient.
     private SpiralClient spiralClient;
     private boolean spiralEnabled = false;
-    private boolean snapLeaderEnabled = false;
+    private long snapLeaderId = -1;
     private long serverId = 0;
 
     static {
@@ -439,8 +439,8 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         spiralEnabled = true;
     }
 
-    public void setSnapLeaderEnabled(boolean snapLeaderEnabled) {
-        this.snapLeaderEnabled = snapLeaderEnabled;
+    public void setSnapLeaderId(long snapLeaderId) {
+        this.snapLeaderId = snapLeaderId;
     }
 
     public void setServerId(long serverId) {
@@ -561,7 +561,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         } else {
             if (spiralEnabled) {
                 LOG.info("Restoring snapshot from Spiral instead of local disk");
-                setZxid(zkDb.loadDataBaseFromSpiral(getServerId()));
+                setZxid(zkDb.loadDataBaseFromSpiral(snapLeaderId, getServerId()));
             } else {
                 setZxid(zkDb.loadDataBase());
             }
@@ -581,8 +581,11 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     }
 
     public void takeSnapshot(boolean syncSnap) throws IOException {
-        if (spiralEnabled && snapLeaderEnabled) {
-            takeSnapShotOnSpiral();
+        if (spiralEnabled) {
+            if (getServerId() == snapLeaderId){
+                LOG.info("SnapLeader [{}] taking a snapshot on Spiral", snapLeaderId);
+                takeSnapShotOnSpiral();
+            }
         } else {
             LOG.info("Taking a snapshot locally");
             takeSnapshot(syncSnap, true, false);
@@ -909,16 +912,22 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     protected void setupRequestProcessors() {
         RequestProcessor finalProcessor = new FinalRequestProcessor(this);
         RequestProcessor syncProcessor;
+        SpiralTxnLogSyncer spiralTxnLogSyncer = null;
         if (spiralEnabled) {
-            SpiralTxnLogSyncer spiralTxnLogSyncer = new SpiralTxnLogSyncer(this, spiralClient);
+            spiralTxnLogSyncer = new SpiralTxnLogSyncer(this, spiralClient);
             syncProcessor = new SpiralSyncRequestProcessor(this, spiralClient, spiralTxnLogSyncer, finalProcessor);
             ((SpiralSyncRequestProcessor) syncProcessor).start();
         } else {
             syncProcessor = new SyncRequestProcessor(this, finalProcessor);
             ((SyncRequestProcessor) syncProcessor).start();
-        }
+                    }
         firstProcessor = new PrepRequestProcessor(this, syncProcessor);
         ((PrepRequestProcessor) firstProcessor).start();
+
+        // Start background syncing from shared txn log stored in spiral.
+        if (spiralEnabled && spiralTxnLogSyncer != null) {
+            spiralTxnLogSyncer.start();
+        }
     }
 
 

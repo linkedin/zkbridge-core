@@ -137,7 +137,7 @@ public class ZKBridgeServerMain {
      * @throws AdminServerException
      */
     public void runFromConfig(ZKBServerConfig config, SpiralClient spiralClient) throws IOException, AdminServerException {
-        LOG.info("Starting server");
+        LOG.info("Starting server {}", config.getServerId());
         FileTxnSnapLog txnLog = null;
         try {
             try {
@@ -178,7 +178,7 @@ public class ZKBridgeServerMain {
                 zkServer.setSpiralClient(spiralClient);
             }
             zkServer.setServerId(config.getServerId());
-            zkServer.setSnapLeaderEnabled(config.isSnapLeaderEnabled());
+            zkServer.setSnapLeaderId(config.getSnapLeaderId());
 
             // Registers shutdown handler which will be used to know the
             // server error or shutdown state changes.

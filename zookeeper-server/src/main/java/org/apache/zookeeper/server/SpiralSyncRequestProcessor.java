@@ -91,8 +91,6 @@ public class SpiralSyncRequestProcessor extends ZooKeeperCriticalThread implemen
 
                 // append write requests to the spiral change-log
                 zks.getZKDatabase().append(zks.getServerId(), si);
-                // RR: why do we need this?
-                // spiralTxnLogSyncer.syncDeltaUntilLatest();
 
                 //TODO: Also we should add snapshot taking code here based on snapCount.
 

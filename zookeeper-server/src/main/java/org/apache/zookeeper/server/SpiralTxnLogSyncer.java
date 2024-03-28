@@ -87,7 +87,6 @@ public class SpiralTxnLogSyncer extends ZooKeeperCriticalThread {
      * transaction.
      */
     public synchronized void syncUntilZxid(long zxid) throws IOException {
-        LOG.info("RR: current data tress latest zxid : {} and shared txn log zxid: {}", zks.getLastProcessedZxid(), zxid);
         while (zks.getLastProcessedZxid() < zxid) {
             long nextTxnId = zks.getLastProcessedZxid() + 1;
 

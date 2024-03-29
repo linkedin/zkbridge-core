@@ -773,6 +773,8 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         if (spiralEnabled) {
             if (spiralSessionTracker != null) {
                 spiralSessionTracker.closeSession(sessionId);
+            } else {
+                throw new RuntimeException("Spiral is enabled but spiral session tracker is null");
             }
         } else if (sessionTracker != null) {
             sessionTracker.removeSession(sessionId);
@@ -947,7 +949,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
 
     protected void createSessionTracker() {
         if (spiralEnabled) {
-            spiralSessionTracker = new SpiralSessionTrackerImpl(this, zkDb.getSessionWithTimeOuts(), tickTime, createSessionTrackerServerId, getZooKeeperServerListener(), spiralClient);
+                        spiralSessionTracker = new SpiralSessionTrackerImpl(this, zkDb.getSessionWithTimeOuts(), tickTime, createSessionTrackerServerId, getZooKeeperServerListener(), spiralClient);
         } else {
             sessionTracker = new SessionTrackerImpl(this, zkDb.getSessionWithTimeOuts(), tickTime, createSessionTrackerServerId, getZooKeeperServerListener());
         }

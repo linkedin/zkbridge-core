@@ -29,9 +29,12 @@ import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.ZKBEnableDisableTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.ZooDefs.OpCode;
 import org.apache.zookeeper.server.SessionTrackerImpl.SessionImpl;
+import org.apache.zookeeper.server.embedded.spiral.InMemoryFS;
+import org.apache.zookeeper.server.embedded.spiral.InMemorySpiralClient;
 import org.apache.zookeeper.test.ClientBase;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -50,15 +53,15 @@ public class SessionTrackerTest extends ZKTestCase {
      * Verify the create session call in the Leader.FinalRequestProcessor after
      * the session expiration.
      */
-    @Test
+    @ZKBEnableDisableTest
     @Timeout(value = 20)
-    public void testAddSessionAfterSessionExpiry() throws Exception {
+    public void testAddSessionAfterSessionExpiry(boolean spiralEnabled) throws Exception {
         RequestThrottler.setMaxRequests(0);
-        ZooKeeperServer zks = setupSessionTracker();
+        ZooKeeperServer zks = setupSessionTracker(spiralEnabled);
 
         latch = new CountDownLatch(1);
-        zks.sessionTracker.trackSession(sessionId, sessionTimeout);
-        SessionTrackerImpl sessionTrackerImpl = (SessionTrackerImpl) zks.sessionTracker;
+        zks.getSessionTracker().trackSession(sessionId, sessionTimeout);
+        SessionTrackerImpl sessionTrackerImpl = (SessionTrackerImpl) zks.getSessionTracker();
         SessionImpl sessionImpl = sessionTrackerImpl.sessionsById.get(sessionId);
         assertNotNull(sessionImpl, "Sessionid:" + sessionId + " doesn't exists in sessiontracker");
 
@@ -88,14 +91,14 @@ public class SessionTrackerTest extends ZKTestCase {
      * Verify the session closure request has reached PrepRequestProcessor soon
      * after session expiration by the session tracker
      */
-    @Test
+    @ZKBEnableDisableTest
     @Timeout(value = 20)
-    public void testCloseSessionRequestAfterSessionExpiry() throws Exception {
-        ZooKeeperServer zks = setupSessionTracker();
+    public void testCloseSessionRequestAfterSessionExpiry(boolean spiralEnabled) throws Exception {
+        ZooKeeperServer zks = setupSessionTracker(spiralEnabled);
 
         latch = new CountDownLatch(1);
-        zks.sessionTracker.trackSession(sessionId, sessionTimeout);
-        SessionTrackerImpl sessionTrackerImpl = (SessionTrackerImpl) zks.sessionTracker;
+        zks.getSessionTracker().trackSession(sessionId, sessionTimeout);
+        SessionTrackerImpl sessionTrackerImpl = (SessionTrackerImpl) zks.getSessionTracker();
         SessionImpl sessionImpl = sessionTrackerImpl.sessionsById.get(sessionId);
         assertNotNull(sessionImpl, "Sessionid:" + sessionId + " doesn't exists in sessiontracker");
 
@@ -113,10 +116,13 @@ public class SessionTrackerTest extends ZKTestCase {
         assertNull(actualSession, "Session:" + sessionId + " still exists after removal");
     }
 
-    private ZooKeeperServer setupSessionTracker() throws IOException {
+    private ZooKeeperServer setupSessionTracker(boolean spiralEnabled) throws IOException {
         File tmpDir = ClientBase.createTmpDir();
         ClientBase.setupTestEnv();
         ZooKeeperServer zks = new ZooKeeperServer(tmpDir, tmpDir, 3000);
+        if (spiralEnabled) {
+            zks.setSpiralClient(new InMemorySpiralClient(new InMemoryFS()));
+        }
         zks.setupRequestProcessors();
         firstProcessor = new FirstProcessor(zks, null);
         zks.firstProcessor = firstProcessor;

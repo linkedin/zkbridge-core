@@ -166,7 +166,7 @@ public class SessionTrackerImpl extends ZooKeeperCriticalThread implements Sessi
 
                 for (SessionImpl s : sessionExpiryQueue.poll()) {
                     ServerMetrics.getMetrics().STALE_SESSIONS_EXPIRED.add(1);
-                    setSessionClosing(s.sessionId);
+                                        setSessionClosing(s.sessionId);
                     expirer.expire(s);
                 }
             }

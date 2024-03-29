@@ -24,8 +24,8 @@ import java.time.Instant;
 import java.util.stream.Stream;
 import org.apache.zookeeper.metrics.MetricsUtils;
 import org.apache.zookeeper.server.ZooKeeperServer;
-import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategyBuilder;
 import org.apache.zookeeper.server.embedded.ZKBridgeServerEmbedded;
+import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategy;
 import org.apache.zookeeper.test.ClientBase;
 import org.apache.zookeeper.util.ServiceUtils;
 import org.hamcrest.CustomMatcher;
@@ -175,7 +175,7 @@ public class ZKTestCase {
             // ZKB with embedded spiral
             return ZKBridgeServerEmbedded.builder()
                 .setServerId(0L)
-                .build();
+                .buildServer();
         } else {
             return new ZooKeeperServer(ClientBase.createTmpDir(), ClientBase.createTmpDir(), 3000);
         }
@@ -188,11 +188,11 @@ public class ZKTestCase {
             // ZKB with embedded spiral
             return ZKBridgeServerEmbedded.builder()
                 .setServerId(zks.getServerId())
-                .setSpiralClientStrategy(SpiralClientStrategyBuilder
+                .setSpiralClientStrategy(SpiralClientStrategy.Builder
                     .passThrough()
                     .setSpiralClient(zks.getSpiralClient()))
                 .setBaseDir(baseDirPath)
-                .build();
+                .buildServer();
         } else {
             return new ZooKeeperServer(
                 new File(zks.getConf().getDataLogDir()).getParentFile(),

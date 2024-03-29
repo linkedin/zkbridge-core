@@ -20,9 +20,10 @@ package org.apache.zookeeper.server.embedded;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
-import org.apache.zookeeper.server.ZooKeeperServer;
+import org.apache.zookeeper.server.ServerCnxnFactory;
 import org.apache.zookeeper.server.embedded.spiral.InMemoryFS;
 import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategy;
 import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategy.InMemorySpiralClientStrategy;
@@ -47,9 +48,11 @@ import org.slf4j.LoggerFactory;
 public class ZKBridgeClusterEmbedded implements AutoCloseable {
 
     private static final Logger LOG = LoggerFactory.getLogger(ZKBridgeClusterEmbedded.class);
-    private final List<ZooKeeperServer> servers;
+    private static final AtomicInteger CLIENT_PORT_GENERATOR = new AtomicInteger(2181);
+    private static final AtomicInteger ADMIN_SERVER_PORT_GENERATOR = new AtomicInteger(8080);
+    private final List<ServerCnxnFactory> servers;
 
-    public ZKBridgeClusterEmbedded(List<ZooKeeperServer> servers) {
+    public ZKBridgeClusterEmbedded(List<ServerCnxnFactory> servers) {
         this.servers = servers;
     }
 
@@ -82,7 +85,7 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
                 throw new IllegalStateException("number of servers should be more than 1");
             }
 
-            List<ZooKeeperServer> servers = new ArrayList<>();
+            List<ServerCnxnFactory> servers = new ArrayList<>();
 
             InMemoryFS inMemoryFS = new InMemoryFS();
             if (spiralClientStrategy instanceof InMemorySpiralClientStrategy) {
@@ -94,7 +97,10 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
                 servers.add(new ZKBridgeServerEmbedded.ZKBridgeServerEmbeddedBuilder()
                     .setServerId(Long.valueOf(idx))
                     .setSpiralClientStrategy(spiralClientStrategy)
-                    .build());
+                    .setClientPort(CLIENT_PORT_GENERATOR.getAndIncrement())
+                    .setAdminServerPort(ADMIN_SERVER_PORT_GENERATOR.getAndIncrement())
+                    .setSnapLeaderEnabled(idx == 0)
+                    .buildAndStart());
             }
             return new ZKBridgeClusterEmbedded(servers);
         }
@@ -109,20 +115,7 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
      * @throws Exception
      */
     public void start() throws Exception {
-        for (ZooKeeperServer server: servers) {
-            server.startup();
-        }
-    }
-
-    /**
-     * Start the servers in the cluster
-     * @param startupTimeout time to wait in millis for the server to start
-     * @throws Exception
-     */
-    public void start(long startupTimeout) throws Exception {
-        for (ZooKeeperServer server: servers) {
-            server.startup();
-        }
+        // embedded servers are spawned with started state. No-op here.
     }
 
     /**
@@ -130,8 +123,8 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
      */
     @Override
     public void close() {
-        for (ZooKeeperServer server: servers) {
-            server.shutdown(true);
+        for (ServerCnxnFactory server: servers) {
+            server.shutdown();
         }
     }
 

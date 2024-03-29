@@ -8,6 +8,29 @@ import org.apache.zookeeper.spiral.SpiralClientImpl;
 
 public interface SpiralClientStrategy {
 
+  public static class Builder {
+
+    /**
+     * Default builders
+     */
+    public static PassThroughSpiralClientStrategy passThrough() {
+      return new PassThroughSpiralClientStrategy();
+    }
+
+    public static InMemorySpiralClientStrategy inMem() {
+      return new InMemorySpiralClientStrategy();
+    }
+
+    public static SpiralClientFromConfigBasedStrategy configBased() {
+      return new SpiralClientFromConfigBasedStrategy();
+    }
+
+    public static ExternalSpiralClientStrategy external() {
+      return new ExternalSpiralClientStrategy();
+    }
+
+  }
+
   /**
    * Strategy Definitions
    */

@@ -25,6 +25,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
+import jdk.internal.util.xml.impl.Pair;
 import org.apache.commons.io.FileUtils;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
@@ -32,12 +34,14 @@ import org.apache.zookeeper.metrics.MetricsProvider;
 import org.apache.zookeeper.metrics.MetricsProviderLifeCycleException;
 import org.apache.zookeeper.metrics.impl.MetricsProviderBootstrap;
 import org.apache.zookeeper.server.ServerMetrics;
+import org.apache.zookeeper.server.ServerCnxnFactory;
 import org.apache.zookeeper.server.ZKBServerConfig;
 import org.apache.zookeeper.server.ZooKeeperServer;
 import org.apache.zookeeper.server.auth.ProviderRegistry;
 import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategy;
 import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategy.InMemorySpiralClientStrategy;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
+import org.apache.zookeeper.server.quorum.QuorumPeerConfig;
 import org.apache.zookeeper.spiral.SpiralClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +64,9 @@ import org.slf4j.LoggerFactory;
 public interface ZKBridgeServerEmbedded extends AutoCloseable {
 
     Logger LOG = LoggerFactory.getLogger(ZKBridgeServerEmbedded.class);
+    Integer MAX_CONNECTIONS = 10;
+    AtomicInteger CLIENT_PORT_GENERATOR = new AtomicInteger(2181);
+    AtomicInteger ADMIN_SERVER_PORT_GENERATOR = new AtomicInteger(8080);
 
     /**
      * Builder for ZooKeeperServerEmbedded.
@@ -68,6 +75,10 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
 
         private Path baseDir;
         private Long serverId;
+
+        private Integer clientPort;
+        private Integer adminServerPort;
+        private Boolean snapLeaderEnabled = false;
         private SpiralClientStrategy spiralClientStrategy = new InMemorySpiralClientStrategy();
         private Properties configuration;
 
@@ -96,8 +107,23 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
             return this;
         }
 
+        public ZKBridgeServerEmbeddedBuilder setClientPort(Integer clientPort) {
+            this.clientPort = clientPort;
+            return this;
+        }
+
+        public ZKBridgeServerEmbeddedBuilder setAdminServerPort(Integer adminServerPort) {
+            this.adminServerPort = adminServerPort;
+            return this;
+        }
+
         public ZKBridgeServerEmbeddedBuilder setSpiralClientStrategy(SpiralClientStrategy spiralClientStrategy) {
             this.spiralClientStrategy = spiralClientStrategy;
+            return this;
+        }
+
+        public ZKBridgeServerEmbeddedBuilder setSnapLeaderEnabled(Boolean snapLeaderEnabled) {
+            this.snapLeaderEnabled = snapLeaderEnabled;
             return this;
         }
 
@@ -112,11 +138,21 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
         }
 
         /**
-         * Validate the configuration and create the server, without starting it.
+         * Validate the configuration and create the server and starting it.
          * @return the new server
          * @throws Exception
          */
-        public ZooKeeperServer build() throws Exception {
+        public ServerCnxnFactory buildAndStart() throws Exception {
+            ZooKeeperServer zooKeeperServer = buildServer();
+
+            // start server connection
+            LOG.info("creating server instance 127.0.0.1:{}", adminServerPort);
+            ServerCnxnFactory factory = ServerCnxnFactory.createFactory(adminServerPort, MAX_CONNECTIONS);
+            factory.startup(zooKeeperServer);
+            return factory;
+        }
+
+        public ZooKeeperServer buildServer() throws Exception {
             if (serverId == null) {
                 throw new IllegalStateException("serverId is null");
             }
@@ -133,8 +169,6 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
             FileUtils.deleteDirectory(dataDir);
             FileUtils.deleteDirectory(logDir);
 
-            LOG.info("using baseDir location: {}", baseDir);
-
             configuration = decorateConfiguration(configuration);
             configuration.putIfAbsent("dataDir", dataDir.getAbsolutePath());
 
@@ -143,36 +177,42 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
                 configuration.store(oo, "Automatically generated at every-boot");
             }
 
-            LOG.info("Current configuration is at {}", configFile.toAbsolutePath());
             final ZKBServerConfig config = new ZKBServerConfig();
             config.parse(configFile.toAbsolutePath().toString());
             config.setServerId(serverId);
-            return buildServerFromConfig(config, spiralClientStrategy.buildSpiralClient());
+
+            LOG.info("Current configuration is at {}", configFile.toAbsolutePath());
+            LOG.info("using baseDir location: {}", baseDir);
+            LOG.info("using client port: {}", config.getClientPortAddress().getPort());
+
+            return buildServerFromConfig(config);
         }
 
-    }
+        ZooKeeperServer buildServerFromConfig(ZKBServerConfig config) throws Exception {
+            MetricsProvider metricsProvider;
+            try {
+                metricsProvider = MetricsProviderBootstrap.startMetricsProvider(
+                    config.getMetricsProviderClassName(),
+                    config.getMetricsProviderConfiguration());
+            } catch (MetricsProviderLifeCycleException error) {
+                throw new IOException("Cannot boot MetricsProvider " + config.getMetricsProviderClassName(), error);
+            }
 
-    static ZooKeeperServer buildServerFromConfig(ZKBServerConfig config, SpiralClient spiralClient) throws IOException {
-        MetricsProvider metricsProvider;
-        try {
-            metricsProvider = MetricsProviderBootstrap.startMetricsProvider(
-                config.getMetricsProviderClassName(),
-                config.getMetricsProviderConfiguration());
-        } catch (MetricsProviderLifeCycleException error) {
-            throw new IOException("Cannot boot MetricsProvider " + config.getMetricsProviderClassName(), error);
+            ServerMetrics.metricsProviderInitialized(metricsProvider);
+            ProviderRegistry.initialize();
+
+            FileTxnSnapLog txnLog = new FileTxnSnapLog(config.getDataLogDir(), config.getDataDir());
+            ZooKeeperServer zkServer = new ZooKeeperServer(
+                txnLog, config.getTickTime(), config.getMinSessionTimeout(), config.getMaxSessionTimeout(),
+                config.getClientPortListenBacklog(), null, "", false);
+
+            zkServer.setSpiralClient(spiralClientStrategy.buildSpiralClient());
+            zkServer.setServerId(config.getServerId());
+            zkServer.setSnapLeaderEnabled(snapLeaderEnabled);
+
+            return zkServer;
         }
 
-        ServerMetrics.metricsProviderInitialized(metricsProvider);
-        ProviderRegistry.initialize();
-
-        FileTxnSnapLog txnLog = new FileTxnSnapLog(config.getDataLogDir(), config.getDataDir());
-        ZooKeeperServer zkServer = new ZooKeeperServer(
-            txnLog, config.getTickTime(), config.getMinSessionTimeout(), config.getMaxSessionTimeout(),
-            config.getClientPortListenBacklog(), null, "", false);
-
-        zkServer.setSpiralClient(spiralClient);
-        zkServer.setServerId(config.getServerId());
-        return zkServer;
     }
 
     static Properties decorateConfiguration(Properties configuration) {
@@ -202,7 +242,12 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
         if (!outputConfig.containsKey("maxSessionTimeout")) {
             outputConfig.setProperty("maxSessionTimeout", String.valueOf(-1));
         }
-
+        if (!outputConfig.containsKey("clientPort")) {
+            outputConfig.setProperty("clientPort", String.valueOf(CLIENT_PORT_GENERATOR.getAndIncrement()));
+        }
+        if (!outputConfig.containsKey("admin.serverPort")) {
+            outputConfig.setProperty("admin.serverPort", String.valueOf(ADMIN_SERVER_PORT_GENERATOR.getAndIncrement()));
+        }
         return outputConfig;
     }
 

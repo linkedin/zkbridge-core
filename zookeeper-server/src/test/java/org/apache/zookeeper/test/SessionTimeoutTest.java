@@ -44,6 +44,7 @@ public class SessionTimeoutTest extends ClientBase {
 
     @BeforeEach
     public void setUp() throws Exception {
+        // TODO : Until we add embedded server into ClientBase this test can NOT be migrated to zkbridge.
         super.setUp();
         zk = createClient();
     }

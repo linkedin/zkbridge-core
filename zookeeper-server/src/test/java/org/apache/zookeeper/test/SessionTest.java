@@ -35,6 +35,7 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.PortAssignment;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZKBEnableDisableTest;
 import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZKTestCase;
@@ -43,9 +44,12 @@ import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.server.ServerCnxnFactory;
 import org.apache.zookeeper.server.ZooKeeperServer;
+import org.apache.zookeeper.server.embedded.spiral.InMemoryFS;
+import org.apache.zookeeper.server.embedded.spiral.InMemorySpiralClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,14 +68,16 @@ public class SessionTest extends ZKTestCase {
 
     private final int TICK_TIME = 3000;
 
-    @BeforeEach
-    public void setUp() throws Exception {
+    public void setUp(boolean spiralEnabled) throws IOException, InterruptedException{
         if (tmpDir == null) {
             tmpDir = ClientBase.createTmpDir();
         }
 
         ClientBase.setupTestEnv();
         zs = new ZooKeeperServer(tmpDir, tmpDir, TICK_TIME);
+        if (spiralEnabled) {
+            zs.setSpiralClient(new InMemorySpiralClient(new InMemoryFS()));
+        }
 
         final int PORT = Integer.parseInt(HOSTPORT.split(":")[1]);
         serverFactory = ServerCnxnFactory.createFactory(PORT, -1);
@@ -81,7 +87,7 @@ public class SessionTest extends ZKTestCase {
     }
 
     @AfterEach
-    public void tearDown() throws Exception {
+    public void tearDown(TestInfo info) throws Exception {
         serverFactory.shutdown();
         zs.shutdown();
         assertTrue(ClientBase.waitForServerDown(HOSTPORT, CONNECTION_TIMEOUT), "waiting for server down");
@@ -170,8 +176,11 @@ public class SessionTest extends ZKTestCase {
      * client is disconnected, but not session closed, that the server
      * will remove ephemeral nodes created by the original session.
      */
-    @Test
-    public void testSession() throws IOException, InterruptedException, KeeperException {
+    @ZKBEnableDisableTest
+    public void testSession(boolean spiralEnabled) throws IOException, InterruptedException, KeeperException {
+        // TODO: This is very hacky ideally parameterized value should have been able to be passed to the BeforeTest setup method
+        // but until we change zkserver with embedded server this is hack.
+        setUp(spiralEnabled);
         DisconnectableZooKeeper zk = createClient();
         zk.create("/e", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
         LOG.info("zk with session id 0x{} was destroyed!", Long.toHexString(zk.getSessionId()));
@@ -230,8 +239,9 @@ public class SessionTest extends ZKTestCase {
      * @throws InterruptedException
      * @throws KeeperException
      */
-    @Test
-    public void testSessionMove() throws Exception {
+    @ZKBEnableDisableTest
+    public void testSessionMove(boolean spiralEnabled) throws Exception {
+        setUp(spiralEnabled);
         String[] hostPorts = HOSTPORT.split(",");
         DisconnectableZooKeeper zk = new DisconnectableZooKeeper(hostPorts[0], CONNECTION_TIMEOUT, new MyWatcher("0"));
         zk.create("/sessionMoveTest", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
@@ -277,8 +287,9 @@ public class SessionTest extends ZKTestCase {
      * we don't consider a dup state notification if the event type is
      * not "None" (ie non-None communicates an event).
      */
-    @Test
-    public void testSessionStateNoDupStateReporting() throws IOException, InterruptedException, KeeperException {
+    @ZKBEnableDisableTest
+    public void testSessionStateNoDupStateReporting(boolean spiralEnabled) throws IOException, InterruptedException, KeeperException {
+        setUp(spiralEnabled);
         final int TIMEOUT = 3000;
         DupWatcher watcher = new DupWatcher();
         ZooKeeper zk = createClient(TIMEOUT, watcher);
@@ -304,8 +315,9 @@ public class SessionTest extends ZKTestCase {
     /**
      * Verify access to the negotiated session timeout.
      */
-    @Test
-    public void testSessionTimeoutAccess() throws Exception {
+    @ZKBEnableDisableTest
+    public void testSessionTimeoutAccess(boolean spiralEnabled) throws Exception {
+        setUp(spiralEnabled);
         // validate typical case - requested == negotiated
         DisconnectableZooKeeper zk = createClient(TICK_TIME * 4);
         assertEquals(TICK_TIME * 4, zk.getSessionTimeout());
@@ -341,8 +353,9 @@ public class SessionTest extends ZKTestCase {
 
     }
 
-    @Test
-    public void testMinMaxSessionTimeout() throws Exception {
+    @ZKBEnableDisableTest
+    public void testMinMaxSessionTimeout(boolean spiralEnabled) throws Exception {
+        setUp(spiralEnabled);
         // override the defaults
         final int MINSESS = 20000;
         final int MAXSESS = 240000;
@@ -376,8 +389,9 @@ public class SessionTest extends ZKTestCase {
         LOG.info(zk.toString());
     }
 
-    @Test
-    public void testMaximumCnxnPerIP() throws Exception {
+    @ZKBEnableDisableTest
+    public void testMaximumCnxnPerIP(boolean spiralEnabled) throws Exception {
+        setUp(spiralEnabled);
         final int maxClientCnxnsPerIP = 3;
         serverFactory.setMaxClientCnxnsPerHost(maxClientCnxnsPerIP);
         ZooKeeper[] clients = new ZooKeeper[maxClientCnxnsPerIP + 1];

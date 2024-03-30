@@ -45,6 +45,7 @@ public class SessionInvalidationTest extends ClientBase {
      * the server will process the create before FinalRequestProcessor
      * removes the session from the tracker.
      */
+    // TODO : Until we add embedded server into ClientBase this test can NOT be migrated to zkbridge.
     @Test
     public void testCreateAfterCloseShouldFail() throws Exception {
         for (int i = 0; i < 10; i++) {

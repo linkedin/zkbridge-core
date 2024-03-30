@@ -26,7 +26,6 @@ import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
-import jdk.internal.util.xml.impl.Pair;
 import org.apache.commons.io.FileUtils;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
@@ -208,7 +207,7 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
 
             zkServer.setSpiralClient(spiralClientStrategy.buildSpiralClient());
             zkServer.setServerId(config.getServerId());
-            zkServer.setSnapLeaderEnabled(snapLeaderEnabled);
+            zkServer.setSnapLeaderId(config.getServerId());
 
             return zkServer;
         }

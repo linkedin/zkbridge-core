@@ -30,7 +30,9 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.TestableZooKeeper;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZKBServerParameterizedTest;
 import org.apache.zookeeper.ZooDefs;
+import org.apache.zookeeper.server.ZooKeeperServer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -44,13 +46,14 @@ public class SessionTimeoutTest extends ClientBase {
 
     @BeforeEach
     public void setUp() throws Exception {
-        // TODO : Until we add embedded server into ClientBase this test can NOT be migrated to zkbridge.
-        super.setUp();
-        zk = createClient();
+        super.setUpWithoutServer();
     }
 
-    @Test
-    public void testSessionExpiration() throws InterruptedException, KeeperException {
+    @ZKBServerParameterizedTest
+    public void testSessionExpiration(ZooKeeperServer zks) throws InterruptedException, KeeperException, IOException {
+        super.startZKServers(zks);
+        zk = createClient();
+
         final CountDownLatch expirationLatch = new CountDownLatch(1);
         Watcher watcher = event -> {
             if (event.getState() == Watcher.Event.KeeperState.Expired) {
@@ -73,8 +76,11 @@ public class SessionTimeoutTest extends ClientBase {
         assertTrue(gotException);
     }
 
-    @Test
-    public void testQueueEvent() throws InterruptedException, KeeperException {
+    @ZKBServerParameterizedTest
+    public void testQueueEvent(ZooKeeperServer zks) throws InterruptedException, KeeperException, IOException {
+        super.startZKServers(zks);
+        zk = createClient();
+
         final CountDownLatch eventLatch = new CountDownLatch(1);
         Watcher watcher = event -> {
             if (event.getType() == Watcher.Event.EventType.NodeDataChanged) {
@@ -93,8 +99,11 @@ public class SessionTimeoutTest extends ClientBase {
     /**
      * Make sure ephemerals get cleaned up when session disconnects.
      */
-    @Test
-    public void testSessionDisconnect() throws KeeperException, InterruptedException, IOException {
+    @ZKBServerParameterizedTest
+    public void testSessionDisconnect(ZooKeeperServer zks) throws KeeperException, InterruptedException, IOException {
+        super.startZKServers(zks);
+        zk = createClient();
+
         zk.create("/sdisconnect", new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
         assertNotNull(zk.exists("/sdisconnect", null), "Ephemeral node has not been created");
 
@@ -107,8 +116,11 @@ public class SessionTimeoutTest extends ClientBase {
     /**
      * Make sure ephemerals are kept when session restores.
      */
-    @Test
-    public void testSessionRestore() throws KeeperException, InterruptedException, IOException {
+    @ZKBServerParameterizedTest
+    public void testSessionRestore(ZooKeeperServer zks) throws KeeperException, InterruptedException, IOException {
+        super.startZKServers(zks);
+        zk = createClient();
+
         zk.create("/srestore", new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
         assertNotNull(zk.exists("/srestore", null), "Ephemeral node has not been created");
 
@@ -122,8 +134,11 @@ public class SessionTimeoutTest extends ClientBase {
     /**
      * Make sure ephemerals are kept when server restarts.
      */
-    @Test
-    public void testSessionSurviveServerRestart() throws Exception {
+    @ZKBServerParameterizedTest
+    public void testSessionSurviveServerRestart(ZooKeeperServer zks) throws Exception {
+        super.startZKServers(zks);
+        zk = createClient();
+
         zk.create("/sdeath", new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
         assertNotNull(zk.exists("/sdeath", null), "Ephemeral node has not been created");
 

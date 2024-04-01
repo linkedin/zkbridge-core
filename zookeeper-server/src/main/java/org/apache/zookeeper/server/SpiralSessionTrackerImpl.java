@@ -66,19 +66,31 @@ public class SpiralSessionTrackerImpl extends SessionTrackerImpl {
      * needs to be honored. Hence this method is used to fetch the session from Spiral.
      */
     public synchronized boolean touchSession(long sessionId, int timeout) {
-        if (sessionsById.containsKey(sessionId)) {
-            super.updateSessionExpiry(sessionsById.get(sessionId), timeout);
-            return true;
-        }
+                if (sessionsById.containsKey(sessionId)) {
+            // If session is set to closing then don't rehydrate. Note. No need to delete it from spiral right now because
+            // that will be taken care of by the session expiry logic. expire() -> closeSession.
+            if (sessionsById.get(sessionId).isClosing()) {
+                LOG.info("Session 0x{} is closing", Long.toHexString(sessionId));
+                return false;
+            } else {
+                super.updateSessionExpiry(sessionsById.get(sessionId), timeout);
+                return true;
+            }
+        }   
 
         LOG.debug("Checking session 0x{} from spiral", Long.toHexString(sessionId));
-        byte[] txnBytes = spiralClient.get(SpiralBucket.SESSIONS.getBucketName(), String.valueOf(sessionId));
-        Integer oldTimeout = Integer.valueOf(new String(txnBytes));
+        try {
+            byte[] txnBytes = spiralClient.get(SpiralBucket.SESSIONS.getBucketName(), String.valueOf(sessionId));
+            Integer oldTimeout = Integer.valueOf(new String(txnBytes));
 
-        if (oldTimeout < timeout) {
-            spiralClient.put(SpiralBucket.SESSIONS.getBucketName(), String.valueOf(sessionId), String.valueOf(timeout).getBytes());
+            if (oldTimeout < timeout) {
+                spiralClient.put(SpiralBucket.SESSIONS.getBucketName(), String.valueOf(sessionId), String.valueOf(timeout).getBytes());
+            }
+
+            return super.trackSession(sessionId, timeout) && super.commitSession(sessionId, timeout);
+        } catch (Exception e) {
+            LOG.error("Error while touching session 0x{}", Long.toHexString(sessionId), e);
+            return false;
         }
-
-        return super.trackSession(sessionId, timeout) && super.commitSession(sessionId, timeout);
     }
 }

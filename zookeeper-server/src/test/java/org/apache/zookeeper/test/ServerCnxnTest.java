@@ -25,7 +25,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
+
+import org.apache.zookeeper.ZKBEnableDisableTest;
+import org.apache.zookeeper.ZKBServerParameterizedTest;
 import org.apache.zookeeper.server.NIOServerCnxnFactory;
+import org.apache.zookeeper.server.embedded.spiral.InMemoryFS;
+import org.apache.zookeeper.server.embedded.spiral.InMemorySpiralClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,6 +43,7 @@ public class ServerCnxnTest extends ClientBase {
 
     private static int cnxnTimeout = 1000;
 
+    
     @BeforeEach
     public void setUp() throws Exception {
         System.setProperty(NIOServerCnxnFactory.ZOOKEEPER_NIO_SESSIONLESS_CNXN_TIMEOUT, Integer.toString(cnxnTimeout));
@@ -50,8 +56,11 @@ public class ServerCnxnTest extends ClientBase {
         System.clearProperty(NIOServerCnxnFactory.ZOOKEEPER_NIO_SESSIONLESS_CNXN_TIMEOUT);
     }
 
-    @Test
-    public void testServerCnxnExpiry() throws Exception {
+    @ZKBEnableDisableTest
+    public void testServerCnxnExpiry(boolean spiralEnabled) throws Exception {
+        if (spiralEnabled) {
+            serverFactory.getZooKeeperServer().setSpiralClient(new InMemorySpiralClient(new InMemoryFS()));
+        }
         verify("ruok", "imok");
 
         // Expiry time is (now/cnxnTimeout + 1)*cnxnTimeout

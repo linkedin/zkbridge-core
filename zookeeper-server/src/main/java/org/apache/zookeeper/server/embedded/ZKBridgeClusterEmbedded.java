@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
 import org.apache.zookeeper.server.ServerCnxnFactory;
+import org.apache.zookeeper.server.ZooKeeperServer;
 import org.apache.zookeeper.server.embedded.spiral.InMemoryFS;
 import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategy;
 import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategy.InMemorySpiralClientStrategy;
@@ -50,10 +51,20 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(ZKBridgeClusterEmbedded.class);
     private static final AtomicInteger CLIENT_PORT_GENERATOR = new AtomicInteger(2181);
     private static final AtomicInteger ADMIN_SERVER_PORT_GENERATOR = new AtomicInteger(8080);
-    private final List<ServerCnxnFactory> servers;
 
-    public ZKBridgeClusterEmbedded(List<ServerCnxnFactory> servers) {
+    private final List<String> connectionStrings;
+    private final InMemoryFS inMemoryFS;
+    private final List<ServerCnxnFactory> servers;
+    private final List<ZooKeeperServer> zkServers;
+
+    public ZKBridgeClusterEmbedded(InMemoryFS inMemoryFS, List<ServerCnxnFactory> servers, List<String> connectionStrings) {
+        this.inMemoryFS = inMemoryFS;
         this.servers = servers;
+        this.connectionStrings = connectionStrings;
+        this.zkServers = new ArrayList<>();
+        for (ServerCnxnFactory server: servers) {
+            zkServers.add(server.getZooKeeperServer());
+        }
     }
 
     /**
@@ -93,16 +104,21 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
                 inMemStrategy.inMemoryFS(inMemoryFS);
             }
 
+            List<String> hostAndPortList = new ArrayList<>();
             for (int idx = 0; idx < numServers; idx ++) {
+                int clientPort = CLIENT_PORT_GENERATOR.getAndIncrement();
+                int adminPort = ADMIN_SERVER_PORT_GENERATOR.getAndIncrement();
+                hostAndPortList.add("localhost:" + adminPort);
+
                 servers.add(new ZKBridgeServerEmbedded.ZKBridgeServerEmbeddedBuilder()
                     .setServerId(Long.valueOf(idx))
                     .setSpiralClientStrategy(spiralClientStrategy)
-                    .setClientPort(CLIENT_PORT_GENERATOR.getAndIncrement())
-                    .setAdminServerPort(ADMIN_SERVER_PORT_GENERATOR.getAndIncrement())
-                    .setSnapLeaderEnabled(idx == 0)
+                    .setClientPort(clientPort)
+                    .setAdminServerPort(adminPort)
+                    .setSnapLeaderId(0)
                     .buildAndStart());
             }
-            return new ZKBridgeClusterEmbedded(servers);
+            return new ZKBridgeClusterEmbedded(inMemoryFS ,servers, hostAndPortList);
         }
     }
 
@@ -110,6 +126,16 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
         return new ZKBridgeClusterEmbeddedBuilder();
     }
 
+    public InMemoryFS getInMemoryFS() {
+        return inMemoryFS;
+    }
+
+    public String getConnectionString(int serverId) {
+        if (serverId > servers.size()) {
+            throw new RuntimeException("serverId out of range. Cannot provide connection string for id: " + serverId);
+        }
+        return connectionStrings.get(serverId);
+    }
     /**
      * Start the servers in the cluster.
      * @throws Exception

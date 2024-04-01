@@ -23,9 +23,12 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
+
+import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
 
 public class ServerStatsTest extends ZKTestCase {
 
@@ -36,7 +39,7 @@ public class ServerStatsTest extends ZKTestCase {
         providerMock = mock(ServerStats.Provider.class);
     }
 
-    @Test
+    @ZKBTest
     public void testPacketsMetrics() {
         // Given ...
         ServerStats serverStats = new ServerStats(providerMock);
@@ -61,7 +64,7 @@ public class ServerStatsTest extends ZKTestCase {
 
     }
 
-    @Test
+    @ZKBTest
     public void testLatencyMetrics() {
         // Given ...
         ServerStats serverStats = new ServerStats(providerMock);
@@ -83,7 +86,7 @@ public class ServerStatsTest extends ZKTestCase {
         assertAllLatencyZero(serverStats);
     }
 
-    @Test
+    @ZKBTest
     public void testFsyncThresholdExceedMetrics() {
         // Given ...
         ServerStats serverStats = new ServerStats(providerMock);
@@ -105,7 +108,7 @@ public class ServerStatsTest extends ZKTestCase {
 
     }
 
-    @Test
+    @ZKBTest
     public void testReset() {
         // Given ...
         ServerStats serverStats = new ServerStats(providerMock);

@@ -26,10 +26,10 @@ import static org.mockito.Mockito.mock;
 import java.io.File;
 import java.io.IOException;
 import org.apache.jute.OutputArchive;
+import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
 import org.apache.zookeeper.test.ClientBase;
 import org.apache.zookeeper.txn.TxnHeader;
-import org.junit.Test;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -38,7 +38,7 @@ public class TxnLogCountTest {
     /**
      * Test ZkDatabase's txnCount
      */
-    @Test
+    @ZKBTest
     public void testTxnLogCount() throws IOException {
         File tmpDir = ClientBase.createTmpDir();
         FileTxnSnapLog snapLog = new FileTxnSnapLog(tmpDir, tmpDir);

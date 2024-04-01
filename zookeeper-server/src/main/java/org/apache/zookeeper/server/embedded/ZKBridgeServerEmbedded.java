@@ -26,23 +26,20 @@ import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
-import jdk.internal.util.xml.impl.Pair;
 import org.apache.commons.io.FileUtils;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
 import org.apache.zookeeper.metrics.MetricsProvider;
 import org.apache.zookeeper.metrics.MetricsProviderLifeCycleException;
 import org.apache.zookeeper.metrics.impl.MetricsProviderBootstrap;
-import org.apache.zookeeper.server.ServerMetrics;
 import org.apache.zookeeper.server.ServerCnxnFactory;
+import org.apache.zookeeper.server.ServerMetrics;
 import org.apache.zookeeper.server.ZKBServerConfig;
 import org.apache.zookeeper.server.ZooKeeperServer;
 import org.apache.zookeeper.server.auth.ProviderRegistry;
 import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategy;
 import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategy.InMemorySpiralClientStrategy;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
-import org.apache.zookeeper.server.quorum.QuorumPeerConfig;
-import org.apache.zookeeper.spiral.SpiralClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,7 +75,7 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
 
         private Integer clientPort;
         private Integer adminServerPort;
-        private Boolean snapLeaderEnabled = false;
+        private Integer snapLeaderId = 0;
         private SpiralClientStrategy spiralClientStrategy = new InMemorySpiralClientStrategy();
         private Properties configuration;
 
@@ -122,8 +119,8 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
             return this;
         }
 
-        public ZKBridgeServerEmbeddedBuilder setSnapLeaderEnabled(Boolean snapLeaderEnabled) {
-            this.snapLeaderEnabled = snapLeaderEnabled;
+        public ZKBridgeServerEmbeddedBuilder setSnapLeaderId(Integer snapLeaderId) {
+            this.snapLeaderId = snapLeaderId;
             return this;
         }
 
@@ -208,7 +205,7 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
 
             zkServer.setSpiralClient(spiralClientStrategy.buildSpiralClient());
             zkServer.setServerId(config.getServerId());
-            zkServer.setSnapLeaderEnabled(snapLeaderEnabled);
+            zkServer.setSnapLeaderId(snapLeaderId);
 
             return zkServer;
         }

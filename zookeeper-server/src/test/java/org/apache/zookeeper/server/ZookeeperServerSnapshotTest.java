@@ -18,30 +18,26 @@
 
 package org.apache.zookeeper.server;
 
-import static org.apache.zookeeper.test.ClientBase.CONNECTION_TIMEOUT;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import java.io.File;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.PortAssignment;
-import org.apache.zookeeper.ZKBServerParameterizedTest;
+import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.test.ClientBase;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+
+import static org.apache.zookeeper.test.ClientBase.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ZookeeperServerSnapshotTest extends ZKTestCase {
     private static final String BASE_PATH = "/takeSnapshotTest";
     private static final int NODE_COUNT = 10;
     private static final String HOST_PORT = "127.0.0.1:" + PortAssignment.unique();
 
-    @ZKBServerParameterizedTest
-    public void testTakeSnapshot(ZooKeeperServer zks) throws Exception {
+    @ZKBTest
+    public void testTakeSnapshot() throws Exception {
         ZooKeeperServer.setSerializeLastProcessedZxidEnabled(true);
-
+        ZooKeeperServer zks = getZooKeeperServer(false);
         final int port = Integer.parseInt(HOST_PORT.split(":")[1]);
         final ServerCnxnFactory serverCnxnFactory = ServerCnxnFactory.createFactory(port, -1);
         ZooKeeper zk = null;

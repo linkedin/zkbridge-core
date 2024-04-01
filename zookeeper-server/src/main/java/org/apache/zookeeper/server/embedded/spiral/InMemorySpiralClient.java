@@ -80,6 +80,10 @@ public class InMemorySpiralClient implements SpiralClient {
     Map<String, byte[]> listContent = fs.list(bucketName);
     ScanResponse.Builder responseBuilder = ScanResponse.newBuilder();
 
+    if (listContent == null) {
+      return responseBuilder.build();
+    }
+
     for (String keyStr: listContent.keySet()) {
       responseBuilder
           .addKeyValues(KeyValue.newBuilder()

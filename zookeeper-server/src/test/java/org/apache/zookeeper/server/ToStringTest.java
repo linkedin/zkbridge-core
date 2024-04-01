@@ -22,10 +22,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import java.lang.reflect.Field;
+import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.proto.SetDataRequest;
-import org.junit.jupiter.api.Test;
+
 
 /**
  * A misc place to verify toString methods - mainly to make sure they don't
@@ -35,13 +36,13 @@ public class ToStringTest extends ZKTestCase {
 
     /** Verify jute - which we've had particular problems with in the past
      * wrt null fields */
-    @Test
+    @ZKBTest
     public void testJuteToString() {
         SetDataRequest req = new SetDataRequest(null, null, 0);
         assertNotSame("ERROR", req.toString());
     }
 
-    @Test
+    @ZKBTest
     public void testOpCodeToString() throws Exception {
         Class<?> clazz = ZooDefs.OpCode.class;
         Field[] fields = clazz.getFields();

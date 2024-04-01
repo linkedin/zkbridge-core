@@ -17,17 +17,12 @@
  */
 package org.apache.zookeeper.server;
 
-import static org.apache.zookeeper.server.persistence.FileSnap.SNAPSHOT_FILE_PREFIX;
-import static org.apache.zookeeper.test.ClientBase.CONNECTION_TIMEOUT;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.File;
 import java.util.Set;
 import java.util.zip.CheckedInputStream;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.PortAssignment;
+import org.apache.zookeeper.ZKBServerParameterizedTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooKeeper;
@@ -36,24 +31,21 @@ import org.apache.zookeeper.server.persistence.Util;
 import org.apache.zookeeper.test.ClientBase;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+
+import static org.apache.zookeeper.server.persistence.FileSnap.*;
+import static org.apache.zookeeper.test.ClientBase.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ZookeeperServerRestoreTest extends ZKTestCase {
     private static final String BASE_PATH = "/restoreFromSnapshotTest";
     private static final int NODE_COUNT = 10;
     private static final String HOST_PORT = "127.0.0.1:" + PortAssignment.unique();
 
-    @TempDir
-    static File dataDir;
-
-    @TempDir
-    static File logDir;
-
     @Test
-    public void testRestoreFromSnapshot() throws Exception {
+    public void testZKRestoreFromSnapshot() throws Exception {
         ZooKeeperServer.setSerializeLastProcessedZxidEnabled(true);
 
-        final ZooKeeperServer zks = new ZooKeeperServer(dataDir, logDir, 3000);
+        final ZooKeeperServer zks = getZooKeeperServer(false);
         final int port = Integer.parseInt(HOST_PORT.split(":")[1]);
         final ServerCnxnFactory serverCnxnFactory = ServerCnxnFactory.createFactory(port, -1);
 
@@ -133,9 +125,8 @@ public class ZookeeperServerRestoreTest extends ZKTestCase {
         }
     }
 
-    @Test
-    public void testRestoreFromSnapshot_nulInputStream() throws Exception {
-        final ZooKeeperServer zks = new ZooKeeperServer(dataDir, logDir, 3000);
+    @ZKBServerParameterizedTest
+    public void testRestoreFromSnapshot_nulInputStream(ZooKeeperServer zks) {
         assertThrows(IllegalArgumentException.class, () -> zks.restoreFromSnapshot(null));
     }
 }

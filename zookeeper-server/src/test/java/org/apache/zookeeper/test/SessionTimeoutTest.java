@@ -51,7 +51,7 @@ public class SessionTimeoutTest extends ClientBase {
 
     @ZKBServerParameterizedTest
     public void testSessionExpiration(ZooKeeperServer zks) throws InterruptedException, KeeperException, IOException {
-        super.startZKServers(zks);
+        super.startServer(zks);
         zk = createClient();
 
         final CountDownLatch expirationLatch = new CountDownLatch(1);
@@ -78,7 +78,7 @@ public class SessionTimeoutTest extends ClientBase {
 
     @ZKBServerParameterizedTest
     public void testQueueEvent(ZooKeeperServer zks) throws InterruptedException, KeeperException, IOException {
-        super.startZKServers(zks);
+        super.startServer(zks);
         zk = createClient();
 
         final CountDownLatch eventLatch = new CountDownLatch(1);
@@ -101,7 +101,7 @@ public class SessionTimeoutTest extends ClientBase {
      */
     @ZKBServerParameterizedTest
     public void testSessionDisconnect(ZooKeeperServer zks) throws KeeperException, InterruptedException, IOException {
-        super.startZKServers(zks);
+        super.startServer(zks);
         zk = createClient();
 
         zk.create("/sdisconnect", new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
@@ -118,7 +118,7 @@ public class SessionTimeoutTest extends ClientBase {
      */
     @ZKBServerParameterizedTest
     public void testSessionRestore(ZooKeeperServer zks) throws KeeperException, InterruptedException, IOException {
-        super.startZKServers(zks);
+        super.startServer(zks);
         zk = createClient();
 
         zk.create("/srestore", new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
@@ -136,7 +136,7 @@ public class SessionTimeoutTest extends ClientBase {
      */
     @ZKBServerParameterizedTest
     public void testSessionSurviveServerRestart(ZooKeeperServer zks) throws Exception {
-        super.startZKServers(zks);
+        startServer(zks);
         zk = createClient();
 
         zk.create("/sdeath", new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
@@ -144,7 +144,8 @@ public class SessionTimeoutTest extends ClientBase {
 
         zk.disconnect();
         stopServer();
-        startServer();
+        // Create a new ZKServer but pass same inMem spiral client to the new server.
+        startServer(cloneZooKeeperServer(zks));
         zk = createClient();
 
         assertNotNull(zk.exists("/sdeath", null), "Ephemeral node should be present when server restarted");

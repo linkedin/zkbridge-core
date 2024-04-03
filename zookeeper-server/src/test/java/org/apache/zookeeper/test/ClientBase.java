@@ -538,13 +538,13 @@ public abstract class ClientBase extends ZKTestCase {
     }
 
     // This accepts zookeeper server and sets it to new server factory. 
-    public void startZKServers(ZooKeeperServer zks) throws IOException, InterruptedException {
+    public void startServer(ZooKeeperServer zks) throws IOException, InterruptedException {
         LOG.info("STARTING server");
         serverFactory = createNewServerInstance(serverFactory, hostPort, maxCnxns);
         zks.setCreateSessionTrackerServerId((int) zks.getServerId());
         serverFactory.startup(zks);
         assertTrue(
-                ClientBase.waitForServerUp("127.0.0.1:" + zks.getClientPort(), CONNECTION_TIMEOUT, serverFactory.isSecure()),
+                ClientBase.waitForServerUp("127.0.0.1:" + getPort(hostPort), CONNECTION_TIMEOUT, serverFactory.isSecure()),
                 "waiting for server up");
         // ensure that server and data bean are registered
         Set<ObjectName> children = JMXEnv.ensureParent("InMemoryDataTree", "StandaloneServer_port");

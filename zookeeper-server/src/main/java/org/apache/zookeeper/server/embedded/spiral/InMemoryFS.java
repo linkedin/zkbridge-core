@@ -3,6 +3,7 @@ package org.apache.zookeeper.server.embedded.spiral;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -10,7 +11,7 @@ import java.util.stream.Collectors;
 public class InMemoryFS {
 
   private final AtomicLong TXN_ID = new AtomicLong(0);
-  private final Map<String, HashMap<String, byte[]>> spiralContent = new HashMap<>();
+  private final Map<String, TreeMap<String, byte[]>> spiralContent = new HashMap<>();
 
   public InMemoryFS() {
   }
@@ -20,7 +21,7 @@ public class InMemoryFS {
   }
 
   public void createBucket(String bucket) {
-    spiralContent.putIfAbsent(bucket, new HashMap<>());
+    spiralContent.putIfAbsent(bucket, new TreeMap<>());
   }
 
   public boolean containsKey(String bucket, String key) {
@@ -32,7 +33,7 @@ public class InMemoryFS {
   }
 
   public void put(String bucket, String key, byte[] value) {
-    spiralContent.computeIfAbsent(bucket, k-> new HashMap<>()).put(key, value);
+    spiralContent.computeIfAbsent(bucket, k-> new TreeMap<>()).put(key, value);
   }
 
   public void delete(String bucket, String key) {

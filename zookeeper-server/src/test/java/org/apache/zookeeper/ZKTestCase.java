@@ -177,8 +177,7 @@ public class ZKTestCase {
                 .setServerId(0L)
                 .buildServer();
         } else {
-            File dataDir = ClientBase.createTmpDir();
-            return new ZooKeeperServer(dataDir, dataDir, 3000);
+            return new ZooKeeperServer(ClientBase.createTmpDir(), ClientBase.createTmpDir(), 3000);
         }
     }
 

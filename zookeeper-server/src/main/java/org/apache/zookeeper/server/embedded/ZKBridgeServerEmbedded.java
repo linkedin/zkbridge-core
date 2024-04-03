@@ -163,9 +163,13 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
             }
             final File logDir = new File(baseDir + "/logs");
             final File dataDir = new File(baseDir + "/dataDir");
-            FileUtils.deleteDirectory(dataDir);
-            FileUtils.deleteDirectory(logDir);
-
+            // Best attempt to cleanup any existing files in dirs. Masking exceptions here because tests can run in parallel and may messup things.
+            try {
+                FileUtils.deleteDirectory(dataDir);
+                FileUtils.deleteDirectory(logDir);
+            } catch (IOException e) {
+                LOG.info("Error creating directories", e);
+            }
             configuration = decorateConfiguration(configuration);
             configuration.putIfAbsent("dataDir", dataDir.getAbsolutePath());
 

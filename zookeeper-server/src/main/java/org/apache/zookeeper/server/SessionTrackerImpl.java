@@ -156,9 +156,9 @@ public class SessionTrackerImpl extends ZooKeeperCriticalThread implements Sessi
 
     @Override
     public void run() {
-        try {
+                try {
             while (running) {
-                long waitTime = sessionExpiryQueue.getWaitTime();
+                                long waitTime = sessionExpiryQueue.getWaitTime();
                 if (waitTime > 0) {
                     Thread.sleep(waitTime);
                     continue;

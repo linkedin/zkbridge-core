@@ -486,6 +486,26 @@ public abstract class ClientBase extends ZKTestCase {
         setUpWithServerId(1);
     }
 
+    public void setUpWithoutServer() throws Exception {
+        /* some useful information - log the number of fds used before
+         * and after a test is run. Helps to verify we are freeing resources
+         * correctly. Unfortunately this only works on unix systems (the
+         * only place sun has implemented as part of the mgmt bean api.
+         */
+        LOG.info("Setting up client test without zookeeper server");
+        OSMXBean osMbean = new OSMXBean();
+        if (osMbean.getUnix()) {
+            initialFdCount = osMbean.getOpenFileDescriptorCount();
+            LOG.info("Initial fdcount is: {}", initialFdCount);
+        }
+        setupTestEnv();
+        setupCustomizedEnv();
+        JMXEnv.setUp();
+        setUpAll();
+        // tmpDir = createTmpDir(testBaseDir, true);
+        LOG.info("Client test setup without zks finished");
+    }
+
     protected void setUpWithServerId(int serverId) throws Exception {
         /* some useful information - log the number of fds used before
          * and after a test is run. Helps to verify we are freeing resources
@@ -515,6 +535,24 @@ public abstract class ClientBase extends ZKTestCase {
 
     protected void startServer() throws Exception {
         startServer(1);
+    }
+
+    // This accepts zookeeper server and sets it to new server factory. 
+    public void startServer(ZooKeeperServer zks) throws IOException, InterruptedException {
+        LOG.info("STARTING server");
+        serverFactory = createNewServerInstance(serverFactory, hostPort, maxCnxns);
+        zks.setCreateSessionTrackerServerId((int) zks.getServerId());
+        serverFactory.startup(zks);
+        assertTrue(
+                ClientBase.waitForServerUp("127.0.0.1:" + getPort(hostPort), CONNECTION_TIMEOUT, serverFactory.isSecure()),
+                "waiting for server up");
+        // ensure that server and data bean are registered
+        Set<ObjectName> children = JMXEnv.ensureParent("InMemoryDataTree", "StandaloneServer_port");
+        // Remove beans which are related to zk client sessions. Strong
+        // assertions cannot be done for these client sessions because
+        // registeration of these beans with server will happen only on their
+        // respective reconnection interval
+        verifyUnexpectedBeans(children);
     }
 
     /**

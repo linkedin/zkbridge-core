@@ -24,6 +24,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import org.apache.jute.BinaryOutputArchive;
+import org.apache.zookeeper.ZKBServerParameterizedTest;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooDefs.OpCode;
@@ -31,10 +32,17 @@ import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.proto.ConnectRequest;
 import org.apache.zookeeper.proto.CreateRequest;
 import org.apache.zookeeper.proto.RequestHeader;
+import org.apache.zookeeper.server.ZooKeeperServer;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class SessionInvalidationTest extends ClientBase {
 
+    @BeforeEach
+    public void setUp() throws Exception {
+        super.setUpWithoutServer();
+    }
+    
     /**
      * Test solution for ZOOKEEPER-1208. Verify that operations are not
      * accepted after a close session.
@@ -46,8 +54,9 @@ public class SessionInvalidationTest extends ClientBase {
      * removes the session from the tracker.
      */
     // TODO : Until we add embedded server into ClientBase this test can NOT be migrated to zkbridge.
-    @Test
-    public void testCreateAfterCloseShouldFail() throws Exception {
+    @ZKBServerParameterizedTest
+    public void testCreateAfterCloseShouldFail(ZooKeeperServer zks) throws Exception {
+        super.startServer(zks);
         for (int i = 0; i < 10; i++) {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             BinaryOutputArchive boa = BinaryOutputArchive.getArchive(baos);

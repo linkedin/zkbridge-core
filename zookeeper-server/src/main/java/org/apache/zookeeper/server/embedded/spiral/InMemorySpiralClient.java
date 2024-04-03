@@ -5,6 +5,9 @@ import java.util.List;
 import java.util.Map;
 import org.apache.zookeeper.spiral.SpiralBucket;
 import org.apache.zookeeper.spiral.SpiralClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import proto.com.linkedin.spiral.Key;
 import proto.com.linkedin.spiral.KeyValue;
 import proto.com.linkedin.spiral.PaginationContext;
@@ -15,6 +18,7 @@ import proto.com.linkedin.spiral.Value;
 public class InMemorySpiralClient implements SpiralClient {
 
   private static final String DEFAULT_NAMESPACE = "zookeeper";
+  private static final Logger LOG = LoggerFactory.getLogger(InMemorySpiralClient.class);
   private final InMemoryFS fs;
 
   public InMemorySpiralClient(InMemoryFS fs) {
@@ -67,7 +71,7 @@ public class InMemorySpiralClient implements SpiralClient {
 
   @Override
   public void put(String bucketName, String key, byte[] value) {
-    fs.put(bucketName, key, value);
+        fs.put(bucketName, key, value);
   }
 
   @Override
@@ -78,7 +82,7 @@ public class InMemorySpiralClient implements SpiralClient {
   @Override
   public ScanResponse scanBucket(String bucketName, PaginationContext paginationContext) {
     Map<String, byte[]> listContent = fs.list(bucketName);
-    ScanResponse.Builder responseBuilder = ScanResponse.newBuilder();
+        ScanResponse.Builder responseBuilder = ScanResponse.newBuilder();
 
     if (listContent == null) {
       return responseBuilder.build();

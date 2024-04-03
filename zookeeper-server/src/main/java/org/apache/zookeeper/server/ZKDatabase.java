@@ -332,8 +332,13 @@ public class ZKDatabase {
      * @return the last valid zxid.
      * @throws IOException
      */
-    public long fastForwardDataBase() throws IOException {
-        long zxid = snapLog.fastForwardFromEdits(dataTree, sessionsWithTimeouts, commitProposalPlaybackListener);
+    public long fastForwardDataBase(long serverId) throws IOException {
+        long zxid = -1;
+        if (spiralEnabled) {
+            zxid = spiralSnapLog.fastForwardFromEdits(dataTree, serverId);
+        } else {
+            zxid = snapLog.fastForwardFromEdits(dataTree, sessionsWithTimeouts, commitProposalPlaybackListener);
+        }
         initialized = true;
         return zxid;
     }

@@ -212,7 +212,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     protected int maxSessionTimeout = -1;
     /** Socket listen backlog. Value of -1 indicates unset */
     protected int listenBacklog = -1;
-    protected SessionTracker sessionTracker;
+    protected SessionTracker sessionTracker = null;
     protected SpiralSessionTrackerImpl spiralSessionTracker = null;
     private FileTxnSnapLog txnLogFactory = null;
     private ZKDatabase zkDb;
@@ -607,7 +607,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         File snapFile = null;
         try {
             if (fastForwardFromEdits) {
-                zkDb.fastForwardDataBase();
+                zkDb.fastForwardDataBase(serverId);
             }
             snapFile = txnLogFactory.save(zkDb.getDataTree(), zkDb.getSessionWithTimeOuts(), syncSnap);
         } catch (IOException e) {
@@ -949,7 +949,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
 
     protected void createSessionTracker() {
         if (spiralEnabled) {
-                        spiralSessionTracker = new SpiralSessionTrackerImpl(this, zkDb.getSessionWithTimeOuts(), tickTime, createSessionTrackerServerId, getZooKeeperServerListener(), spiralClient);
+            spiralSessionTracker = new SpiralSessionTrackerImpl(this, zkDb.getSessionWithTimeOuts(), tickTime, createSessionTrackerServerId, getZooKeeperServerListener(), spiralClient);
         } else {
             sessionTracker = new SessionTrackerImpl(this, zkDb.getSessionWithTimeOuts(), tickTime, createSessionTrackerServerId, getZooKeeperServerListener());
         }
@@ -1051,7 +1051,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
             }
         } else if (sessionTracker != null) {
             sessionTracker.shutdown();
-        }
+            }
         if (firstProcessor != null) {
             firstProcessor.shutdown();
         }
@@ -1070,7 +1070,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
                 //    cleared anyway before loading the snapshot
                 try {
                     //This will fast forward the database to the latest recorded transactions
-                    zkDb.fastForwardDataBase();
+                    zkDb.fastForwardDataBase(serverId);
                 } catch (IOException e) {
                     LOG.error("Error updating DB", e);
                     zkDb.clear();

@@ -17,6 +17,9 @@
  */
 package org.apache.zookeeper.audit;
 
+import org.apache.zookeeper.ZKBTest;
+
+
 /**
  * Audit log performance reading
  */

@@ -22,9 +22,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.io.IOException;
 import java.security.KeyStore;
+import org.apache.zookeeper.ZKBTest;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+@ZKBTest
 public class BCFKSFileLoaderTest extends BaseX509ParameterizedTestCase {
 
 

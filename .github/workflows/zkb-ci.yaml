@@ -39,7 +39,7 @@ jobs:
         profile:
           - name: 'full-zkb-build-jdk8'
             jdk: 8
-            args: 'install -Dgroups=zkbridge-tests'
+            args: 'install -Dsurefire-forkcount=1 -Dgroups=zkbridge-tests'
       fail-fast: false
     timeout-minutes: 360
     runs-on: ubuntu-latest

@@ -46,6 +46,7 @@ import org.slf4j.LoggerFactory;
  *  not proceed to read its transaction log files
  *  Test that zxid == -1 in the presence of emptied/deleted snapshots
  */
+// RR:TODO: Currently multiple snapshots are not created in spiral so these tests are not applicable.
 public class EmptiedSnapshotRecoveryTest extends ZKTestCase implements Watcher {
 
     private static final Logger LOG = LoggerFactory.getLogger(RestoreCommittedLogTest.class);

@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.zip.CheckedInputStream;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.PortAssignment;
+import org.apache.zookeeper.ZKBEnableDisableTest;
 import org.apache.zookeeper.ZKBServerParameterizedTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.ZooDefs;
@@ -36,6 +37,8 @@ import static org.apache.zookeeper.server.persistence.FileSnap.*;
 import static org.apache.zookeeper.test.ClientBase.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+// RR:TODO: This is not applicable in current POC because restoreSnapshot() method used only in
+// admin tool and currently not implemented for ZKBridge.
 public class ZookeeperServerRestoreTest extends ZKTestCase {
     private static final String BASE_PATH = "/restoreFromSnapshotTest";
     private static final int NODE_COUNT = 10;
@@ -125,7 +128,7 @@ public class ZookeeperServerRestoreTest extends ZKTestCase {
         }
     }
 
-    @ZKBServerParameterizedTest
+    @Test
     public void testRestoreFromSnapshot_nulInputStream(ZooKeeperServer zks) {
         assertThrows(IllegalArgumentException.class, () -> zks.restoreFromSnapshot(null));
     }

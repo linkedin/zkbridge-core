@@ -86,6 +86,8 @@ public class InvalidSnapshotTest extends ZKTestCase {
      * test the snapshot
      * @throws Exception an exception could be expected
      */
+    // RR:TODO: This test case involves copying old snapshot file and restoring ZKS from that snapshot. 
+    // this support is not added yet in ZKBridge.
     @Test
     public void testSnapshot() throws Exception {
         File origSnapDir = new File(testData, "invalidsnap");

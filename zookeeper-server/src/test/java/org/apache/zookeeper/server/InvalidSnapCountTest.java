@@ -37,6 +37,8 @@ import org.slf4j.LoggerFactory;
  * Test stand-alone server.
  *
  */
+// RR:TODO: In current POC, multiple snapshots are not taken periodically based on snapCount.
+// But once we add this functionality, we can test this feature.
 public class InvalidSnapCountTest extends ZKTestCase implements Watcher {
 
     protected static final Logger LOG = LoggerFactory.getLogger(InvalidSnapCountTest.class);

@@ -149,8 +149,7 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
                 factory.startup(zooKeeperServer);
                 return factory;
             } catch (Exception e) {
-                LOG.error("error while starting server on adminServerPort: {}", adminServerPort, e);
-                throw e;
+                throw new RuntimeException("error while starting server on adminServerPort: " + adminServerPort, e);
             }
         }
 

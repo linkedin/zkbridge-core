@@ -19,13 +19,13 @@ package org.apache.zookeeper.example;
  * under the License.
  */
 
-import java.io.IOException;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.client.ZKClientConfig;
 import org.apache.zookeeper.client.ZooKeeperBuilder;
 import org.apache.zookeeper.data.Stat;
+import org.apache.zookeeper.server.embedded.RecordingWatcher;
 import org.apache.zookeeper.server.embedded.ZKBridgeClusterEmbedded;
 import org.apache.zookeeper.server.embedded.ZKBridgeClusterEmbedded.ZKBridgeClusterEmbeddedBuilder;
 import org.apache.zookeeper.server.embedded.spiral.InMemoryFS;
@@ -94,7 +94,7 @@ public class Quickstart {
 
   private static ZooKeeper buildClientForServer(ZKBridgeClusterEmbedded zkBridgeCluster, int serverId) throws Exception {
     ZooKeeper client = new ZooKeeperBuilder(zkBridgeCluster.getConnectionString(serverId), SESSION_TIMEOUT_MS)
-        .withDefaultWatcher(new SimpleWatcher())
+        .withDefaultWatcher(new RecordingWatcher())
         .withClientConfig(new ZKClientConfig())
         .build();
 

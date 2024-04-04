@@ -20,7 +20,7 @@ package org.apache.zookeeper.server;
 
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.PortAssignment;
-import org.apache.zookeeper.ZKBEnableDisableTest;
+import org.apache.zookeeper.ZKBServerParameterizedTest;
 import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.ZooDefs.Ids;
@@ -35,10 +35,10 @@ public class ZookeeperServerSnapshotTest extends ZKTestCase {
     private static final int NODE_COUNT = 10;
     private static final String HOST_PORT = "127.0.0.1:" + PortAssignment.unique();
 
-    @ZKBEnableDisableTest
-    public void testTakeSnapshot(boolean spiralEnabled) throws Exception {
+    @ZKBServerParameterizedTest
+    public void testTakeSnapshot(ZooKeeperServer zks) throws Exception {
         ZooKeeperServer.setSerializeLastProcessedZxidEnabled(true);
-        ZooKeeperServer zks = getZooKeeperServer(spiralEnabled);
+
         final int port = Integer.parseInt(HOST_PORT.split(":")[1]);
         final ServerCnxnFactory serverCnxnFactory = ServerCnxnFactory.createFactory(port, -1);
         ZooKeeper zk = null;

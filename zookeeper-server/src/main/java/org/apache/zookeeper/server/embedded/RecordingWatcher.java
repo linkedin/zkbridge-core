@@ -1,4 +1,4 @@
-package org.apache.zookeeper.example;
+package org.apache.zookeeper.server.embedded;
 
 import java.util.concurrent.LinkedBlockingQueue;
 import org.apache.zookeeper.WatchedEvent;
@@ -10,9 +10,9 @@ import org.slf4j.LoggerFactory;
 /**
  * A simple {@link Watcher} implementation with just aggregates the watch events.
  */
-public class SimpleWatcher implements Watcher {
+public class RecordingWatcher implements Watcher {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SimpleWatcher.class);
+  private static final Logger LOG = LoggerFactory.getLogger(RecordingWatcher.class);
 
   LinkedBlockingQueue<WatchedEvent> events = new LinkedBlockingQueue<>();
 

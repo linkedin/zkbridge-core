@@ -65,6 +65,7 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
     public final List<Integer> clientPorts;
     public final List<Integer> adminPorts;
     private final InMemoryFS inMemoryFS;
+    private final SpiralClient spiralClient;
     private final List<ServerCnxnFactory> servers;
 
     public ZooKeeper[] zkClients;
@@ -73,6 +74,7 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
         InMemoryFS inMemoryFS, Integer sessionTimeoutMs, List<ServerCnxnFactory> servers,
         List<Integer> clientPorts, List<Integer> adminPorts) {
         this.inMemoryFS = inMemoryFS;
+        this.spiralClient = new InMemorySpiralClient(inMemoryFS);
         this.sessionTimeoutMs = sessionTimeoutMs == null ? SESSION_TIMEOUT_MS : sessionTimeoutMs;
         this.servers = servers;
         this.clientPorts = clientPorts;
@@ -147,6 +149,10 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
 
     public InMemoryFS getInMemoryFS() {
         return inMemoryFS;
+    }
+
+    public SpiralClient getSpiralClient() {
+        return spiralClient;
     }
 
     public String getConnectionString(int serverId) {

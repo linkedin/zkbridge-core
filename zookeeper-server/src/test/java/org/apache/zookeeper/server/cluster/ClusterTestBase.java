@@ -46,36 +46,16 @@ public class ClusterTestBase extends ZKTestCase implements Watcher {
 
     protected static final Logger LOG = LoggerFactory.getLogger(ClusterTestBase.class);
 
-    protected ZKBridgeClusterEmbedded cluster;
-    protected InMemoryFS inMemoryFS;
-    protected SpiralClient inMemSpiralClient;
-
-    @AfterEach
-    public void tearDown() throws Exception {
-        if (cluster == null) {
-            LOG.info("No cluster to shutdown!");
-            return;
-        }
-        cluster.close();
+    protected ZKBridgeClusterEmbedded launchServers(int numServers) {
+        return launchServers(numServers, null);
     }
 
-    protected void launchServers(int numServers) {
-        launchServers(numServers, null);
-    }
-
-    protected void launchServers(int numServers, Integer sessionTimeoutMs) {
+    protected ZKBridgeClusterEmbedded launchServers(int numServers, Integer sessionTimeoutMs) {
         try {
-            if (cluster != null) {
-                cluster.close();
-            }
-
-            cluster = new ZKBridgeClusterEmbedded.ZKBridgeClusterEmbeddedBuilder()
+            return new ZKBridgeClusterEmbedded.ZKBridgeClusterEmbeddedBuilder()
                 .setNumServers(numServers)
                 .setSessionTimeoutMs(sessionTimeoutMs)
                 .build();
-
-            inMemoryFS = cluster.getInMemoryFS();
-            inMemSpiralClient = new InMemorySpiralClient(inMemoryFS);
         } catch (Exception e) {
             throw new RuntimeException("Error while setting up ZKB Cluster", e);
         }
@@ -95,7 +75,7 @@ public class ClusterTestBase extends ZKTestCase implements Watcher {
         }
     }
 
-    protected void waitForAll(ZooKeeper.States state) throws InterruptedException {
+    protected void waitForAll(ZKBridgeClusterEmbedded cluster, ZooKeeper.States state) throws InterruptedException {
         waitForAll(cluster.zkClients, state);
     }
 
@@ -129,10 +109,10 @@ public class ClusterTestBase extends ZKTestCase implements Watcher {
         LOG.error(sbBuilder.toString());
     }
 
-    public void assertSessionSize(int expectedSessions) {
+    public void assertSessionSize(ZKBridgeClusterEmbedded cluster, int expectedSessions) {
         Assert.assertEquals(
             expectedSessions,
-            inMemSpiralClient.scanBucket(SpiralBucket.SESSIONS.getBucketName(), null).getKeyValuesCount());
+            cluster.getSpiralClient().scanBucket(SpiralBucket.SESSIONS.getBucketName(), null).getKeyValuesCount());
     }
 
 }

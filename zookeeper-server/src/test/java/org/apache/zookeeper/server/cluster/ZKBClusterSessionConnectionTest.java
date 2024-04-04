@@ -2,6 +2,7 @@ package org.apache.zookeeper.server.cluster;
 
 import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.server.embedded.ZKBridgeClusterEmbedded;
 import org.junit.Ignore;
 import org.junit.jupiter.api.Test;
 
@@ -14,27 +15,27 @@ public class ZKBClusterSessionConnectionTest extends ClusterTestBase {
 
   @Ignore
   void testValidateSessionCreation() throws InterruptedException {
-    launchServers(3);
+    ZKBridgeClusterEmbedded cluster = launchServers(3);
 
     // connect client-1 with server-0
     ZooKeeper client1 = cluster.getOrBuildClient(0);
     waitForOne(client1, CONNECTED);
-    assertSessionSize(1);
+    assertSessionSize(cluster, 1);
 
     // connect client-2 with server-0
     ZooKeeper client2 = cluster.getOrBuildClient(1);
     waitForOne(client2, CONNECTED);
-    assertSessionSize(2);
+    assertSessionSize(cluster, 2);
   }
 
   @Test
   void testValidateSessionRestorationWhenServerRestart() throws Exception {
-    launchServers(3);
+    ZKBridgeClusterEmbedded cluster = launchServers(3);
 
     // connect client-1 with server-0
     ZooKeeper client1 = cluster.getOrBuildClient(0);
     waitForOne(client1, CONNECTED);
-    assertSessionSize(1);
+    assertSessionSize(cluster, 1);
 
     long sessionId = client1.getSessionId();
 
@@ -49,12 +50,12 @@ public class ZKBClusterSessionConnectionTest extends ClusterTestBase {
   @Test
   void testValidateSessionWithoutFailoverWhenPrimaryServerFails() throws Exception {
     int sessionTimeoutMs = 2_000;
-    launchServers(3, sessionTimeoutMs);
+    ZKBridgeClusterEmbedded cluster = launchServers(3, sessionTimeoutMs);
 
     // connect client-1 with server-0, without failover servers
     ZooKeeper client1 = cluster.getOrBuildClient(0);
     waitForOne(client1, CONNECTED);
-    assertSessionSize(1);
+    assertSessionSize(cluster, 1);
 
     // shutdown ZKB server-0
     cluster.shutdownServer(0);
@@ -67,12 +68,12 @@ public class ZKBClusterSessionConnectionTest extends ClusterTestBase {
   @Test
   void testValidateSessionFailoverWhenPrimaryServerFails() throws Exception {
     int sessionTimeoutMs = 2_000;
-    launchServers(3, sessionTimeoutMs);
+    ZKBridgeClusterEmbedded cluster = launchServers(3, sessionTimeoutMs);
 
     // connect client-1 with server-0, failover servers: server-1
     ZooKeeper client1 = cluster.getOrBuildClient(0, new int[] { 1 } /* failover server Ids */);
     waitForOne(client1, CONNECTED);
-    assertSessionSize(1);
+    assertSessionSize(cluster, 1);
 
     long sessionId = client1.getSessionId();
 

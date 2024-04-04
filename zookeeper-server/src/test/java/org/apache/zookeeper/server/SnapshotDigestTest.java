@@ -39,6 +39,8 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// RR:TODO: Current POC doesn't implement snapshot digest feature while storing snapshot. Once that
+// feature is implemented, we can test this feature.
 public class SnapshotDigestTest extends ClientBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(SnapshotDigestTest.class);

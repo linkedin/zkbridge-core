@@ -41,6 +41,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// RR:TODO: when multi-writer test support added then migrate this test.
 public class ZkDatabaseCorruptionTest extends ZKTestCase {
 
     protected static final Logger LOG = LoggerFactory.getLogger(ZkDatabaseCorruptionTest.class);

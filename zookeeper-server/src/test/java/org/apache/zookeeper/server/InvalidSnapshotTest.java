@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
  * invalidated by corruption or if the server crashes while generating the
  * snapshot.
  */
+// RR:TODO: In current POC, multiple snapshots are not taken periodically based on snapCount.
 public class InvalidSnapshotTest extends ClientBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(InvalidSnapshotTest.class);

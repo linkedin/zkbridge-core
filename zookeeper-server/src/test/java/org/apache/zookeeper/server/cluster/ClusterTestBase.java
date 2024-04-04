@@ -65,6 +65,10 @@ public class ClusterTestBase extends ZKTestCase implements Watcher {
 
     protected void launchServers(int numServers, Integer sessionTimeoutMs) {
         try {
+            if (cluster != null) {
+                cluster.close();
+            }
+
             cluster = new ZKBridgeClusterEmbedded.ZKBridgeClusterEmbeddedBuilder()
                 .setNumServers(numServers)
                 .setSessionTimeoutMs(sessionTimeoutMs)

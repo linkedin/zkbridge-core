@@ -64,33 +64,6 @@ public class FinalRequestProcessorTest {
     public void setUp() throws KeeperException.NoNodeException, IOException {
         testACLs.clear();
         testACLs.addAll(Arrays.asList(new ACL(ZooDefs.Perms.ALL, new Id("digest", "user:secrethash")), new ACL(ZooDefs.Perms.ADMIN, new Id("digest", "adminuser:adminsecret")), new ACL(ZooDefs.Perms.READ, new Id("world", "anyone"))));
-
-        // ZooKeeperServer zks = new ZooKeeperServer();
-        // ZKDatabase db = mock(ZKDatabase.class);
-        // String testPath = "/testPath";
-        // when(db.getNode(eq(testPath))).thenReturn(new DataNode());
-        // when(db.getACL(eq(testPath), any(Stat.class))).thenReturn(testACLs);
-        // when(db.aclForNode(any(DataNode.class))).thenReturn(testACLs);
-        // zks.setZKDatabase(db);
-        // processor = new FinalRequestProcessor(zks);
-
-        // cnxn = mock(ServerCnxn.class);
-        // doAnswer(new Answer() {
-        //     @Override
-        //     public Object answer(InvocationOnMock invocationOnMock) {
-        //         replyHeaders[0] = invocationOnMock.getArgument(0);
-        //         responseRecord[0] = invocationOnMock.getArgument(1);
-        //         return null;
-        //     }
-        // }).when(cnxn).sendResponse(any(), any(), anyString());
-
-        // GetACLRequest getACLRequest = new GetACLRequest();
-        // getACLRequest.setPath(testPath);
-        // ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        // BinaryOutputArchive boa = BinaryOutputArchive.getArchive(baos);
-        // getACLRequest.serialize(boa, "request");
-        // baos.close();
-        // bb = ByteBuffer.wrap(baos.toByteArray());
     }
 
     public void zkbSetup(ZooKeeperServer zks) throws KeeperException.NoNodeException, IOException {

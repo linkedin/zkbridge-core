@@ -29,6 +29,7 @@ import jline.internal.Log;
 import org.apache.commons.io.FileUtils;
 import org.apache.zookeeper.PortAssignment;
 import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.client.ZKClientConfig;
@@ -107,7 +108,7 @@ public class ClientSSLReloadTest extends ZKTestCase {
      * 7) Next, create a new ZK client with updated keystore & truststore paths (keyStoreFile2 and trustStoreFile2).
      * 8) Server should accept the connection on the secure client port.
      */
-    @Test
+    @ZKBTest
     public void certficateReloadTest() throws Exception {
 
         final Properties configZookeeper = getServerConfig();

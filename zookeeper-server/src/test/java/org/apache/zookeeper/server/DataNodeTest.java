@@ -22,8 +22,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.fail;
 import java.util.Set;
+
+import org.apache.zookeeper.ZKBTest;
 import org.junit.jupiter.api.Test;
 
+@ZKBTest
 public class DataNodeTest {
 
     @Test

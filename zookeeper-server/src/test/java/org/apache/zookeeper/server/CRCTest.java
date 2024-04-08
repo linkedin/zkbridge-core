@@ -102,6 +102,8 @@ public class CRCTest extends ZKTestCase {
      * file
      * @throws Exception
      */
+    // RR:TODO: We don't have to do this in ZKBridge world but we need some test case which will test if snapshot or
+    // logs stored in spiral are corrupted.
     @Test
     public void testChecksums(@TempDir File tmpDir) throws Exception {
         ClientBase.setupTestEnv();

@@ -1389,11 +1389,15 @@ public class DataTree {
         }
     }
 
+    public void serializeAclsOnSpiral(OutputArchive oa) throws IOException {
+        aclCache.serialize(oa);
+    }
+    
     public void serializeOnSpiral(SpiralClient spiralClient, String nodeDataBucket, String aclCacheBucket) throws IOException {
         // Serialize and store aclCache on spiral
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         BinaryOutputArchive boa = BinaryOutputArchive.getArchive(bos);
-        aclCache.serialize(boa);
+        serializeAclsOnSpiral(boa);
         spiralClient.put(aclCacheBucket, "aclCache", bos.toByteArray());
         
         // Serialize whole dataTree and store on spiral
@@ -1451,11 +1455,15 @@ public class DataTree {
         aclCache.purgeUnused();
     }
 
+    public void deserializeAclsFromSpiral(InputArchive ia) throws IOException {
+        aclCache.deserialize(ia);
+    }
+
     public void deserializeFromSpiral(SpiralClient spiralClient, String nodeDataBucket, String aclCacheBucket) throws IOException {
         byte[] aclCacheBuff = spiralClient.get(aclCacheBucket, "aclCache");
         ByteArrayInputStream bis = new ByteArrayInputStream(aclCacheBuff);
         BinaryInputArchive binArchive = BinaryInputArchive.getArchive(bis);
-        aclCache.deserialize(binArchive);
+        deserializeAclsFromSpiral(binArchive);
         nodes.clear();
         pTrie.clear();
         nodeDataSize.set(0);

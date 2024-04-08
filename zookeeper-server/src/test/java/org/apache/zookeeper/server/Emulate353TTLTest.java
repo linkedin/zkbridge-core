@@ -23,10 +23,13 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.TestableZooKeeper;
+import org.apache.zookeeper.ZKBServerParameterizedTest;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.test.ClientBase;
@@ -43,8 +46,7 @@ public class Emulate353TTLTest extends ClientBase {
     public void setUp() throws Exception {
         System.setProperty(EphemeralType.EXTENDED_TYPES_ENABLED_PROPERTY, "true");
         System.setProperty(EphemeralType.TTL_3_5_3_EMULATION_PROPERTY, "true");
-        super.setUp();
-        zk = createClient();
+        super.setUpWithoutServer();
     }
 
     @AfterEach
@@ -56,8 +58,11 @@ public class Emulate353TTLTest extends ClientBase {
         zk.close();
     }
 
-    @Test
-    public void testCreate() throws KeeperException, InterruptedException {
+    @ZKBServerParameterizedTest
+    public void testCreate(ZooKeeperServer zks) throws KeeperException, InterruptedException, IOException {
+        super.startServer(zks);
+        zk = createClient();
+
         Stat stat = new Stat();
         zk.create("/foo", new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_WITH_TTL, stat, 100);
         assertEquals(0, stat.getEphemeralOwner());
@@ -72,8 +77,11 @@ public class Emulate353TTLTest extends ClientBase {
         assertNull(zk.exists("/foo", false), "Ttl node should have been deleted");
     }
 
-    @Test
-    public void test353TTL() throws KeeperException, InterruptedException {
+    @ZKBServerParameterizedTest
+    public void test353TTL(ZooKeeperServer zks) throws KeeperException, InterruptedException, IOException {
+        super.startServer(zks);
+        zk = createClient();
+
         DataTree dataTree = serverFactory.zkServer.getZKDatabase().dataTree;
         long ephemeralOwner = EphemeralTypeEmulate353.ttlToEphemeralOwner(100);
         dataTree.createNode("/foo", new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, ephemeralOwner, dataTree.getNode("/").stat.getCversion()
@@ -89,13 +97,19 @@ public class Emulate353TTLTest extends ClientBase {
         assertNull(zk.exists("/foo", false), "Ttl node should have been deleted");
     }
 
-    @Test
-    public void testEphemeralOwner_emulationTTL() {
+    @ZKBServerParameterizedTest
+    public void testEphemeralOwner_emulationTTL(ZooKeeperServer zks) throws IOException, InterruptedException {
+        super.startServer(zks);
+        zk = createClient();
+
         assertThat(EphemeralType.get(-1), equalTo(EphemeralType.TTL));
     }
 
-    @Test
-    public void testEphemeralOwner_emulationContainer() {
+    @ZKBServerParameterizedTest
+    public void testEphemeralOwner_emulationContainer(ZooKeeperServer zks) throws IOException, InterruptedException {
+        super.startServer(zks);
+        zk = createClient();
+
         assertThat(EphemeralType.get(EphemeralType.CONTAINER_EPHEMERAL_OWNER), equalTo(EphemeralType.CONTAINER));
     }
 

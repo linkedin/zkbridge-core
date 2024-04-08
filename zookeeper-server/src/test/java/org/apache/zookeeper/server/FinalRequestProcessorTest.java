@@ -36,6 +36,8 @@ import java.util.List;
 import org.apache.jute.BinaryOutputArchive;
 import org.apache.jute.Record;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.KeeperException.NoNodeException;
+import org.apache.zookeeper.ZKBServerParameterizedTest;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Id;
@@ -63,7 +65,35 @@ public class FinalRequestProcessorTest {
         testACLs.clear();
         testACLs.addAll(Arrays.asList(new ACL(ZooDefs.Perms.ALL, new Id("digest", "user:secrethash")), new ACL(ZooDefs.Perms.ADMIN, new Id("digest", "adminuser:adminsecret")), new ACL(ZooDefs.Perms.READ, new Id("world", "anyone"))));
 
-        ZooKeeperServer zks = new ZooKeeperServer();
+        // ZooKeeperServer zks = new ZooKeeperServer();
+        // ZKDatabase db = mock(ZKDatabase.class);
+        // String testPath = "/testPath";
+        // when(db.getNode(eq(testPath))).thenReturn(new DataNode());
+        // when(db.getACL(eq(testPath), any(Stat.class))).thenReturn(testACLs);
+        // when(db.aclForNode(any(DataNode.class))).thenReturn(testACLs);
+        // zks.setZKDatabase(db);
+        // processor = new FinalRequestProcessor(zks);
+
+        // cnxn = mock(ServerCnxn.class);
+        // doAnswer(new Answer() {
+        //     @Override
+        //     public Object answer(InvocationOnMock invocationOnMock) {
+        //         replyHeaders[0] = invocationOnMock.getArgument(0);
+        //         responseRecord[0] = invocationOnMock.getArgument(1);
+        //         return null;
+        //     }
+        // }).when(cnxn).sendResponse(any(), any(), anyString());
+
+        // GetACLRequest getACLRequest = new GetACLRequest();
+        // getACLRequest.setPath(testPath);
+        // ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        // BinaryOutputArchive boa = BinaryOutputArchive.getArchive(baos);
+        // getACLRequest.serialize(boa, "request");
+        // baos.close();
+        // bb = ByteBuffer.wrap(baos.toByteArray());
+    }
+
+    public void zkbSetup(ZooKeeperServer zks) throws KeeperException.NoNodeException, IOException {
         ZKDatabase db = mock(ZKDatabase.class);
         String testPath = "/testPath";
         when(db.getNode(eq(testPath))).thenReturn(new DataNode());
@@ -91,8 +121,9 @@ public class FinalRequestProcessorTest {
         bb = ByteBuffer.wrap(baos.toByteArray());
     }
 
-    @Test
-    public void testACLDigestHashHiding_NoAuth_WorldCanRead() {
+    @ZKBServerParameterizedTest
+    public void testACLDigestHashHiding_NoAuth_WorldCanRead(ZooKeeperServer zks) throws NoNodeException, IOException {
+        zkbSetup(zks);
         // Arrange
 
         // Act
@@ -103,8 +134,9 @@ public class FinalRequestProcessorTest {
         assertMasked(true);
     }
 
-    @Test
-    public void testACLDigestHashHiding_NoAuth_NoWorld() {
+    @ZKBServerParameterizedTest
+    public void testACLDigestHashHiding_NoAuth_NoWorld(ZooKeeperServer zks) throws NoNodeException, IOException {
+        zkbSetup(zks);
         // Arrange
         testACLs.remove(2);
 
@@ -116,8 +148,9 @@ public class FinalRequestProcessorTest {
         assertThat(KeeperException.Code.get(replyHeaders[0].getErr()), equalTo(KeeperException.Code.NOAUTH));
     }
 
-    @Test
-    public void testACLDigestHashHiding_UserCanRead() {
+    @ZKBServerParameterizedTest
+    public void testACLDigestHashHiding_UserCanRead(ZooKeeperServer zks) throws NoNodeException, IOException {
+        zkbSetup(zks);
         // Arrange
         List<Id> authInfo = new ArrayList<>();
         authInfo.add(new Id("digest", "otheruser:somesecrethash"));
@@ -130,8 +163,9 @@ public class FinalRequestProcessorTest {
         assertMasked(true);
     }
 
-    @Test
-    public void testACLDigestHashHiding_UserCanAll() {
+    @ZKBServerParameterizedTest
+    public void testACLDigestHashHiding_UserCanAll(ZooKeeperServer zks) throws NoNodeException, IOException {
+        zkbSetup(zks);
         // Arrange
         List<Id> authInfo = new ArrayList<>();
         authInfo.add(new Id("digest", "user:secrethash"));
@@ -144,8 +178,9 @@ public class FinalRequestProcessorTest {
         assertMasked(false);
     }
 
-    @Test
-    public void testACLDigestHashHiding_AdminUser() {
+    @ZKBServerParameterizedTest
+    public void testACLDigestHashHiding_AdminUser(ZooKeeperServer zks) throws NoNodeException, IOException {
+        zkbSetup(zks);
         // Arrange
         List<Id> authInfo = new ArrayList<>();
         authInfo.add(new Id("digest", "adminuser:adminsecret"));
@@ -158,8 +193,9 @@ public class FinalRequestProcessorTest {
         assertMasked(false);
     }
 
-    @Test
-    public void testACLDigestHashHiding_OnlyAdmin() {
+    @ZKBServerParameterizedTest
+    public void testACLDigestHashHiding_OnlyAdmin(ZooKeeperServer zks) throws NoNodeException, IOException {
+        zkbSetup(zks);
         // Arrange
         testACLs.clear();
         testACLs.addAll(Arrays.asList(new ACL(ZooDefs.Perms.READ, new Id("digest", "user:secrethash")), new ACL(ZooDefs.Perms.ADMIN, new Id("digest", "adminuser:adminsecret"))));

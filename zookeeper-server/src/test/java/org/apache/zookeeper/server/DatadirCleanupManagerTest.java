@@ -29,6 +29,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+// RR:TODO: Currently we don't purge snapshots are shared txn logs stored in Spiral but whenever we add this feature, we should add tests for that as well.
 public class DatadirCleanupManagerTest extends ZKTestCase {
 
     private DatadirCleanupManager purgeMgr;

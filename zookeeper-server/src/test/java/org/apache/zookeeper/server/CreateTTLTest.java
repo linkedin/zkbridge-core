@@ -23,6 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
+
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -36,6 +38,7 @@ import org.apache.zookeeper.KeeperException.Code;
 import org.apache.zookeeper.Op;
 import org.apache.zookeeper.OpResult;
 import org.apache.zookeeper.TestableZooKeeper;
+import org.apache.zookeeper.ZKBServerParameterizedTest;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.proto.CreateResponse;
@@ -65,8 +68,9 @@ public class CreateTTLTest extends ClientBase {
         System.setProperty(
             EphemeralType.EXTENDED_TYPES_ENABLED_PROPERTY,
             disabledTests.contains(testInfo.getTestMethod().get().getName()) ? "false" : "true");
-        super.setUpWithServerId(254);
-        zk = createClient();
+        // super.setUpWithServerId(254);
+        // zk = createClient();
+        super.setUpWithoutServer();
     }
 
     @AfterEach
@@ -77,8 +81,11 @@ public class CreateTTLTest extends ClientBase {
         zk.close();
     }
 
-    @Test
-    public void testCreate() throws KeeperException, InterruptedException {
+    @ZKBServerParameterizedTest
+    public void testCreate(ZooKeeperServer zks) throws KeeperException, InterruptedException, IOException {
+        super.startServer(zks);
+        zk = createClient();
+
         Stat stat = new Stat();
         zk.create("/foo", new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_WITH_TTL, stat, 100);
         assertEquals(0, stat.getEphemeralOwner());
@@ -93,8 +100,10 @@ public class CreateTTLTest extends ClientBase {
         assertNull(zk.exists("/foo", false), "Ttl node should have been deleted");
     }
 
-    @Test
-    public void testBadTTLs() throws InterruptedException, KeeperException {
+    @ZKBServerParameterizedTest
+    public void testBadTTLs(ZooKeeperServer zks) throws InterruptedException, KeeperException, IOException {
+        super.startServer(zks);
+        zk = createClient();
         RequestHeader h = new RequestHeader(1, ZooDefs.OpCode.createTTL);
 
         String path = "/bad_ttl";
@@ -113,8 +122,11 @@ public class CreateTTLTest extends ClientBase {
         assertNull(zk.exists(path, false), "An invalid CreateTTLRequest should not result in znode creation");
     }
 
-    @Test
-    public void testMaxTTLs() throws InterruptedException, KeeperException {
+    @ZKBServerParameterizedTest
+    public void testMaxTTLs(ZooKeeperServer zks) throws InterruptedException, KeeperException, IOException {
+        super.startServer(zks);
+        zk = createClient();
+
         RequestHeader h = new RequestHeader(1, ZooDefs.OpCode.createTTL);
 
         String path = "/bad_ttl";
@@ -125,8 +137,11 @@ public class CreateTTLTest extends ClientBase {
         assertNotNull(zk.exists(path, false), "Node should exist");
     }
 
-    @Test
-    public void testCreateSequential() throws KeeperException, InterruptedException {
+    @ZKBServerParameterizedTest
+    public void testCreateSequential(ZooKeeperServer zks) throws KeeperException, InterruptedException, IOException {
+        super.startServer(zks);
+        zk = createClient();
+
         Stat stat = new Stat();
         String path = zk.create("/foo", new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL_WITH_TTL, stat, 100);
         assertEquals(0, stat.getEphemeralOwner());
@@ -141,8 +156,11 @@ public class CreateTTLTest extends ClientBase {
         assertNull(zk.exists(path, false), "Ttl node should have been deleted");
     }
 
-    @Test
-    public void testCreateAsync() throws KeeperException, InterruptedException {
+    @ZKBServerParameterizedTest
+    public void testCreateAsync(ZooKeeperServer zks) throws KeeperException, InterruptedException, IOException {
+        super.startServer(zks);
+        zk = createClient();
+
         AsyncCallback.Create2Callback callback = (rc, path, ctx, name, stat) -> {
             // NOP
         };
@@ -158,8 +176,11 @@ public class CreateTTLTest extends ClientBase {
         assertNull(zk.exists("/foo", false), "Ttl node should have been deleted");
     }
 
-    @Test
-    public void testModifying() throws KeeperException, InterruptedException {
+    @ZKBServerParameterizedTest
+    public void testModifying(ZooKeeperServer zks) throws KeeperException, InterruptedException, IOException {
+        super.startServer(zks);
+        zk = createClient();
+
         Stat stat = new Stat();
         zk.create("/foo", new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_WITH_TTL, stat, 100);
         assertEquals(0, stat.getEphemeralOwner());
@@ -181,8 +202,11 @@ public class CreateTTLTest extends ClientBase {
         assertNull(zk.exists("/foo", false), "Ttl node should have been deleted");
     }
 
-    @Test
-    public void testMulti() throws KeeperException, InterruptedException {
+    @ZKBServerParameterizedTest
+    public void testMulti(ZooKeeperServer zks) throws KeeperException, InterruptedException, IOException {
+        super.startServer(zks);
+        zk = createClient();
+
         CreateOptions options = CreateOptions
                 .newBuilder(ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_WITH_TTL)
                 .withTtl(100)
@@ -226,8 +250,11 @@ public class CreateTTLTest extends ClientBase {
         assertNotNull(zk.exists("/c", false), "node should never be deleted");
     }
 
-    @Test
-    public void testBadUsage() throws KeeperException, InterruptedException {
+    @ZKBServerParameterizedTest
+    public void testBadUsage(ZooKeeperServer zks) throws KeeperException, InterruptedException, IOException {
+        super.startServer(zks);
+        zk = createClient();
+
         for (CreateMode createMode : CreateMode.values()) {
             try {
                 zk.create("/foo", new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, createMode, new Stat(), createMode.isTTL() ? 0 : 100);
@@ -265,8 +292,11 @@ public class CreateTTLTest extends ClientBase {
         }
     }
 
-    @Test
-    public void testDisabled() throws KeeperException, InterruptedException {
+    @ZKBServerParameterizedTest
+    public void testDisabled(ZooKeeperServer zks) throws KeeperException, InterruptedException, IOException {
+        super.startServer(zks);
+        zk = createClient();
+        
         assertThrows(KeeperException.UnimplementedException.class, () -> {
             // note, setUp() enables this test based on the test name
             zk.create("/foo", new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_WITH_TTL, new Stat(), 100);

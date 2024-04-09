@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @ZKBTest
 public class ZKBClusterSessionConnectionTest extends ClusterTestBase {
 
-  @Ignore
+  @Test
   void testValidateSessionCreation() throws InterruptedException {
     ZKBridgeClusterEmbedded cluster = launchServers(3);
 

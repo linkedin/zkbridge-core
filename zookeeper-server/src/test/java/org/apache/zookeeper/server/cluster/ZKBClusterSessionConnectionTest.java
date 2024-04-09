@@ -49,7 +49,8 @@ public class ZKBClusterSessionConnectionTest extends ClusterTestBase {
 
   @Test
   void testValidateSessionWithoutFailoverWhenPrimaryServerFails() throws Exception {
-    int sessionTimeoutMs = 2_000;
+    // Session timeout for clients.
+    int sessionTimeoutMs = 5_000;
     ZKBridgeClusterEmbedded cluster = launchServers(3, sessionTimeoutMs);
 
     // connect client-1 with server-0, without failover servers
@@ -67,7 +68,7 @@ public class ZKBClusterSessionConnectionTest extends ClusterTestBase {
 
   @Test
   void testValidateSessionFailoverWhenPrimaryServerFails() throws Exception {
-    int sessionTimeoutMs = 2_000;
+    int sessionTimeoutMs = 5_000;
     ZKBridgeClusterEmbedded cluster = launchServers(3, sessionTimeoutMs);
 
     // connect client-1 with server-0, failover servers: server-1

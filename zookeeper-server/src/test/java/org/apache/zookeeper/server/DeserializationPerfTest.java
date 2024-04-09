@@ -25,7 +25,11 @@ import java.io.IOException;
 import org.apache.jute.BinaryInputArchive;
 import org.apache.jute.BinaryOutputArchive;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.ZKBEnableDisableTest;
 import org.apache.zookeeper.ZKTestCase;
+import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategy.InMemorySpiralClientStrategy;
+import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
+import org.apache.zookeeper.spiral.SpiralClient;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,28 +38,38 @@ public class DeserializationPerfTest extends ZKTestCase {
 
     protected static final Logger LOG = LoggerFactory.getLogger(DeserializationPerfTest.class);
 
-    private static void deserializeTree(int depth, int width, int len) throws InterruptedException, IOException, KeeperException.NodeExistsException, KeeperException.NoNodeException {
-        BinaryInputArchive ia;
+    private static void deserializeTree(int depth, int width, int len, boolean spiralEnabled) throws InterruptedException, IOException, KeeperException.NodeExistsException, KeeperException.NoNodeException, ConfigException {
+        BinaryInputArchive ia = null;
         int count;
+        SpiralClient spiralClient = null;
         {
             DataTree tree = new DataTree();
             SerializationPerfTest.createNodes(tree, "/", depth, width, tree.getNode("/").stat.getCversion(), new byte[len]);
             count = tree.getNodeCount();
 
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            BinaryOutputArchive oa = BinaryOutputArchive.getArchive(baos);
-            tree.serialize(oa, "test");
-            baos.flush();
+            if (spiralEnabled) {
+                spiralClient = (new InMemorySpiralClientStrategy()).buildSpiralClient();
+                tree.serializeOnSpiral(spiralClient, "nodaDataBucket", "aclCacheBucket");
+            } else {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                BinaryOutputArchive oa = BinaryOutputArchive.getArchive(baos);
+                tree.serialize(oa, "test");
+                baos.flush();
 
-            ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-            ia = BinaryInputArchive.getArchive(bais);
+                ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+                ia = BinaryInputArchive.getArchive(bais);
+            }
         }
 
         DataTree dserTree = new DataTree();
 
         System.gc();
         long start = System.nanoTime();
-        dserTree.deserialize(ia, "test");
+        if (spiralEnabled) {
+            dserTree.deserializeFromSpiral(spiralClient, "nodaDataBucket", "aclCacheBucket");
+        } else {
+            dserTree.deserialize(ia, "test");
+        }
         long end = System.nanoTime();
         long durationms = (end - start) / 1000000L;
         long pernodeus = ((end - start) / 1000L) / count;
@@ -72,44 +86,44 @@ public class DeserializationPerfTest extends ZKTestCase {
             len);
     }
 
-    @Test
-    public void testSingleDeserialize() throws InterruptedException, IOException, KeeperException.NodeExistsException, KeeperException.NoNodeException {
-        deserializeTree(1, 0, 20);
+    @ZKBEnableDisableTest
+    public void testSingleDeserialize(boolean spiralEnabled) throws InterruptedException, IOException, KeeperException.NodeExistsException, KeeperException.NoNodeException, ConfigException {
+        deserializeTree(1, 0, 20, spiralEnabled);
     }
 
-    @Test
-    public void testWideDeserialize() throws InterruptedException, IOException, KeeperException.NodeExistsException, KeeperException.NoNodeException {
-        deserializeTree(2, 10000, 20);
+    @ZKBEnableDisableTest
+    public void testWideDeserialize(boolean spiralEnabled) throws InterruptedException, IOException, KeeperException.NodeExistsException, KeeperException.NoNodeException, ConfigException {
+        deserializeTree(2, 10000, 20, spiralEnabled);
     }
 
-    @Test
-    public void testDeepDeserialize() throws InterruptedException, IOException, KeeperException.NodeExistsException, KeeperException.NoNodeException {
-        deserializeTree(400, 1, 20);
+    @ZKBEnableDisableTest
+    public void testDeepDeserialize(boolean spiralEnabled) throws InterruptedException, IOException, KeeperException.NodeExistsException, KeeperException.NoNodeException, ConfigException {
+        deserializeTree(400, 1, 20, spiralEnabled);
     }
 
-    @Test
-    public void test10Wide5DeepDeserialize() throws InterruptedException, IOException, KeeperException.NodeExistsException, KeeperException.NoNodeException {
-        deserializeTree(5, 10, 20);
+    @ZKBEnableDisableTest
+    public void test10Wide5DeepDeserialize(boolean spiralEnabled) throws InterruptedException, IOException, KeeperException.NodeExistsException, KeeperException.NoNodeException, ConfigException {
+        deserializeTree(5, 10, 20, spiralEnabled);
     }
 
-    @Test
-    public void test15Wide5DeepDeserialize() throws InterruptedException, IOException, KeeperException.NodeExistsException, KeeperException.NoNodeException {
-        deserializeTree(5, 15, 20);
+    @ZKBEnableDisableTest
+    public void test15Wide5DeepDeserialize(boolean spiralEnabled) throws InterruptedException, IOException, KeeperException.NodeExistsException, KeeperException.NoNodeException, ConfigException {
+        deserializeTree(5, 15, 20, spiralEnabled);
     }
 
-    @Test
-    public void test25Wide4DeepDeserialize() throws InterruptedException, IOException, KeeperException.NodeExistsException, KeeperException.NoNodeException {
-        deserializeTree(4, 25, 20);
+    @ZKBEnableDisableTest
+    public void test25Wide4DeepDeserialize(boolean spiralEnabled) throws InterruptedException, IOException, KeeperException.NodeExistsException, KeeperException.NoNodeException, ConfigException {
+        deserializeTree(4, 25, 20, spiralEnabled);
     }
 
-    @Test
-    public void test40Wide4DeepDeserialize() throws InterruptedException, IOException, KeeperException.NodeExistsException, KeeperException.NoNodeException {
-        deserializeTree(4, 40, 20);
+    @ZKBEnableDisableTest
+    public void test40Wide4DeepDeserialize(boolean spiralEnabled) throws InterruptedException, IOException, KeeperException.NodeExistsException, KeeperException.NoNodeException, ConfigException {
+        deserializeTree(4, 40, 20, spiralEnabled);
     }
 
-    @Test
-    public void test300Wide3DeepDeserialize() throws InterruptedException, IOException, KeeperException.NodeExistsException, KeeperException.NoNodeException {
-        deserializeTree(3, 300, 20);
+    @ZKBEnableDisableTest
+    public void test300Wide3DeepDeserialize(boolean spiralEnabled) throws InterruptedException, IOException, KeeperException.NodeExistsException, KeeperException.NoNodeException, ConfigException {
+        deserializeTree(3, 300, 20, spiralEnabled);
     }
 
 }

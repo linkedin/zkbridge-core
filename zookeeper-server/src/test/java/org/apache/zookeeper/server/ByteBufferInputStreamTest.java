@@ -24,11 +24,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+
+import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+@ZKBTest
 public class ByteBufferInputStreamTest extends ZKTestCase {
 
     private static final byte[] DATA_BYTES_0 = "Apache ZooKeeper".getBytes(StandardCharsets.UTF_8);

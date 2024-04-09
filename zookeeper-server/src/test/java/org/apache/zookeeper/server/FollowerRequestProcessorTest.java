@@ -34,6 +34,7 @@ import org.apache.zookeeper.test.ObserverMasterTestBase;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+// RR:TODO: Not applicable in zkbridge world.
 public class FollowerRequestProcessorTest extends ObserverMasterTestBase {
 
     private PortForwarder forwarder;

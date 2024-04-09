@@ -44,17 +44,23 @@ import org.apache.jute.Record;
 import org.apache.zookeeper.KeeperException.NoNodeException;
 import org.apache.zookeeper.KeeperException.NodeExistsException;
 import org.apache.zookeeper.Quotas;
+import org.apache.zookeeper.ZKBEnableDisableTest;
+import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.common.PathTrie;
 import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.metrics.MetricsUtils;
+import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategy.InMemorySpiralClientStrategy;
+import org.apache.zookeeper.spiral.SpiralClient;
 import org.apache.zookeeper.txn.CreateTxn;
 import org.apache.zookeeper.txn.TxnHeader;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import proto.com.linkedin.spiral.Spiral;
 
 public class DataTreeTest extends ZKTestCase {
 
@@ -64,7 +70,7 @@ public class DataTreeTest extends ZKTestCase {
      * For ZOOKEEPER-1755 - Test race condition when taking dumpEphemerals and
      * removing the session related ephemerals from DataTree structure
      */
-    @Test
+    @ZKBTest
     @Timeout(value = 60)
     public void testDumpEphemerals() throws Exception {
         int count = 1000;
@@ -109,7 +115,7 @@ public class DataTreeTest extends ZKTestCase {
         }
     }
 
-    @Test
+    @ZKBTest
     @Timeout(value = 60)
     public void testRootWatchTriggered() throws Exception {
         DataTree dt = new DataTree();
@@ -131,7 +137,7 @@ public class DataTreeTest extends ZKTestCase {
     /**
      * For ZOOKEEPER-1046 test if cversion is getting incremented correctly.
      */
-    @Test
+    @ZKBTest
     @Timeout(value = 60)
     public void testIncrementCversion() throws Exception {
         try {
@@ -155,7 +161,7 @@ public class DataTreeTest extends ZKTestCase {
         }
     }
 
-    @Test
+    @ZKBTest
     public void testNoCversionRevert() throws Exception {
         DataTree dt = new DataTree();
         DataNode parent = dt.getNode("/");
@@ -178,7 +184,7 @@ public class DataTreeTest extends ZKTestCase {
                                   + ">");
     }
 
-    @Test
+    @ZKBTest
     public void testPzxidUpdatedWhenDeletingNonExistNode() throws Exception {
         DataTree dt = new DataTree();
         DataNode root = dt.getNode("/");
@@ -204,7 +210,7 @@ public class DataTreeTest extends ZKTestCase {
         assertEquals(currentPzxid, prevPzxid);
     }
 
-    @Test
+    @ZKBTest
     public void testDigestUpdatedWhenReplayCreateTxnForExistNode() {
         try {
             // digestCalculator gets initialized for the new DataTree constructor based on the system property
@@ -225,9 +231,9 @@ public class DataTreeTest extends ZKTestCase {
         }
     }
 
-    @Test
+    @ZKBEnableDisableTest
     @Timeout(value = 60)
-    public void testPathTrieClearOnDeserialize() throws Exception {
+    public void testPathTrieClearOnDeserialize(boolean spiralEnabled) throws Exception {
 
         //Create a DataTree with quota nodes so PathTrie get updated
         DataTree dserTree = new DataTree();
@@ -240,14 +246,21 @@ public class DataTreeTest extends ZKTestCase {
         //deserialize a DataTree; this should clear the old /bug nodes and pathTrie
         DataTree tree = new DataTree();
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        BinaryOutputArchive oa = BinaryOutputArchive.getArchive(baos);
-        tree.serialize(oa, "test");
-        baos.flush();
+        if (spiralEnabled) {
+            SpiralClient spiralClient = (new InMemorySpiralClientStrategy()).buildSpiralClient();
+            tree.serializeOnSpiral(spiralClient, "nodaDataBucket", "aclCacheBucket");
 
-        ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-        BinaryInputArchive ia = BinaryInputArchive.getArchive(bais);
-        dserTree.deserialize(ia, "test");
+            dserTree.deserializeFromSpiral(spiralClient, "nodaDataBucket", "aclCacheBucket");
+        } else {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            BinaryOutputArchive oa = BinaryOutputArchive.getArchive(baos);
+            tree.serialize(oa, "test");
+            baos.flush();
+
+            ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+            BinaryInputArchive ia = BinaryInputArchive.getArchive(bais);
+            dserTree.deserialize(ia, "test");
+        }
 
         Field pfield = DataTree.class.getDeclaredField("pTrie");
         pfield.setAccessible(true);
@@ -264,9 +277,9 @@ public class DataTreeTest extends ZKTestCase {
      * This can cause the system experiences hanging issues similar to ZooKeeper-2201.
      * This test verifies the fix that we should not hold ACL cache during dumping aclcache to snapshots
     */
-    @Test
+    @ZKBEnableDisableTest
     @Timeout(value = 60)
-    public void testSerializeDoesntLockACLCacheWhileWriting() throws Exception {
+    public void testSerializeDoesntLockACLCacheWhileWriting(boolean spiralEnabled) throws Exception {
         DataTree tree = new DataTree();
         tree.createNode("/marker", new byte[] { 42 }, null, -1, 1, 1, 1);
         final AtomicBoolean ranTestCase = new AtomicBoolean();
@@ -301,17 +314,22 @@ public class DataTreeTest extends ZKTestCase {
             }
         };
 
-        tree.serialize(oa, "test");
-
+       
+        if (spiralEnabled) {
+            tree.serializeAclsOnSpiral(oa);
+        } else {
+            tree.serialize(oa, "test");
+        }
+        
         //Let's make sure that we hit the code that ran the real assertion above
         assertTrue(ranTestCase.get(), "Didn't find the expected node");
     }
 
     /* ZOOKEEPER-3531 - similarly for aclCache.deserialize, we should not hold lock either
     */
-    @Test
+    @ZKBEnableDisableTest
     @Timeout(value = 60)
-    public void testDeserializeDoesntLockACLCacheWhileReading() throws Exception {
+    public void testDeserializeDoesntLockACLCacheWhileReading(boolean spiralEnabled) throws Exception {
         DataTree tree = new DataTree();
         tree.createNode("/marker", new byte[] { 42 }, null, -1, 1, 1, 1);
         final AtomicBoolean ranTestCase = new AtomicBoolean();
@@ -353,7 +371,11 @@ public class DataTreeTest extends ZKTestCase {
             }
         };
 
-        tree2.deserialize(ia, "test");
+        if (spiralEnabled) {
+            tree2.deserializeAclsFromSpiral(ia);
+        } else {
+            tree2.deserialize(ia, "test");
+        }
 
         //Let's make sure that we hit the code that ran the real assertion above
         assertTrue(ranTestCase.get(), "Didn't find the expected node");
@@ -367,6 +389,7 @@ public class DataTreeTest extends ZKTestCase {
      * currently being written, i.e. that DataTree.serializeNode does not hold
      * the DataNode lock while calling OutputArchive.writeRecord.
      */
+    // RR::TODO: We don't serialize nodeData into spiral, so we can't test this with spiral enabled
     @Test
     @Timeout(value = 60)
     public void testSerializeDoesntLockDataNodeWhileWriting() throws Exception {
@@ -416,9 +439,9 @@ public class DataTreeTest extends ZKTestCase {
         assertTrue(ranTestCase.get(), "Didn't find the expected node");
     }
 
-    @Test
+    @ZKBEnableDisableTest
     @Timeout(value = 60)
-    public void testReconfigACLClearOnDeserialize() throws Exception {
+    public void testReconfigACLClearOnDeserialize(boolean spiralEnabled) throws Exception {
         DataTree tree = new DataTree();
         // simulate the upgrading scenario, where the reconfig znode
         // doesn't exist and the acl cache is empty
@@ -430,14 +453,25 @@ public class DataTreeTest extends ZKTestCase {
         // serialize the data with one znode with acl
         tree.createNode("/bug", new byte[20], ZooDefs.Ids.OPEN_ACL_UNSAFE, -1, 1, 1, 1);
 
+        SpiralClient spiralClient = null;
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        BinaryOutputArchive oa = BinaryOutputArchive.getArchive(baos);
-        tree.serialize(oa, "test");
-        baos.flush();
 
-        ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-        BinaryInputArchive ia = BinaryInputArchive.getArchive(bais);
-        tree.deserialize(ia, "test");
+        if (spiralEnabled) {
+            spiralClient = (new InMemorySpiralClientStrategy()).buildSpiralClient();
+            tree.serializeOnSpiral(spiralClient, "nodaDataBucket", "aclCacheBucket");
+        } else {
+            BinaryOutputArchive oa = BinaryOutputArchive.getArchive(baos);
+            tree.serialize(oa, "test");
+            baos.flush();
+        }
+
+        if (spiralEnabled) {
+            tree.deserializeFromSpiral(spiralClient, "nodaDataBucket", "aclCacheBucket");
+        } else {
+            ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+            BinaryInputArchive ia = BinaryInputArchive.getArchive(bais);
+            tree.deserialize(ia, "test");
+        }
 
         assertEquals(1, tree.aclCacheSize(), "expected to have 1 acl in acl cache map");
         assertEquals(ZooDefs.Ids.OPEN_ACL_UNSAFE, tree.getACL("/bug", new Stat()), "expected to have the same acl");
@@ -450,7 +484,7 @@ public class DataTreeTest extends ZKTestCase {
         assertEquals(ZooDefs.Ids.OPEN_ACL_UNSAFE, tree.getACL("/bug", new Stat()), "expected to have the same acl");
     }
 
-    @Test
+    @ZKBTest
     public void testCachedApproximateDataSize() throws Exception {
         DataTree dt = new DataTree();
         long initialSize = dt.approximateDataSize();
@@ -470,7 +504,7 @@ public class DataTreeTest extends ZKTestCase {
         assertEquals(dt.cachedApproximateDataSize(), dt.approximateDataSize());
     }
 
-    @Test
+    @ZKBTest
     public void testGetAllChildrenNumber() throws Exception {
         DataTree dt = new DataTree();
         // create a node
@@ -486,6 +520,7 @@ public class DataTreeTest extends ZKTestCase {
         assertEquals(8, dt.getAllChildrenNumber("/"));
     }
 
+    // RR:TODO: Currently we don't serialize the digest into spiral, so we can't test this with spiral enabled
     @Test
     public void testDeserializeZxidDigest() throws Exception {
         try {
@@ -516,6 +551,7 @@ public class DataTreeTest extends ZKTestCase {
         }
     }
 
+    // RR:TODO: These tests are not applicable for spiral enabled mode because we store lastProcessedZxid separately from snapshot.
     @Test
     public void testSerializeLastProcessedZxid_Enabled() throws Exception {
         testSerializeLastProcessedZxid(true, true);
@@ -531,7 +567,7 @@ public class DataTreeTest extends ZKTestCase {
         testSerializeLastProcessedZxid(true, false);
     }
 
-    @Test
+    @ZKBTest
     public void testDataTreeMetrics() throws Exception {
         ServerMetrics.getMetrics().resetAll();
 
@@ -592,7 +628,7 @@ public class DataTreeTest extends ZKTestCase {
      * Test digest with general ops in DataTree, check that digest are
      * updated when call different ops.
      */
-    @Test
+    @ZKBTest
     public void testDigest() throws Exception {
         try {
             // enable diegst check

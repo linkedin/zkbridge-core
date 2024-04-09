@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// RR:TODO: We don't use this throttling feature in our project, so we can skip this test.
 public class BlueThrottleTest extends ZKTestCase {
 
     private static final Logger LOG = LoggerFactory.getLogger(BlueThrottleTest.class);

@@ -18,16 +18,24 @@ package org.apache.zookeeper.server.embedded;
  * limitations under the License.
  */
 
+import com.google.common.collect.ImmutableList;
+import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.client.ZooKeeperBuilder;
 import org.apache.zookeeper.server.ServerCnxnFactory;
 import org.apache.zookeeper.server.ZooKeeperServer;
 import org.apache.zookeeper.server.embedded.spiral.InMemoryFS;
+import org.apache.zookeeper.server.embedded.spiral.InMemorySpiralClient;
 import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategy;
 import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategy.InMemorySpiralClientStrategy;
+import org.apache.zookeeper.spiral.SpiralClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,22 +57,29 @@ import org.slf4j.LoggerFactory;
 public class ZKBridgeClusterEmbedded implements AutoCloseable {
 
     private static final Logger LOG = LoggerFactory.getLogger(ZKBridgeClusterEmbedded.class);
+    private static final Integer SESSION_TIMEOUT_MS = 10_000; // 10 sec
     private static final AtomicInteger CLIENT_PORT_GENERATOR = new AtomicInteger(2181);
     private static final AtomicInteger ADMIN_SERVER_PORT_GENERATOR = new AtomicInteger(8080);
 
-    private final List<String> connectionStrings;
+    public final Integer sessionTimeoutMs;
+    public final List<Integer> clientPorts;
+    public final List<Integer> adminPorts;
     private final InMemoryFS inMemoryFS;
+    private final SpiralClient spiralClient;
     private final List<ServerCnxnFactory> servers;
-    private final List<ZooKeeperServer> zkServers;
 
-    public ZKBridgeClusterEmbedded(InMemoryFS inMemoryFS, List<ServerCnxnFactory> servers, List<String> connectionStrings) {
+    public ZooKeeper[] zkClients;
+
+    public ZKBridgeClusterEmbedded(
+        InMemoryFS inMemoryFS, Integer sessionTimeoutMs, List<ServerCnxnFactory> servers,
+        List<Integer> clientPorts, List<Integer> adminPorts) {
         this.inMemoryFS = inMemoryFS;
+        this.spiralClient = new InMemorySpiralClient(inMemoryFS);
+        this.sessionTimeoutMs = sessionTimeoutMs == null ? SESSION_TIMEOUT_MS : sessionTimeoutMs;
         this.servers = servers;
-        this.connectionStrings = connectionStrings;
-        this.zkServers = new ArrayList<>();
-        for (ServerCnxnFactory server: servers) {
-            zkServers.add(server.getZooKeeperServer());
-        }
+        this.clientPorts = clientPorts;
+        this.adminPorts = adminPorts;
+        this.zkClients = new ZooKeeper[servers.size()];
     }
 
     /**
@@ -73,7 +88,10 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
     public static class ZKBridgeClusterEmbeddedBuilder {
 
         private Integer numServers;
+        private Integer sessionTimeoutMs;
         private SpiralClientStrategy spiralClientStrategy = new InMemorySpiralClientStrategy();
+        private List<Integer> clientPorts;
+        private List<Integer> adminPorts;
 
         public ZKBridgeClusterEmbeddedBuilder setNumServers(Integer numServers) {
             this.numServers = numServers;
@@ -82,6 +100,21 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
 
         public ZKBridgeClusterEmbeddedBuilder setSpiralClientStrategy(SpiralClientStrategy spiralClientStrategy) {
             this.spiralClientStrategy = spiralClientStrategy;
+            return this;
+        }
+
+        public ZKBridgeClusterEmbeddedBuilder setSessionTimeoutMs(Integer sessionTimeoutMs) {
+            this.sessionTimeoutMs = sessionTimeoutMs;
+            return this;
+        }
+
+        public ZKBridgeClusterEmbeddedBuilder setClientPorts(List<Integer> clientPorts) {
+            this.clientPorts = clientPorts;
+            return this;
+        }
+
+        public ZKBridgeClusterEmbeddedBuilder setAdminPorts(List<Integer> adminPorts) {
+            this.adminPorts = adminPorts;
             return this;
         }
 
@@ -104,38 +137,128 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
                 inMemStrategy.inMemoryFS(inMemoryFS);
             }
 
-            List<String> hostAndPortList = new ArrayList<>();
             for (int idx = 0; idx < numServers; idx ++) {
-                int clientPort = CLIENT_PORT_GENERATOR.getAndIncrement();
-                int adminPort = ADMIN_SERVER_PORT_GENERATOR.getAndIncrement();
-                hostAndPortList.add("localhost:" + adminPort);
-
+                
                 servers.add(new ZKBridgeServerEmbedded.ZKBridgeServerEmbeddedBuilder()
                     .setServerId(Long.valueOf(idx))
                     .setSpiralClientStrategy(spiralClientStrategy)
-                    .setClientPort(clientPort)
-                    .setAdminServerPort(adminPort)
+                    .setClientPort(clientPorts.get(idx))
+                    .setAdminServerPort(adminPorts.get(idx))
                     .setSnapLeaderId(0)
                     .buildAndStart());
             }
-            return new ZKBridgeClusterEmbedded(inMemoryFS ,servers, hostAndPortList);
-        }
-    }
 
-    static ZKBridgeClusterEmbeddedBuilder builder() {
-        return new ZKBridgeClusterEmbeddedBuilder();
+            return new ZKBridgeClusterEmbedded(inMemoryFS, sessionTimeoutMs, servers, clientPorts, adminPorts);
+        }
     }
 
     public InMemoryFS getInMemoryFS() {
         return inMemoryFS;
     }
 
+    public SpiralClient getSpiralClient() {
+        return spiralClient;
+    }
+
     public String getConnectionString(int serverId) {
         if (serverId > servers.size()) {
             throw new RuntimeException("serverId out of range. Cannot provide connection string for id: " + serverId);
         }
-        return connectionStrings.get(serverId);
+        return buildConnectionString(adminPorts.get(serverId));
     }
+
+    private static String buildConnectionString(int serverId) {
+        return String.format("localhost:%s", serverId);
+    }
+
+    public ZooKeeper getOrBuildClient(int serverId) {
+        return getOrBuildClient(serverId, null, new RecordingWatcher());
+    }
+
+    public ZooKeeper getOrBuildClient(int serverId, int[] failoverServerIds) {
+        return getOrBuildClient(serverId, failoverServerIds, new RecordingWatcher());
+    }
+
+    public ZooKeeper getOrBuildClient(int serverId, int[] failoverServerIds, Watcher watcher) {
+        try {
+            if (zkClients[serverId] != null) {
+                zkClients[serverId].close();
+            }
+
+            StringBuilder connectionStringBuilder = new StringBuilder();
+            // first server is the primary server connection string.
+            connectionStringBuilder.append(buildConnectionString(adminPorts.get(serverId)));
+
+            if (failoverServerIds != null) {
+                for (int fsId: failoverServerIds) {
+                    connectionStringBuilder
+                        .append(",")
+                        .append(buildConnectionString(adminPorts.get(fsId)));
+                }
+            }
+
+            return zkClients[serverId] = new ZooKeeperBuilder(connectionStringBuilder.toString(), sessionTimeoutMs)
+                .withDefaultWatcher(watcher)
+                .build();
+        } catch (Exception e) {
+            throw new RuntimeException("error while getting or building the ZKB client", e);
+        }
+    }
+
+    public void restartServer(int serverId) throws Exception {
+        ServerCnxnFactory existingSCF = servers.get(serverId);
+        ZooKeeperServer existingZks = existingSCF.getZooKeeperServer();
+        SpiralClient existingSpiralClient = existingZks.getSpiralClient();
+        Path baseDirPath = new File(existingZks.getConf().getDataLogDir()).getParentFile().getParentFile().toPath();
+
+        // shutdown existing ZKS
+        existingSCF.shutdown();
+
+        // build and set a new ZKS
+        ServerCnxnFactory newSCF = ZKBridgeServerEmbedded.builder()
+            .setServerId(Long.valueOf(serverId))
+            .setSpiralClientStrategy(SpiralClientStrategy.Builder.passThrough().setSpiralClient(existingSpiralClient))
+            .setBaseDir(baseDirPath)
+            .setClientPort(clientPorts.get(serverId))
+            .setAdminServerPort(adminPorts.get(serverId))
+            .setSnapLeaderId(0)
+            .buildAndStart();
+
+        servers.set(serverId, newSCF);
+    }
+
+    public void shutdownServer(int serverId) throws Exception {
+        ServerCnxnFactory existingSCF = servers.get(serverId);
+        ZooKeeperServer zks = existingSCF.getZooKeeperServer();
+        servers.set(serverId, null);
+
+        // shutdown existing ZKS
+        existingSCF.shutdown();
+        while (zks.isRunning()) {
+            Thread.sleep(1_00);
+        }
+    }
+
+    public void startServer(int serverId) throws Exception {
+        if (servers.get(serverId) != null) {
+            // there is already an active server in running mode.
+            return;
+        }
+
+        // existing cluster level spiral client
+        SpiralClient existingSpiralClient = new InMemorySpiralClient(inMemoryFS);
+
+        ServerCnxnFactory newSCF = ZKBridgeServerEmbedded.builder()
+            .setServerId(Long.valueOf(serverId))
+            .setSpiralClientStrategy(SpiralClientStrategy.Builder.passThrough().setSpiralClient(existingSpiralClient))
+            .setClientPort(clientPorts.get(serverId))
+            .setAdminServerPort(adminPorts.get(serverId))
+            .setSnapLeaderId(0)
+            .buildAndStart();
+
+        servers.set(serverId, newSCF);
+    }
+
     /**
      * Start the servers in the cluster.
      * @throws Exception
@@ -150,7 +273,9 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
     @Override
     public void close() {
         for (ServerCnxnFactory server: servers) {
-            server.shutdown();
+            if (server != null) {
+                server.shutdown();
+            }
         }
     }
 

@@ -26,12 +26,14 @@ import java.util.concurrent.TimeUnit;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.common.Time;
 import org.apache.zookeeper.test.ClientBase;
 import org.junit.jupiter.api.Test;
 
+@ZKBTest
 public class ZooKeeperBuilderTest extends ClientBase {
     private void testClient(BlockingQueue<WatchedEvent> events, ZooKeeper zk) throws Exception {
         zk.exists("/test", true);

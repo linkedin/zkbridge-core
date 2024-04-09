@@ -389,7 +389,7 @@ public class SessionTest extends ZKTestCase {
         LOG.info(zk.toString());
     }
 
-    @ZKBEnableDisableTest
+    @Test
     public void testMaximumCnxnPerIP(boolean spiralEnabled) throws Exception {
         setUp(spiralEnabled);
         final int maxClientCnxnsPerIP = 3;

@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.test.ClientBase;
@@ -36,6 +37,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+@ZKBTest
 public class StandaloneServerAuditTest extends ClientBase {
     private static ByteArrayOutputStream os;
 
@@ -55,9 +57,9 @@ public class StandaloneServerAuditTest extends ClientBase {
     public void testCreateAuditLog() throws KeeperException, InterruptedException, IOException {
         final ZooKeeper zk = createClient();
         String path = "/createPath";
-        zk.create(path, "".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE,
-                CreateMode.PERSISTENT);
+        zk.create(path, "".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
         List<String> logs = readAuditLog(os);
+
         assertEquals(1, logs.size());
         assertTrue(logs.get(0).endsWith("operation=create\tznode=/createPath\tznode_type=persistent\tresult=success"));
     }

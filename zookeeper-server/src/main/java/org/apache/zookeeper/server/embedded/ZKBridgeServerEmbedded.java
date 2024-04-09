@@ -140,13 +140,17 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
          * @throws Exception
          */
         public ServerCnxnFactory buildAndStart() throws Exception {
-            ZooKeeperServer zooKeeperServer = buildServer();
+            try {
+                ZooKeeperServer zooKeeperServer = buildServer();
 
-            // start server connection
-            LOG.info("creating server instance 127.0.0.1:{}", adminServerPort);
-            ServerCnxnFactory factory = ServerCnxnFactory.createFactory(adminServerPort, MAX_CONNECTIONS);
-            factory.startup(zooKeeperServer);
-            return factory;
+                // start server connection
+                LOG.info("creating server instance 127.0.0.1:{}", adminServerPort);
+                ServerCnxnFactory factory = ServerCnxnFactory.createFactory(adminServerPort, MAX_CONNECTIONS);
+                factory.startup(zooKeeperServer);
+                return factory;
+            } catch (Exception e) {
+                throw new RuntimeException("error while starting server on adminServerPort: " + adminServerPort, e);
+            }
         }
 
         public ZooKeeperServer buildServer() throws Exception {

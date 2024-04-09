@@ -19,8 +19,11 @@
 package org.apache.zookeeper.server.quorum;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.apache.zookeeper.ZKBTest;
 import org.junit.jupiter.api.Test;
 
+@ZKBTest
 public class BufferStatsTest {
 
     @Test

@@ -90,6 +90,8 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
         private Integer numServers;
         private Integer sessionTimeoutMs;
         private SpiralClientStrategy spiralClientStrategy = new InMemorySpiralClientStrategy();
+        private List<Integer> clientPorts;
+        private List<Integer> adminPorts;
 
         public ZKBridgeClusterEmbeddedBuilder setNumServers(Integer numServers) {
             this.numServers = numServers;
@@ -103,6 +105,16 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
 
         public ZKBridgeClusterEmbeddedBuilder setSessionTimeoutMs(Integer sessionTimeoutMs) {
             this.sessionTimeoutMs = sessionTimeoutMs;
+            return this;
+        }
+
+        public ZKBridgeClusterEmbeddedBuilder setClientPorts(List<Integer> clientPorts) {
+            this.clientPorts = clientPorts;
+            return this;
+        }
+
+        public ZKBridgeClusterEmbeddedBuilder setAdminPorts(List<Integer> adminPorts) {
+            this.adminPorts = adminPorts;
             return this;
         }
 
@@ -125,25 +137,18 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
                 inMemStrategy.inMemoryFS(inMemoryFS);
             }
 
-            ImmutableList.Builder<Integer> clientPorts = ImmutableList.<Integer>builder();
-            ImmutableList.Builder<Integer> adminPorts = ImmutableList.<Integer>builder();
-
             for (int idx = 0; idx < numServers; idx ++) {
-                int clientPort = CLIENT_PORT_GENERATOR.getAndIncrement();
-                int adminPort = ADMIN_SERVER_PORT_GENERATOR.getAndIncrement();
-                adminPorts.add(adminPort);
-                clientPorts.add(clientPort);
-
+                
                 servers.add(new ZKBridgeServerEmbedded.ZKBridgeServerEmbeddedBuilder()
                     .setServerId(Long.valueOf(idx))
                     .setSpiralClientStrategy(spiralClientStrategy)
-                    .setClientPort(clientPort)
-                    .setAdminServerPort(adminPort)
+                    .setClientPort(clientPorts.get(idx))
+                    .setAdminServerPort(adminPorts.get(idx))
                     .setSnapLeaderId(0)
                     .buildAndStart());
             }
 
-            return new ZKBridgeClusterEmbedded(inMemoryFS, sessionTimeoutMs, servers, clientPorts.build(), adminPorts.build());
+            return new ZKBridgeClusterEmbedded(inMemoryFS, sessionTimeoutMs, servers, clientPorts, adminPorts);
         }
     }
 

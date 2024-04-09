@@ -22,6 +22,11 @@
 
 package org.apache.zookeeper.server.cluster;
 
+import java.util.ArrayList;
+
+import javax.sound.sampled.Port;
+
+import org.apache.zookeeper.PortAssignment;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZKTestCase;
@@ -52,8 +57,16 @@ public class ClusterTestBase extends ZKTestCase implements Watcher {
 
     protected ZKBridgeClusterEmbedded launchServers(int numServers, Integer sessionTimeoutMs) {
         try {
+            ArrayList<Integer> clientPorts = new ArrayList<>();
+            ArrayList<Integer> adminPorts = new ArrayList<>();
+            for (int i = 0; i < numServers; i++) {
+                clientPorts.add(PortAssignment.unique());
+                adminPorts.add(PortAssignment.unique());
+            }
             return new ZKBridgeClusterEmbedded.ZKBridgeClusterEmbeddedBuilder()
                 .setNumServers(numServers)
+                .setClientPorts(clientPorts)
+                .setAdminPorts(adminPorts)
                 .setSessionTimeoutMs(sessionTimeoutMs)
                 .build();
         } catch (Exception e) {

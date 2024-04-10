@@ -574,10 +574,8 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
         String authProviderProp = System.getProperty(x509Util.getSslAuthProviderProperty());
         SslContext nettySslContext;
         if (authProviderProp == null) {
-            LOG.info("RR: found null");
             nettySslContext = x509Util.createNettySslContextForServer(new ZKConfig());
         } else {
-            LOG.info("RR: authProviderProp: {} {}", authProviderProp, x509Util.getSslAuthProviderProperty());
             X509AuthenticationProvider authProvider = (X509AuthenticationProvider) ProviderRegistry.getProvider(
                 System.getProperty(x509Util.getSslAuthProviderProperty(), "x509"));
 

@@ -68,7 +68,6 @@ public class ProviderRegistry {
                 try {
                     Class<?> c = ZooKeeperServer.class.getClassLoader().loadClass(className);
                     AuthenticationProvider ap = (AuthenticationProvider) c.getDeclaredConstructor().newInstance();
-                    LOG.info("RR: registering : {} {}", ap.getScheme(), ap);
                     authenticationProviders.put(ap.getScheme(), ap);
                 } catch (Exception e) {
                     LOG.warn("Problems loading {}", className, e);
@@ -89,7 +88,6 @@ public class ProviderRegistry {
     }
 
     public static void removeProvider(String scheme) {
-        LOG.info("RR: removing : {}", scheme);
         authenticationProviders.remove(scheme);
     }
 

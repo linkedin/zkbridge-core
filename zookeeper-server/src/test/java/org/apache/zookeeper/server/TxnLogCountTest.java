@@ -26,8 +26,12 @@ import static org.mockito.Mockito.mock;
 import java.io.File;
 import java.io.IOException;
 import org.apache.jute.OutputArchive;
+import org.apache.zookeeper.ZKBEnableDisableTest;
 import org.apache.zookeeper.ZKBTest;
+import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategy.InMemorySpiralClientStrategy;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
+import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
+import org.apache.zookeeper.spiral.SpiralClient;
 import org.apache.zookeeper.test.ClientBase;
 import org.apache.zookeeper.txn.TxnHeader;
 import org.mockito.invocation.InvocationOnMock;
@@ -38,11 +42,15 @@ public class TxnLogCountTest {
     /**
      * Test ZkDatabase's txnCount
      */
-    @ZKBTest
-    public void testTxnLogCount() throws IOException {
+    @ZKBEnableDisableTest
+    public void testTxnLogCount(boolean spiralEnabled) throws IOException, ConfigException {
         File tmpDir = ClientBase.createTmpDir();
         FileTxnSnapLog snapLog = new FileTxnSnapLog(tmpDir, tmpDir);
         ZKDatabase zkDatabase = new ZKDatabase(snapLog);
+        if (spiralEnabled) {
+            SpiralClient spiralClient = (new InMemorySpiralClientStrategy()).buildSpiralClient();
+            zkDatabase.enableSpiralFeatures(spiralClient);
+        }
         int txnRequestCnt = 10;
         int nonTxnRequestCnt = 10;
         for (int i = 0; i < txnRequestCnt && zkDatabase.append(mockTxnRequest()); i++) {}

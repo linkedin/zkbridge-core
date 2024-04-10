@@ -55,6 +55,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// RR: TODO: Puring of transaction logs is not supported in zkbridge
 public class PurgeTxnTest extends ZKTestCase {
 
     private static final Logger LOG = LoggerFactory.getLogger(PurgeTxnTest.class);

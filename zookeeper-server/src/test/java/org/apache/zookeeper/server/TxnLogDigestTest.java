@@ -50,6 +50,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// RR: TODO: Digest are not added yet in ZKB data tree. So whenever that feature is added this test will be useful.
 public class TxnLogDigestTest extends ClientBase {
 
     private static final Logger LOG =

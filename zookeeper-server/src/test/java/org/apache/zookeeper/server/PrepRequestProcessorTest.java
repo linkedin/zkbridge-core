@@ -66,7 +66,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-
+//RR:TODO: This test is not testing any new functionality, so NA for zkbridge
 public class PrepRequestProcessorTest extends ClientBase {
 
     private static final int CONNECTION_TIMEOUT = 3000;

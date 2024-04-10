@@ -22,6 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import java.util.Map;
 import java.util.Set;
+
+import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.data.StatPersisted;
 import org.junit.jupiter.api.AfterEach;
@@ -43,7 +45,7 @@ public class NodeHashMapImplTest extends ZKTestCase {
     /**
      * Test all the operations supported in NodeHashMapImpl.
      */
-    @Test
+    @ZKBTest
     public void testOperations() {
         NodeHashMapImpl nodes = new NodeHashMapImpl(new DigestCalculator());
 

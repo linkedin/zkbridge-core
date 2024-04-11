@@ -29,7 +29,7 @@ import org.apache.zookeeper.ZKTestCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-
+@ZKBTest
 public class ServerStatsTest extends ZKTestCase {
 
     private ServerStats.Provider providerMock;

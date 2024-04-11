@@ -22,11 +22,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+
+import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.server.metric.AvgMinMaxCounter;
 import org.apache.zookeeper.server.metric.SimpleCounter;
 import org.junit.jupiter.api.Test;
 
+@ZKBTest
 public class ServerMetricsTest extends ZKTestCase {
 
     private static final int RANDOM_TRIALS = 100;

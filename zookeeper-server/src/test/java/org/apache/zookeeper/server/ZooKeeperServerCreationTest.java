@@ -19,8 +19,13 @@
 package org.apache.zookeeper.server;
 
 import java.io.File;
+
+import org.apache.zookeeper.ZKBEnableDisableTest;
 import org.apache.zookeeper.proto.ConnectRequest;
+import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategy.InMemorySpiralClientStrategy;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
+import org.apache.zookeeper.spiral.SpiralClient;
+import org.apache.zookeeper.test.ClientBase;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -30,9 +35,10 @@ public class ZooKeeperServerCreationTest {
      * Test the default ZooKeeperServer and call processConnectRequest() to make sure
      * that all needed fields are initialized properly, etc.
      */
-    @Test
-    public void testDefaultConstructor(@TempDir File tmpDir) throws Exception {
-        FileTxnSnapLog fileTxnSnapLog = new FileTxnSnapLog(new File(tmpDir, "data"), new File(tmpDir, "data_txnlog"));
+    @ZKBEnableDisableTest
+    public void testDefaultConstructor(boolean spiralEnabled) throws Exception {
+        File tmpDir = ClientBase.createTmpDir();
+        FileTxnSnapLog fileTxnSnapLog = new FileTxnSnapLog(tmpDir, tmpDir);
 
         ZooKeeperServer zks = new ZooKeeperServer() {
             @Override
@@ -43,6 +49,10 @@ public class ZooKeeperServerCreationTest {
         zks.setTxnLogFactory(fileTxnSnapLog);
         zks.setZKDatabase(new ZKDatabase(fileTxnSnapLog));
         zks.createSessionTracker();
+        if (spiralEnabled) {
+            SpiralClient spiralClient = (new InMemorySpiralClientStrategy()).buildSpiralClient();
+            zks.getZKDatabase().enableSpiralFeatures(spiralClient);
+        }
 
         ServerCnxn cnxn = new MockServerCnxn();
 

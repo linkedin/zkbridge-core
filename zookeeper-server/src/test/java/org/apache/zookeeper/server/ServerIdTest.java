@@ -34,6 +34,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+// RR:TODO: Not applicable to ZKB
 public class ServerIdTest extends ClientBase {
 
     public static Stream<Arguments> data() throws Exception {

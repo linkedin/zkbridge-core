@@ -49,6 +49,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.zookeeper.AsyncCallback.DataCallback;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.ZKBServerParameterizedTest;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.common.ClientX509Util;
@@ -81,7 +82,7 @@ public class NettyServerCnxnTest extends ClientBase {
         NettyServerCnxnFactory.setTestAllocator(TestByteBufAllocator.getInstance());
         super.maxCnxns = 1;
         super.exceptionOnFailedConnect = true;
-        super.setUp();
+        super.setUpWithoutServer();
     }
 
     @AfterEach
@@ -100,9 +101,10 @@ public class NettyServerCnxnTest extends ClientBase {
      *
      * @see <a href="https://issues.jboss.org/browse/NETTY-412">NETTY-412</a>
      */
-    @Test
+    @ZKBServerParameterizedTest
     @Timeout(value = 40)
-    public void testSendCloseSession() throws Exception {
+    public void testSendCloseSession(ZooKeeperServer zks) throws Exception {
+        super.startServer(zks);
         assertTrue(serverFactory instanceof NettyServerCnxnFactory, "Didn't instantiate ServerCnxnFactory with NettyServerCnxnFactory!");
 
         final ZooKeeper zk = createClient();
@@ -140,9 +142,10 @@ public class NettyServerCnxnTest extends ClientBase {
      * is set to 1. This tests that if more than one connection is attempted, the
      * connection fails.
      */
-    @Test
+    @ZKBServerParameterizedTest
     @Timeout(value = 40)
-    public void testMaxConnectionPerIpSurpased() {
+    public void testMaxConnectionPerIpSurpased(ZooKeeperServer zks) throws IOException, InterruptedException{
+        super.startServer(zks);
         assertTrue(serverFactory instanceof NettyServerCnxnFactory, "Did not instantiate ServerCnxnFactory with NettyServerCnxnFactory!");
         assertThrows(ProtocolException.class, () -> {
             try (final ZooKeeper zk1 = createClient(); final ZooKeeper zk2 = createClient()) {
@@ -150,8 +153,9 @@ public class NettyServerCnxnTest extends ClientBase {
         });
     }
 
-    @Test
-    public void testClientResponseStatsUpdate() throws IOException, InterruptedException, KeeperException {
+    @ZKBServerParameterizedTest
+    public void testClientResponseStatsUpdate(ZooKeeperServer zks) throws IOException, InterruptedException, KeeperException {
+        super.startServer(zks);
         try (ZooKeeper zk = createClient()) {
             BufferStats clientResponseStats = serverFactory.getZooKeeperServer().serverStats().getClientResponseStats();
             assertThat("Last client response size should be initialized with INIT_VALUE", clientResponseStats.getLastBufferSize(), equalTo(BufferStats.INIT_VALUE));
@@ -165,8 +169,9 @@ public class NettyServerCnxnTest extends ClientBase {
         }
     }
 
-    @Test
-    public void testNonMTLSLocalConn() throws IOException, InterruptedException, KeeperException {
+    @ZKBServerParameterizedTest
+    public void testNonMTLSLocalConn(ZooKeeperServer zks) throws IOException, InterruptedException, KeeperException {
+        super.startServer(zks);
         try (ZooKeeper zk = createClient()) {
             ServerStats serverStats = serverFactory.getZooKeeperServer().serverStats();
             //2 for local stat connection and this client
@@ -177,6 +182,7 @@ public class NettyServerCnxnTest extends ClientBase {
 
     @Test
     public void testNonMTLSRemoteConn() throws Exception {
+        super.startServer();
         LeaderZooKeeperServer zks = mock(LeaderZooKeeperServer.class);
         when(zks.isRunning()).thenReturn(true);
         ServerStats.Provider providerMock = mock(ServerStats.Provider.class);
@@ -184,23 +190,27 @@ public class NettyServerCnxnTest extends ClientBase {
         testNonMTLSRemoteConn(zks, false, false);
     }
 
-    @Test
-    public void testNonMTLSRemoteConnZookKeeperServerNotReady() throws Exception {
+    @ZKBServerParameterizedTest
+    public void testNonMTLSRemoteConnZookKeeperServerNotReady(ZooKeeperServer zks) throws Exception {
+        super.startServer(zks);
         testNonMTLSRemoteConn(null, false, false);
     }
 
-    @Test
-    public void testNonMTLSRemoteConnZookKeeperServerNotReadyEarlyDropEnabled() throws Exception {
+    @ZKBServerParameterizedTest
+    public void testNonMTLSRemoteConnZookKeeperServerNotReadyEarlyDropEnabled(ZooKeeperServer zks) throws Exception {
+        super.startServer(zks);
         testNonMTLSRemoteConn(null, false, true);
     }
 
-    @Test
-    public void testMTLSRemoteConnZookKeeperServerNotReadyEarlyDropEnabled() throws Exception {
+    @ZKBServerParameterizedTest
+    public void testMTLSRemoteConnZookKeeperServerNotReadyEarlyDropEnabled(ZooKeeperServer zks) throws Exception {
+        super.startServer(zks);
         testNonMTLSRemoteConn(null, true, true);
     }
 
-    @Test
-    public void testMTLSRemoteConnZookKeeperServerNotReadyEarlyDropDisabled() throws Exception {
+    @ZKBServerParameterizedTest
+    public void testMTLSRemoteConnZookKeeperServerNotReadyEarlyDropDisabled(ZooKeeperServer zks) throws Exception {
+        super.startServer(zks);
         testNonMTLSRemoteConn(null, true, true);
     }
 
@@ -249,8 +259,9 @@ public class NettyServerCnxnTest extends ClientBase {
         }
     }
 
-    @Test
-    public void testServerSideThrottling() throws IOException, InterruptedException, KeeperException {
+    @ZKBServerParameterizedTest
+    public void testServerSideThrottling(ZooKeeperServer zks) throws IOException, InterruptedException, KeeperException {
+        super.startServer(zks);
         try (ZooKeeper zk = createClient()) {
             BufferStats clientResponseStats = serverFactory.getZooKeeperServer().serverStats().getClientResponseStats();
             assertThat("Last client response size should be initialized with INIT_VALUE", clientResponseStats.getLastBufferSize(), equalTo(BufferStats.INIT_VALUE));
@@ -305,21 +316,25 @@ public class NettyServerCnxnTest extends ClientBase {
 
     @Test
     public void testEnableDisableThrottling_secure_random() throws Exception {
+        super.startServer();
         runEnableDisableThrottling(true, true);
     }
 
     @Test
     public void testEnableDisableThrottling_secure_sequentially() throws Exception {
+        super.startServer();
         runEnableDisableThrottling(true, false);
     }
 
-    @Test
-    public void testEnableDisableThrottling_nonSecure_random() throws Exception {
+    @ZKBServerParameterizedTest
+    public void testEnableDisableThrottling_nonSecure_random(ZooKeeperServer zks) throws Exception {
+        super.startServer(zks);
         runEnableDisableThrottling(false, true);
     }
 
-    @Test
-    public void testEnableDisableThrottling_nonSecure_sequentially() throws Exception {
+    @ZKBServerParameterizedTest
+    public void testEnableDisableThrottling_nonSecure_sequentially(ZooKeeperServer zks) throws Exception {
+        super.startServer(zks);
         runEnableDisableThrottling(false, false);
     }
 

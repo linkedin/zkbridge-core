@@ -21,11 +21,14 @@ package org.apache.zookeeper.server;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+
+import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.metrics.MetricsUtils;
 import org.junit.jupiter.api.Test;
 
+@ZKBTest
 public class ZooKeeperCriticalThreadMetricsTest extends ZKTestCase {
 
     CountDownLatch processed;

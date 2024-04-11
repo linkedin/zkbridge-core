@@ -21,10 +21,13 @@ package org.apache.zookeeper.server;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
+import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
+@ZKBTest
 public class ZooKeeperThreadTest extends ZKTestCase {
 
     private CountDownLatch runningLatch = new CountDownLatch(1);

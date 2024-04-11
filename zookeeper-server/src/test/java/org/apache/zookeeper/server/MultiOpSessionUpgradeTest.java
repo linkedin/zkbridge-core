@@ -49,6 +49,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// RR:TODO: There is no session upgrade in ZKB world so this test is not applicable.
 public class MultiOpSessionUpgradeTest extends QuorumBase {
 
     protected static final Logger LOG = LoggerFactory.getLogger(MultiOpSessionUpgradeTest.class);

@@ -32,6 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.metrics.MetricsUtils;
@@ -47,6 +48,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@ZKBTest
 public class WatchManagerTest extends ZKTestCase {
 
     protected static final Logger LOG = LoggerFactory.getLogger(WatchManagerTest.class);

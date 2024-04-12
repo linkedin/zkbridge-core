@@ -23,11 +23,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.server.DumbWatcher;
 import org.apache.zookeeper.server.util.BitHashSet;
 import org.junit.jupiter.api.Test;
 
+@ZKBTest
 public class WatcherOrBitSetTest extends ZKTestCase {
 
     @Test

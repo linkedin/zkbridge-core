@@ -247,6 +247,7 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
         if (!outputConfig.containsKey("maxSessionTimeout")) {
             outputConfig.setProperty("maxSessionTimeout", String.valueOf(-1));
         }
+        // RR: TODO: Ideally this port should be uniquely created but PortAssignement is not available in this module
         if (!outputConfig.containsKey("clientPort")) {
             outputConfig.setProperty("clientPort", String.valueOf(CLIENT_PORT_GENERATOR.getAndIncrement()));
         }

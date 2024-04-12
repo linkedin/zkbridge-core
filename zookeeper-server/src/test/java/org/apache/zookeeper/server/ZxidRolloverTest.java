@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Verify ZOOKEEPER-1277 - ensure that we handle epoch rollover correctly.
  */
+ // RR:TODO: Move this test case as part of multi-writer test cases.
 public class ZxidRolloverTest extends ZKTestCase {
 
     private static final Logger LOG = LoggerFactory.getLogger(ZxidRolloverTest.class);

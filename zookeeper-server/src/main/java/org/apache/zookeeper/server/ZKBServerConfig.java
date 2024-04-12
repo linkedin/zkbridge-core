@@ -287,4 +287,8 @@ public class ZKBServerConfig {
             throw new IllegalArgumentException("serverid " + myIdString + " is not a number");
         }
     }
+
+    public void setClientPortAddress(InetSocketAddress clientPortAddress) {
+        this.clientPortAddress = clientPortAddress;
+    }
 }

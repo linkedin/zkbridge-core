@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
+import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.common.Time;
 import org.apache.zookeeper.metrics.MetricsUtils;
@@ -35,6 +37,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@ZKBTest
 public class WatcherCleanerTest extends ZKTestCase {
 
     private static final Logger LOG = LoggerFactory.getLogger(WatcherCleanerTest.class);

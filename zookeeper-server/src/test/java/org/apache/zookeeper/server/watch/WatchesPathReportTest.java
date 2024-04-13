@@ -25,10 +25,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+@ZKBTest
 public class WatchesPathReportTest extends ZKTestCase {
 
     private Map<String, Set<Long>> m;

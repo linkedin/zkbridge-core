@@ -30,9 +30,11 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZKBTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+@ZKBTest
 public class RecursiveWatchQtyTest {
     private WatchManager watchManager;
 

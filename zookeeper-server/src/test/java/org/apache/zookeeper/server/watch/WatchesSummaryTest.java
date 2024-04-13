@@ -19,10 +19,13 @@ package org.apache.zookeeper.server.watch;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.Map;
+
+import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.ZKTestCase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+@ZKBTest
 public class WatchesSummaryTest extends ZKTestCase {
 
     private WatchesSummary s;

@@ -63,7 +63,8 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
+ // RR:TODO: Connection manager is used for leader election over TCP. In ZKB world, 
+ // leader election doesn't happen as all nodes are running as standalone stateless servers.
 public class CnxManagerTest extends ZKTestCase {
 
     protected static final Logger LOG = LoggerFactory.getLogger(FLENewEpochTest.class);

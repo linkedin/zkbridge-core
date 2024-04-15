@@ -41,6 +41,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+// RR: TODO: Not applicable in ZKB world since all servers are standalone servers.
 public class QuorumRequestPipelineTest extends QuorumBase {
 
     protected final CountDownLatch callComplete = new CountDownLatch(1);

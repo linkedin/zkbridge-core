@@ -24,6 +24,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.Test;
 
+// RR: TODO: Not applicable to POC related changes.
 public class QuorumBeanTest {
 
     @Test

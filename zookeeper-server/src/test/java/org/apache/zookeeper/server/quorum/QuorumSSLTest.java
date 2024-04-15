@@ -122,6 +122,7 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+// RR: TODO: This test is related to SSL configuration in ZKB. Not applicable to POC.
 public class QuorumSSLTest extends QuorumPeerTestBase {
 
     @Retention(RetentionPolicy.RUNTIME)

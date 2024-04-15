@@ -42,6 +42,7 @@ import org.apache.zookeeper.test.ReconfigTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+//RR: TODO: This test is added for testing reconfig backup feature. Not related to ZKB changes.
 public class ReconfigBackupTest extends QuorumPeerTestBase {
 
     public static String getVersionFromConfigStr(String config) throws IOException {

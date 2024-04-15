@@ -34,6 +34,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+// RR: TODO: Metrics needs to be added around online write server and background server. Once
+// the metrics are added, we can test the metrics.
 public class LearnerMetricsTest extends QuorumPeerTestBase {
 
     private static final int SERVER_COUNT = 4; // 1 observer, 3 participants

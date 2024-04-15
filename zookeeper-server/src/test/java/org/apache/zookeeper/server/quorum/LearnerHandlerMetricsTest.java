@@ -39,6 +39,8 @@ import org.apache.zookeeper.server.ServerMetrics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+// RR: TODO: Metrics needs to be added around online write server and background server. Once
+// the metrics are added, we can test the metrics.
 public class LearnerHandlerMetricsTest {
 
     private MockLearnerHandler learnerHandler;

@@ -49,6 +49,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// RR: TODO: Digest check is not added yet in syncing. Once it is added this testcase can be used.
 public class QuorumDigestTest extends QuorumPeerTestBase {
 
     private static final Logger LOG =

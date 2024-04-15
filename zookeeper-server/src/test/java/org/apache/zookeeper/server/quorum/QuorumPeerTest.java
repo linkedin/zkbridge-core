@@ -33,6 +33,7 @@ import org.apache.zookeeper.server.quorum.QuorumPeer.QuorumServer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+// RR: TODO: Not applicable in ZKB since all servers are standalone servers.
 public class QuorumPeerTest {
 
     private int electionAlg = 3;

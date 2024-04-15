@@ -38,6 +38,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+// RR: TODO: Not related to POC changes.
 public class ReconfigFailureCasesTest extends QuorumPeerTestBase {
 
     private QuorumUtil qu;

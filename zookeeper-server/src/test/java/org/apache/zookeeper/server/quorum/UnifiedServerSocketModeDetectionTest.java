@@ -56,6 +56,7 @@ import org.slf4j.LoggerFactory;
  * trigger blocking mode detection. This is necessary to ensure that the
  * Leader's accept() thread doesn't get blocked.
  */
+// RR: TODO: Not related to POC changes.
 public class UnifiedServerSocketModeDetectionTest extends ZKTestCase {
 
     private static final Logger LOG = LoggerFactory.getLogger(UnifiedServerSocketModeDetectionTest.class);

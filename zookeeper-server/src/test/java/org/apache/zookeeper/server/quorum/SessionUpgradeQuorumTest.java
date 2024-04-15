@@ -49,6 +49,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// RR: TODO: Since each is standalone server there is no session upgrade in ZKB. Not applicable.
 public class SessionUpgradeQuorumTest extends QuorumPeerTestBase {
 
     protected static final Logger LOG = LoggerFactory.getLogger(SessionUpgradeQuorumTest.class);

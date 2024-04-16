@@ -39,6 +39,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// RR:TODO: CommitProcessor is not used since we are not using ZAB.
 public class CommitProcessorMetricsTest extends ZKTestCase {
 
     protected static final Logger LOG = LoggerFactory.getLogger(CommitProcessorMetricsTest.class);

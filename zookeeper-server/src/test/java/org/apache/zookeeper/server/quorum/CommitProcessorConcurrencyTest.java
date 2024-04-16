@@ -53,6 +53,8 @@ import org.junit.jupiter.api.Timeout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// RR:TODO: Currently CommitProcessor is not used in ZKB but we would need this to synchronize between
+// updates to local server after writing to spiral as well as background sync.
 public class CommitProcessorConcurrencyTest extends ZKTestCase {
 
     protected static final Logger LOG = LoggerFactory.getLogger(CommitProcessorConcurrencyTest.class);

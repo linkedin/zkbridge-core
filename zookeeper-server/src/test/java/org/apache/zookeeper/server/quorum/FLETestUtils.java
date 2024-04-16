@@ -25,6 +25,7 @@ import org.apache.zookeeper.server.quorum.QuorumPeer.ServerState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// RR:TODO: There is no leader election in ZKB.
 public class FLETestUtils extends ZKTestCase {
 
     protected static final Logger LOG = LoggerFactory.getLogger(FLETestUtils.class);

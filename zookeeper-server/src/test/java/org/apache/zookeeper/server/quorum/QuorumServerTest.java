@@ -27,6 +27,7 @@ import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+// RR: TODO: Not applicable to POC related changes.
 public class QuorumServerTest extends ZKTestCase {
 
     private String ipv6n1 = "[2500:0:0:0:0:0:1:0]";

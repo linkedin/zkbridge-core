@@ -49,6 +49,8 @@ import org.junit.jupiter.api.Timeout;
  *
  * See ZOOKEEPER-2819 for more details.
  */
+
+// RR: TODO: Not related to POC changes.
 public class ReconfigRollingRestartCompatibilityTest extends QuorumPeerTestBase {
 
     private static final String ZOO_CFG_BAK_FILE = "zoo.cfg.bak";

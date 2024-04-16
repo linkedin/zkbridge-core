@@ -34,6 +34,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
+// RR:TODO Epoch is not used in ZKB.
 public class EpochWriteFailureTest extends QuorumPeerTestBase {
     private static int SERVER_COUNT = 3;
     private static int[] clientPorts = new int[SERVER_COUNT];

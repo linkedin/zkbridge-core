@@ -38,6 +38,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+// RR:TODO: each server in ZKB is standalone server so none of these states are applicable.
 public class EagerACLFilterTest extends QuorumBase {
 
     protected boolean complete = false;

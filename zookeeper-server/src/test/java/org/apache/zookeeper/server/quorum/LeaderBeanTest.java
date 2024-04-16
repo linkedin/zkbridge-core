@@ -52,6 +52,7 @@ import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+// RR: ZAB related test not applicable to ZKB
 public class LeaderBeanTest {
 
     private Leader leader;

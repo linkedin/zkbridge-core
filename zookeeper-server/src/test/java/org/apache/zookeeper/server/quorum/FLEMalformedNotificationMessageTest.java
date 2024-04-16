@@ -35,6 +35,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// RR:TODO: There is no leader election in ZKB.
 public class FLEMalformedNotificationMessageTest extends ZKTestCase {
     private static final Logger LOG = LoggerFactory.getLogger(FLEMalformedNotificationMessageTest.class);
     private static final byte[] CONFIG_BYTES = "my very invalid config string".getBytes();

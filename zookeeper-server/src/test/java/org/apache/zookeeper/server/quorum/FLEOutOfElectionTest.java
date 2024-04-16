@@ -36,6 +36,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Test FastLeaderElection with out of election servers.
  */
+// RR:TODO: There is no leader election in ZKB.
 public class FLEOutOfElectionTest {
 
     private FastLeaderElection fle;

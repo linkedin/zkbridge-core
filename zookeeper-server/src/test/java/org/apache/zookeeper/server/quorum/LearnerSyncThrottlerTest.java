@@ -35,6 +35,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// RR:TODO: There is not throttling right now on syncing. Once it is added this testcase can be used.
 public class LearnerSyncThrottlerTest extends ZKTestCase {
 
     private static final Logger LOG = LoggerFactory.getLogger(LearnerSyncThrottlerTest.class);

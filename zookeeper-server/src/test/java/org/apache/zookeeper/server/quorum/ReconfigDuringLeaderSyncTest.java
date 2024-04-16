@@ -45,6 +45,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// RR:TODO: Not related to ZKB. This test is for testing reconfig during leader sync.
 public class ReconfigDuringLeaderSyncTest extends QuorumPeerTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(ReconfigDuringLeaderSyncTest.class);

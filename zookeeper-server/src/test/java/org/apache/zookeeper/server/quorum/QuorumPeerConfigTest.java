@@ -32,6 +32,7 @@ import org.apache.zookeeper.server.quorum.QuorumPeer.QuorumServer;
 import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
 import org.junit.jupiter.api.Test;
 
+// RR: TODO: Not related to current POC related changes.
 public class QuorumPeerConfigTest {
 
     /**

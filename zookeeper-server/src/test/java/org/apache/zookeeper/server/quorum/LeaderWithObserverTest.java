@@ -35,6 +35,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+// RR: ZAB related test not applicable to ZKB
 public class LeaderWithObserverTest {
 
     QuorumPeer peer;

@@ -32,6 +32,8 @@ import org.apache.zookeeper.test.ReconfigTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+
+// RR: TODO: Not related to POC changes.
 public class ReconfigRecoveryTest extends QuorumPeerTestBase {
 
     @BeforeEach

@@ -70,6 +70,7 @@ import org.slf4j.LoggerFactory;
  * 3. The pipeline needs to be drained before a write request can enter.
  * 4. No in-flight write requests while processing a read request.
  */
+// RR:TODO: CommitProcessor is not used since we are not using ZAB.
 public class CommitProcessorTest extends ZKTestCase {
 
     protected static final Logger LOG = LoggerFactory.getLogger(CommitProcessorTest.class);

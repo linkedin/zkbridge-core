@@ -171,7 +171,7 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
             try {
                 FileUtils.deleteDirectory(dataDir);
                 FileUtils.deleteDirectory(logDir);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 LOG.info("Error creating directories", e);
             }
             configuration = decorateConfiguration(configuration);

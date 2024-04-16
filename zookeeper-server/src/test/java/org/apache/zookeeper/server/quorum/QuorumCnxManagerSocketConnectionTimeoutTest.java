@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// RR: TODO: Leader election related testcase. Not applicable to POC.
 public class QuorumCnxManagerSocketConnectionTimeoutTest extends ZKTestCase {
 
     private static final Logger LOG = LoggerFactory.getLogger(QuorumCnxManagerSocketConnectionTimeoutTest.class);

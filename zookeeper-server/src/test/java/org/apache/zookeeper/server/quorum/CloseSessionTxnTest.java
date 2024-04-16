@@ -28,6 +28,7 @@ import org.apache.zookeeper.ZooKeeper.States;
 import org.apache.zookeeper.server.ZooKeeperServer;
 import org.junit.jupiter.api.Test;
 
+// RR:TODO: This test is added for rollout of CloseSessionTxnEnabled but not needed anymore.
 public class CloseSessionTxnTest extends QuorumPeerTestBase {
 
     /**

@@ -43,6 +43,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
+// RR:TODO: ZKBridge doesn't use ZAB so there is not concept of leader election or DIFFSync. But similarly we have 
+// background sync process. So whenever background sync code supports "two-phase commit"/"atomic" concept for any update to 
+// shared transaction log then we can move these scenarios to ZKBridge. 
 public class DIFFSyncConsistencyTest extends QuorumPeerTestBase {
 
     private static int SERVER_COUNT = 3;

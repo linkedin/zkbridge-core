@@ -678,6 +678,8 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
         } catch (KeeperException.NoNodeException e) {
             // ignore this one
         }
+        // RR: TODO: Epehemeral nodes needs to be stored in spiral so that it will be available across all
+        // ZKB nodes. 
         boolean ephemeralParent = EphemeralType.get(parentRecord.stat.getEphemeralOwner()) == EphemeralType.NORMAL;
         if (ephemeralParent) {
             throw new KeeperException.NoChildrenForEphemeralsException(path);

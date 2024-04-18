@@ -70,6 +70,11 @@ public class InMemorySpiralClient implements SpiralClient {
   }
 
   @Override
+  public Long getCurrentLatestTransactionId() {
+    return fs.getCurrentLatestTransactionId();
+  }
+
+  @Override
   public void put(String bucketName, String key, byte[] value) {
         fs.put(bucketName, key, value);
   }

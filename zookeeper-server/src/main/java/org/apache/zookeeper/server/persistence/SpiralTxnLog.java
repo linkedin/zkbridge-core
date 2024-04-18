@@ -122,7 +122,7 @@ public class SpiralTxnLog {
         byte[] buf = Util.marshallTxnEntry(spiralHdr, request.getTxn(), request.getTxnDigest());
         spiralClient.put(SHARED_TRANSACTION_LOG.getBucketName(), String.valueOf(zxid), buf);
         LOG.info("Appended zxid {} to global changelog", zxid);
-        return true;
+                return true;
     }
 
     public static class SpiralTxnIterator {

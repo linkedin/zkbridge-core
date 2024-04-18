@@ -23,6 +23,8 @@ public interface SpiralClient {
 
   Long generateTransactionId();
 
+  Long getCurrentLatestTransactionId();
+
   void put(String bucketName, String key, byte[] value);
 
   ScanResponse scanBucket(String bucketName, PaginationContext paginationContext);

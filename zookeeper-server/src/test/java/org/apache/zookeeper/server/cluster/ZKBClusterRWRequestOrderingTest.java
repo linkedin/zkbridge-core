@@ -298,7 +298,7 @@ public class ZKBClusterRWRequestOrderingTest extends ZKTestCase {
 
         Random rand = new Random(Thread.currentThread().getId());
         RequestProcessor nextProcessor;
-        AtomicLong expectedZxid = new AtomicLong(1);
+        AtomicLong expectedZxid = new AtomicLong(0);
         ConcurrentHashMap<Long, AtomicInteger> cxidMap = new ConcurrentHashMap<>();
 
         AtomicInteger outstandingReadRequests = new AtomicInteger(0);

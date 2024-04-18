@@ -3,7 +3,6 @@ package org.apache.zookeeper.server.cluster;
 import org.apache.zookeeper.ZKBTest;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.server.embedded.ZKBridgeClusterEmbedded;
-import org.junit.Ignore;
 import org.junit.jupiter.api.Test;
 
 import static org.apache.zookeeper.ZooKeeper.States.*;
@@ -26,6 +25,11 @@ public class ZKBClusterSessionConnectionTest extends ClusterTestBase {
     ZooKeeper client2 = cluster.getOrBuildClient(1);
     waitForOne(client2, CONNECTED);
     assertSessionSize(cluster, 2);
+
+    // Tear down
+    client1.close();
+    client2.close();
+    cluster.close();
   }
 
   @Test
@@ -45,6 +49,10 @@ public class ZKBClusterSessionConnectionTest extends ClusterTestBase {
     // ensure client-1 is still connected with server-0
     assertEquals(CONNECTED, client1.getState());
     assertEquals(sessionId, client1.getSessionId());
+
+    // Tear down
+    client1.close();
+    cluster.close();
   }
 
   @Test
@@ -64,6 +72,10 @@ public class ZKBClusterSessionConnectionTest extends ClusterTestBase {
 
     // ensure client-1 is not able to stay connected.
     assertFalse(client1.getState().isConnected());
+
+    // Tear down
+    client1.close();
+    cluster.close();
   }
 
   @Test
@@ -86,6 +98,9 @@ public class ZKBClusterSessionConnectionTest extends ClusterTestBase {
     assertTrue(client1.getState().isConnected());
     assertEquals(CONNECTED, client1.getState());
     assertEquals(sessionId, client1.getSessionId());
-  }
 
+    // Tear down
+    client1.close();
+    cluster.close();
+  }  
 }

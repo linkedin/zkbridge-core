@@ -259,6 +259,41 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
         servers.set(serverId, newSCF);
     }
 
+    // Waits until all other servers are synced with the provided server's LastProcessedZxid or until timeout.
+    public boolean waitAllServersSynced(int serverId) {
+        int timeout = 10_000;
+        long start = System.currentTimeMillis();
+        while (true) {
+            boolean allSynced = true;
+            for (int i = 0; i < servers.size(); i++) {
+                if (i == serverId) {
+                    continue;
+                }
+                ServerCnxnFactory scf = servers.get(i);
+                if (scf == null) {
+                    continue;
+                }
+                ZooKeeperServer zks = scf.getZooKeeperServer();
+                if (zks.getLastProcessedZxid() < servers.get(serverId).getZooKeeperServer().getLastProcessedZxid()) {
+                    allSynced = false;
+                    break;
+                }
+            }
+            if (allSynced) {
+                return true;
+            }
+            if (System.currentTimeMillis() - start > timeout) {
+                LOG.info("Timeout waiting for all servers to sync");
+                return false;
+            }
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                throw new RuntimeException("Interrupted while waiting for all servers to sync", e);
+            }
+        }
+    }
+
     /**
      * Start the servers in the cluster.
      * @throws Exception

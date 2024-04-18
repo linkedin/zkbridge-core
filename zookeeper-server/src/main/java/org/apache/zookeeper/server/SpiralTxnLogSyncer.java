@@ -58,7 +58,7 @@ public class SpiralTxnLogSyncer extends ZooKeeperCriticalThread {
     @Override
     public void run() {
         while (true) {
-            if (killed || stopping) {
+                        if (killed || stopping) {
                 break;
             }
             syncDeltaUntilLatest();
@@ -70,9 +70,9 @@ public class SpiralTxnLogSyncer extends ZooKeeperCriticalThread {
     public synchronized void syncDeltaUntilLatest() {
         try {
             long startProcessTime = Time.currentElapsedTime();
-            if (spiralClient.containsKey(INTERNAL_STATE.getBucketName(), LATEST_TRANSACTION_ID.name())) {
-                byte[] lastZxidBuf = spiralClient.get(INTERNAL_STATE.getBucketName(), LATEST_TRANSACTION_ID.name());
-                syncUntilZxid(Long.valueOf(new String(lastZxidBuf)));
+            long currentLatestTransactionId = spiralClient.getCurrentLatestTransactionId();
+            if (currentLatestTransactionId > 0) {
+                syncUptoZxid(currentLatestTransactionId);
             }
             ServerMetrics.getMetrics().SPIRAL_BACKGROUND_SYNC_PROCESS_TIME.add(Time.currentElapsedTime() - startProcessTime);
         } catch (Throwable t) {
@@ -86,7 +86,7 @@ public class SpiralTxnLogSyncer extends ZooKeeperCriticalThread {
      * is actively getting processed via the RequestProcessor and we dont want sync processor to process the same
      * transaction.
      */
-    public synchronized void syncUntilZxid(long zxid) throws IOException {
+    public synchronized void syncUptoZxid(long zxid) throws IOException {
         while (zks.getLastProcessedZxid() < zxid) {
             long nextTxnId = zks.getLastProcessedZxid() + 1;
 

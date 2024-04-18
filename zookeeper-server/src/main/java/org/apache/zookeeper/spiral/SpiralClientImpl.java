@@ -437,4 +437,13 @@ public class SpiralClientImpl implements SpiralClient {
     }
 
   }
+
+  @Override
+  public Long getCurrentLatestTransactionId() {
+    if (containsKey(INTERNAL_STATE.getBucketName(), LATEST_TRANSACTION_ID.name())) {
+      byte[] lastZxidBuf = get(INTERNAL_STATE.getBucketName(), LATEST_TRANSACTION_ID.name());
+      return Long.valueOf(new String(lastZxidBuf));
+    }
+    return -1L;
+  }
 }

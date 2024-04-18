@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 
 public class InMemoryFS {
 
-  private final AtomicLong TXN_ID = new AtomicLong(0);
+  private final AtomicLong TXN_ID = new AtomicLong(-1L);
   private final Map<String, TreeMap<String, byte[]>> spiralContent = new HashMap<>();
 
   public InMemoryFS() {
@@ -18,6 +18,10 @@ public class InMemoryFS {
 
   public Long generateTransactionId() {
     return TXN_ID.incrementAndGet();
+  }
+
+  public Long getCurrentLatestTransactionId() {
+    return TXN_ID.get();
   }
 
   public void createBucket(String bucket) {

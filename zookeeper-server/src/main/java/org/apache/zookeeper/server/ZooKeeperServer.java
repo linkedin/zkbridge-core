@@ -773,8 +773,6 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         if (spiralEnabled) {
             if (spiralSessionTracker != null) {
                 spiralSessionTracker.closeSession(sessionId);
-            } else {
-                throw new RuntimeException("Spiral is enabled but spiral session tracker is null");
             }
         } else if (sessionTracker != null) {
             sessionTracker.removeSession(sessionId);

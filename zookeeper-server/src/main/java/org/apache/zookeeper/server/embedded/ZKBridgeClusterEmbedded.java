@@ -31,6 +31,7 @@ import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.client.ZooKeeperBuilder;
 import org.apache.zookeeper.server.ServerCnxnFactory;
 import org.apache.zookeeper.server.ZooKeeperServer;
+import org.apache.zookeeper.server.embedded.ZKBridgeServerEmbedded.ZKBridgeServerEmbeddedBuilder;
 import org.apache.zookeeper.server.embedded.spiral.InMemoryFS;
 import org.apache.zookeeper.server.embedded.spiral.InMemorySpiralClient;
 import org.apache.zookeeper.server.embedded.spiral.SpiralClientStrategy;
@@ -67,6 +68,7 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
     private final InMemoryFS inMemoryFS;
     private final SpiralClient spiralClient;
     private final List<ServerCnxnFactory> servers;
+    private static ZKBridgeServerEmbeddedBuilder builder = null;
 
     public ZooKeeper[] zkClients;
 
@@ -137,9 +139,13 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
                 inMemStrategy.inMemoryFS(inMemoryFS);
             }
 
+            if (ZKBridgeClusterEmbedded.builder == null) {
+                ZKBridgeClusterEmbedded.builder = new ZKBridgeServerEmbeddedBuilder();
+            }
+
             for (int idx = 0; idx < numServers; idx ++) {
                 
-                servers.add(new ZKBridgeServerEmbedded.ZKBridgeServerEmbeddedBuilder()
+                servers.add(ZKBridgeClusterEmbedded.builder
                     .setServerId(Long.valueOf(idx))
                     .setSpiralClientStrategy(spiralClientStrategy)
                     .setClientPort(clientPorts.get(idx))
@@ -152,8 +158,16 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
         }
     }
 
+    public static void setBuilder(ZKBridgeServerEmbeddedBuilder customZkbServerEmbeddedBuilder) {
+        ZKBridgeClusterEmbedded.builder = customZkbServerEmbeddedBuilder;
+    }
+
     public InMemoryFS getInMemoryFS() {
         return inMemoryFS;
+    }
+
+    public List<ServerCnxnFactory> getServers() {
+        return servers;
     }
 
     public SpiralClient getSpiralClient() {
@@ -303,13 +317,23 @@ public class ZKBridgeClusterEmbedded implements AutoCloseable {
     }
 
     /**
-     * Shutdown gracefully the servers and wait for resources to be released.
+     * Shutdown gracefully all servers and wait for resources to be released and also
+     * closes clients
      */
     @Override
     public void close() {
         for (ServerCnxnFactory server: servers) {
             if (server != null) {
                 server.shutdown();
+            }
+        }
+        for (ZooKeeper zk: zkClients) {
+            if (zk != null) {
+                try {
+                    zk.close();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException("Interrupted while closing the ZKB client", e);
+                }
             }
         }
     }

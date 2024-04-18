@@ -55,6 +55,13 @@ public class ClusterTestBase extends ZKTestCase implements Watcher {
         return launchServers(numServers, null);
     }
 
+    protected void launchClients(ZKBridgeClusterEmbedded cluster) {
+        for (int i = 0; i < cluster.zkClients.length; i++) {
+            cluster.zkClients[i] = cluster.getOrBuildClient(i);
+        }
+    }
+
+    
     protected synchronized ZKBridgeClusterEmbedded launchServers(int numServers, Integer sessionTimeoutMs) {
         try {
             ArrayList<Integer> clientPorts = new ArrayList<>();

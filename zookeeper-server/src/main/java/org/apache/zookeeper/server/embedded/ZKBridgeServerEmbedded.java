@@ -193,7 +193,7 @@ public interface ZKBridgeServerEmbedded extends AutoCloseable {
             return buildServerFromConfig(config);
         }
 
-        ZooKeeperServer buildServerFromConfig(ZKBServerConfig config) throws Exception {
+        public ZooKeeperServer buildServerFromConfig(ZKBServerConfig config) throws Exception {
             MetricsProvider metricsProvider;
             try {
                 metricsProvider = MetricsProviderBootstrap.startMetricsProvider(

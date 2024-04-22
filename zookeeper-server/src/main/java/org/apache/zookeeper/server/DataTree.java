@@ -1355,9 +1355,10 @@ public class DataTree {
      * @param path a string builder.
      * @throws IOException
      */
-    void serializeSpiralNode(SpiralClient spiralClient, StringBuilder path, String nodeDataBucket) throws IOException {
+    // visible for test
+    public void serializeSpiralNode(SpiralClient spiralClient, StringBuilder path, String nodeDataBucket) throws IOException {
         String pathString = path.toString();
-        DataNode node = getNode(pathString);
+                DataNode node = getNode(pathString);
         if (node == null) {
             return;
         }
